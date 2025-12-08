@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { Map, Sparkles, Loader2, Save, History, Trash2, X, Plus, ArrowRight, Copy, CheckCircle2, Lightbulb, MessageSquare, Heart, Target, Users } from 'lucide-react';
+import { JourneyService, SavedJourney } from '../services/journeyService';
 import { JourneyStage } from '../types';
 import { generateCustomerJourney, JourneyMapperInput } from '../services/geminiService';
 import toast, { Toaster } from 'react-hot-toast';
@@ -13,12 +14,7 @@ const STAGE_COLORS = [
     { bg: 'bg-pink-50', border: 'border-pink-200', text: 'text-pink-700', accent: 'bg-pink-500' },
 ];
 
-interface SavedJourney {
-    id: string;
-    input: JourneyMapperInput;
-    data: JourneyStage[];
-    timestamp: number;
-}
+
 
 const ContentIdeaCard = ({ idea, onAddToCalendar }: { idea: string; onAddToCalendar: () => void }) => {
     const [copied, setCopied] = useState(false);
@@ -132,10 +128,11 @@ const CustomerJourneyMapper: React.FC = () => {
     const [savedJourneys, setSavedJourneys] = useState<SavedJourney[]>([]);
 
     React.useEffect(() => {
-        const saved = localStorage.getItem('customer_journey_history');
-        if (saved) {
-            setSavedJourneys(JSON.parse(saved));
-        }
+        const loadJourneys = async () => {
+            const journeys = await JourneyService.getJourneys();
+            setSavedJourneys(journeys);
+        };
+        loadJourneys();
     }, []);
 
     const onSubmit = async (data: JourneyMapperInput) => {
@@ -166,7 +163,7 @@ const CustomerJourneyMapper: React.FC = () => {
         }
     };
 
-    const handleSave = () => {
+    const handleSave = async () => {
         if (!journeyData || !currentInput) return;
 
         const newJourney: SavedJourney = {
@@ -176,11 +173,15 @@ const CustomerJourneyMapper: React.FC = () => {
             timestamp: Date.now()
         };
 
-        const updated = [newJourney, ...savedJourneys];
-        setSavedJourneys(updated);
-        localStorage.setItem('customer_journey_history', JSON.stringify(updated));
+        const success = await JourneyService.saveJourney(newJourney);
 
-        toast.success('Đã lưu!', { icon: '💾' });
+        if (success) {
+            const journeys = await JourneyService.getJourneys();
+            setSavedJourneys(journeys);
+            toast.success('Đã lưu!', { icon: '💾' });
+        } else {
+            toast.error('Lỗi khi lưu!');
+        }
     };
 
     const handleNew = () => {
@@ -198,11 +199,16 @@ const CustomerJourneyMapper: React.FC = () => {
         toast.success('Đã tải!', { icon: '📂' });
     };
 
-    const handleDelete = (id: string) => {
-        const updated = savedJourneys.filter(s => s.id !== id);
-        setSavedJourneys(updated);
-        localStorage.setItem('customer_journey_history', JSON.stringify(updated));
-        toast.success('Đã xóa!', { icon: '🗑️' });
+    const handleDelete = async (id: string) => {
+        const success = await JourneyService.deleteJourney(id);
+
+        if (success) {
+            const journeys = await JourneyService.getJourneys();
+            setSavedJourneys(journeys);
+            toast.success('Đã xóa!', { icon: '🗑️' });
+        } else {
+            toast.error('Lỗi khi xóa!');
+        }
     };
 
     return (
