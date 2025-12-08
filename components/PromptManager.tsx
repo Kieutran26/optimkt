@@ -3,6 +3,8 @@ import React, { useState, useEffect } from 'react';
 import { Plus, Copy, Edit2, Trash2, X, TerminalSquare, Check, Sparkles } from 'lucide-react';
 import { SavedPrompt } from '../types';
 import { PromptService } from '../services/promptService';
+import { Toast, ToastType } from './Toast';
+import { ConfirmDialog } from './ConfirmDialog';
 
 const PromptManager: React.FC = () => {
   const [prompts, setPrompts] = useState<SavedPrompt[]>([]);
@@ -10,6 +12,8 @@ const PromptManager: React.FC = () => {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
+  const [toast, setToast] = useState<{ message: string; type: ToastType } | null>(null);
+  const [confirmDialog, setConfirmDialog] = useState<{ show: boolean; id: string | null }>({ show: false, id: null });
 
   // Form State
   const [aiModel, setAiModel] = useState('');
@@ -17,6 +21,10 @@ const PromptManager: React.FC = () => {
   const [content, setContent] = useState('');
 
   const SUGGESTED_MODELS = ['Gemini', 'ChatGPT', 'Claude', 'Midjourney', 'Copilot', 'Llama'];
+
+  const showToast = (message: string, type: ToastType = 'success') => {
+    setToast({ message, type });
+  };
 
   useEffect(() => {
     refreshData();
@@ -44,17 +52,27 @@ const PromptManager: React.FC = () => {
   };
 
   const handleDelete = async (id: string) => {
-    if (confirm('Xóa prompt này?')) {
+    setConfirmDialog({ show: true, id });
+  };
+
+  const confirmDelete = async () => {
+    const id = confirmDialog.id;
+    setConfirmDialog({ show: false, id: null });
+
+    if (id) {
       const success = await PromptService.deletePrompt(id);
       if (success) {
         await refreshData();
+        showToast('Đã xóa prompt', 'success');
+      } else {
+        showToast('Lỗi khi xóa prompt', 'error');
       }
     }
   };
 
   const handleSave = async () => {
     if (!aiModel.trim() || !title.trim() || !content.trim()) {
-      alert("Vui lòng nhập đầy đủ thông tin!");
+      showToast('Vui lòng nhập đầy đủ thông tin!', 'error');
       return;
     }
 
@@ -72,8 +90,9 @@ const PromptManager: React.FC = () => {
       setShowModal(false);
       resetForm();
       await refreshData();
+      showToast('Đã lưu prompt thành công!', 'success');
     } else {
-      alert('Lỗi khi lưu prompt');
+      showToast('Lỗi khi lưu prompt', 'error');
     }
   };
 
@@ -224,6 +243,25 @@ const PromptManager: React.FC = () => {
           </div>
         </div>
       )}
+
+      {/* Toast Notification */}
+      {toast && (
+        <Toast
+          message={toast.message}
+          type={toast.type}
+          onClose={() => setToast(null)}
+        />
+      )}
+
+      {/* Confirm Delete Dialog */}
+      <ConfirmDialog
+        isOpen={confirmDialog.show}
+        title="Xóa Prompt"
+        message="Bạn có chắc muốn xóa prompt này không? Hành động này không thể hoàn tác."
+        onConfirm={confirmDelete}
+        onCancel={() => setConfirmDialog({ show: false, id: null })}
+        isDestructive={true}
+      />
     </div>
   );
 };
