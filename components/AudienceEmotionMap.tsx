@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { AudienceEmotionMapInput, AudienceEmotionMapResult } from '../types';
 import { analyzeEmotionalJourney } from '../services/geminiService';
 import { EmotionMapService, SavedEmotionMap } from '../services/emotionMapService';
-import toast from 'react-hot-toast';
+import toast, { Toaster } from 'react-hot-toast';
 import {
     Heart,
     TrendingUp,
@@ -183,6 +183,7 @@ const AudienceEmotionMap: React.FC<Props> = ({ isActive }) => {
 
     return (
         <div className="w-full h-full overflow-hidden bg-slate-50/30 relative flex">
+            <Toaster position="top-center" />
 
             {/* Main Content */}
             <div className="flex-1 overflow-auto p-8">
