@@ -101,7 +101,18 @@ const AudienceEmotionMap: React.FC<Props> = ({ isActive }) => {
         if (success) {
             const maps = await EmotionMapService.getEmotionMaps();
             setSavedMaps(maps);
-            toast.success('Đã lưu bản đồ cảm xúc!');
+            toast.success('Đã lưu bản đồ cảm xúc!', {
+                icon: '💾',
+                duration: 3000,
+                style: {
+                    borderRadius: '12px',
+                    background: '#F0FDF4',
+                    color: '#166534',
+                    fontWeight: '600',
+                    fontSize: '14px',
+                    border: '1px solid #BBF7D0'
+                }
+            });
         } else {
             toast.error('Lỗi khi lưu!');
         }
