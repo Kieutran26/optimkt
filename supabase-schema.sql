@@ -1,12 +1,14 @@
 -- ============================================
--- OPTIMKT - SUPABASE MIGRATION SCHEMA
--- Complete database schema for all migrated features
+-- OPTIMKT - COMPLETE SUPABASE SCHEMA
+-- All database tables for migrated features
 -- ============================================
 
--- 1. BRAND VAULT TABLE
--- Stores saved brand information
-DROP TABLE IF EXISTS brands CASCADE;
+-- ===========================================
+-- MIGRATED FEATURES (Already implemented)
+-- ===========================================
 
+-- 1. BRAND VAULT TABLE
+DROP TABLE IF EXISTS brands CASCADE;
 CREATE TABLE brands (
   id TEXT PRIMARY KEY,
   brand_name TEXT NOT NULL,
@@ -18,16 +20,12 @@ CREATE TABLE brands (
   visual_identity JSONB,
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
-
 ALTER TABLE brands ENABLE ROW LEVEL SECURITY;
-CREATE POLICY "Allow all operations on brands" ON brands
-FOR ALL USING (true) WITH CHECK (true);
+CREATE POLICY "Allow all operations on brands" ON brands FOR ALL USING (true) WITH CHECK (true);
 
 
 -- 2. SAVED PROMPTS TABLE
--- Stores user's saved AI prompts
 DROP TABLE IF EXISTS prompts CASCADE;
-
 CREATE TABLE prompts (
   id TEXT PRIMARY KEY,
   ai_model TEXT NOT NULL,
@@ -35,62 +33,103 @@ CREATE TABLE prompts (
   content TEXT NOT NULL,
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
-
 ALTER TABLE prompts ENABLE ROW LEVEL SECURITY;
-CREATE POLICY "Allow all operations on prompts" ON prompts
-FOR ALL USING (true) WITH CHECK (true);
+CREATE POLICY "Allow all operations on prompts" ON prompts FOR ALL USING (true) WITH CHECK (true);
 
 
 -- 3. CUSTOMER JOURNEY TABLE
--- Stores customer journey maps
 DROP TABLE IF EXISTS customer_journeys CASCADE;
-
 CREATE TABLE customer_journeys (
   id TEXT PRIMARY KEY,
   input JSONB NOT NULL,
   journey_data JSONB NOT NULL,
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
-
 ALTER TABLE customer_journeys ENABLE ROW LEVEL SECURITY;
-CREATE POLICY "Allow all operations on customer_journeys" ON customer_journeys
-FOR ALL USING (true) WITH CHECK (true);
+CREATE POLICY "Allow all operations on customer_journeys" ON customer_journeys FOR ALL USING (true) WITH CHECK (true);
 
 
 -- 4. EMOTION MAPS TABLE
--- Stores audience emotion maps
 DROP TABLE IF EXISTS emotion_maps CASCADE;
-
 CREATE TABLE emotion_maps (
   id TEXT PRIMARY KEY,
   input JSONB NOT NULL,
   result JSONB NOT NULL,
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
-
 ALTER TABLE emotion_maps ENABLE ROW LEVEL SECURITY;
-CREATE POLICY "Allow all operations on emotion_maps" ON emotion_maps
-FOR ALL USING (true) WITH CHECK (true);
+CREATE POLICY "Allow all operations on emotion_maps" ON emotion_maps FOR ALL USING (true) WITH CHECK (true);
 
 
 -- 5. AUTO BRIEFS TABLE
--- Stores automatically generated marketing briefs
 DROP TABLE IF EXISTS auto_briefs CASCADE;
-
 CREATE TABLE auto_briefs (
   id TEXT PRIMARY KEY,
   input JSONB NOT NULL,
   brief_data JSONB NOT NULL,
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
-
 ALTER TABLE auto_briefs ENABLE ROW LEVEL SECURITY;
-CREATE POLICY "Allow all operations on auto_briefs" ON auto_briefs
-FOR ALL USING (true) WITH CHECK (true);
+CREATE POLICY "Allow all operations on auto_briefs" ON auto_briefs FOR ALL USING (true) WITH CHECK (true);
+
+
+-- ===========================================
+-- READY TO MIGRATE (SQL schemas prepared)
+-- ===========================================
+
+-- 6. SOP BUILDER TABLE
+-- Stores Standard Operating Procedures
+DROP TABLE IF EXISTS sops CASCADE;
+CREATE TABLE sops (
+  id TEXT PRIMARY KEY,
+  input JSONB NOT NULL,
+  sop_data JSONB NOT NULL,
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+ALTER TABLE sops ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "Allow all operations on sops" ON sops FOR ALL USING (true) WITH CHECK (true);
+
+
+-- 7. HOOK GENERATOR TABLE
+-- Stores generated hook sets for various channels
+DROP TABLE IF EXISTS hook_sets CASCADE;
+CREATE TABLE hook_sets (
+  id TEXT PRIMARY KEY,
+  input JSONB NOT NULL,
+  hooks_data JSONB NOT NULL,
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+ALTER TABLE hook_sets ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "Allow all operations on hook_sets" ON hook_sets FOR ALL USING (true) WITH CHECK (true);
+
+
+-- 8. INSIGHT FINDER TABLE
+-- Stores deep marketing insights
+DROP TABLE IF EXISTS insights CASCADE;
+CREATE TABLE insights (
+  id TEXT PRIMARY KEY,
+  input JSONB NOT NULL,
+  insight_data JSONB NOT NULL,
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+ALTER TABLE insights ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "Allow all operations on insights" ON insights FOR ALL USING (true) WITH CHECK (true);
+
+
+-- ===========================================
+-- NO SAVE FEATURE (No migration needed)
+-- ===========================================
+-- 9. Pricing Analyzer - No localStorage/save feature
+-- 10. Persona Builder - Uses BrandContext, not localStorage
 
 
 -- ============================================
--- MIGRATION COMPLETE
--- Total tables: 5
+-- MIGRATION STATUS
+-- ============================================
+-- ✅ Migrated & Ready (5 tables): brands, prompts, customer_journeys, emotion_maps, auto_briefs
+-- 📝 Schema Ready (3 tables): sops, hook_sets, insights
+-- ❌ No Save Feature (2 features): Pricing Analyzer, Persona Builder
+-- 
+-- Total tables: 8
 -- All RLS policies enabled with permissive access
 -- ============================================

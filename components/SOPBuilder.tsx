@@ -3,6 +3,7 @@ import { useForm } from 'react-hook-form';
 import { FileCheck, Sparkles, Download, CheckCircle2, Circle, ChevronDown, ChevronRight, Loader2, Clock, Users, Wrench, AlertCircle, Save, History, Trash2, X, Plus } from 'lucide-react';
 import { SOPData } from '../types';
 import { generateSOP, SOPInput } from '../services/geminiService';
+import { SOPService, SavedSOP } from '../services/sopService';
 import toast, { Toaster } from 'react-hot-toast';
 // @ts-ignore
 import html2pdf from 'html2pdf.js';
@@ -71,12 +72,7 @@ const sopReducer = (state: SOPData | null, action: SOPAction): SOPData | null =>
     }
 };
 
-interface SavedSOP {
-    id: string;
-    input: SOPInput;
-    data: SOPData;
-    timestamp: number;
-}
+
 
 const SOPBuilder: React.FC = () => {
     const { register, handleSubmit, formState: { errors }, reset } = useForm<SOPInput>();
@@ -88,12 +84,14 @@ const SOPBuilder: React.FC = () => {
     const [savedSOPs, setSavedSOPs] = useState<SavedSOP[]>([]);
     const sopRef = useRef<HTMLDivElement>(null);
 
-    // Load saved SOPs from localStorage
+
+    // Load saved SOPs from Supabase
     React.useEffect(() => {
-        const saved = localStorage.getItem('sop_builder_history');
-        if (saved) {
-            setSavedSOPs(JSON.parse(saved));
-        }
+        const loadSOPs = async () => {
+            const sops = await SOPService.getSOPs();
+            setSavedSOPs(sops);
+        };
+        loadSOPs();
     }, []);
 
     const onSubmit = async (data: SOPInput) => {
@@ -123,7 +121,7 @@ const SOPBuilder: React.FC = () => {
         }
     };
 
-    const handleSaveSOP = () => {
+    const handleSaveSOP = async () => {
         if (!sopState || !currentInput) return;
 
         const newSOP: SavedSOP = {
@@ -133,14 +131,18 @@ const SOPBuilder: React.FC = () => {
             timestamp: Date.now()
         };
 
-        const updated = [newSOP, ...savedSOPs];
-        setSavedSOPs(updated);
-        localStorage.setItem('sop_builder_history', JSON.stringify(updated));
+        const success = await SOPService.saveSOP(newSOP);
 
-        toast.success('Đã lưu SOP!', {
-            icon: '💾',
-            style: { borderRadius: '12px', background: '#EFF6FF', color: '#1E40AF', fontWeight: 600, fontSize: '14px' }
-        });
+        if (success) {
+            const sops = await SOPService.getSOPs();
+            setSavedSOPs(sops);
+            toast.success('Đã lưu SOP!', {
+                icon: '💾',
+                style: { borderRadius: '12px', background: '#EFF6FF', color: '#1E40AF', fontWeight: 600, fontSize: '14px' }
+            });
+        } else {
+            toast.error('Lỗi khi lưu!');
+        }
     };
 
     const handleLoadSOP = (sop: SavedSOP) => {
@@ -151,11 +153,16 @@ const SOPBuilder: React.FC = () => {
         toast.success('Đã tải SOP!', { icon: '📂' });
     };
 
-    const handleDeleteSOP = (id: string) => {
-        const updated = savedSOPs.filter(s => s.id !== id);
-        setSavedSOPs(updated);
-        localStorage.setItem('sop_builder_history', JSON.stringify(updated));
-        toast.success('Đã xóa!', { icon: '🗑️' });
+    const handleDeleteSOP = async (id: string) => {
+        const success = await SOPService.deleteSOP(id);
+
+        if (success) {
+            const sops = await SOPService.getSOPs();
+            setSavedSOPs(sops);
+            toast.success('Đã xóa!', { icon: '🗑️' });
+        } else {
+            toast.error('Lỗi khi xóa!');
+        }
     };
 
     const handleNew = () => {
