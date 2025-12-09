@@ -3,6 +3,7 @@ import { useForm } from 'react-hook-form';
 import { Sparkles, FileText, Download, Loader2, History, Save, Trash2, X, Plus, Edit3, Check, Target, Users, Megaphone, TrendingUp, Calendar, BarChart3, ChevronRight } from 'lucide-react';
 import { BriefData } from '../types';
 import { generateAutoBrief, AutoBriefInput } from '../services/geminiService';
+import { BriefService, SavedBrief } from '../services/briefService';
 import toast, { Toaster } from 'react-hot-toast';
 // @ts-ignore
 import html2pdf from 'html2pdf.js';
@@ -108,12 +109,7 @@ const EditableBlock = ({
     );
 };
 
-interface SavedBrief {
-    id: string;
-    input: AutoBriefInput;
-    data: BriefData;
-    timestamp: number;
-}
+
 
 const AutoBriefGenerator: React.FC = () => {
     const { register, handleSubmit, formState: { errors }, reset } = useForm<AutoBriefInput>();
@@ -125,11 +121,13 @@ const AutoBriefGenerator: React.FC = () => {
     const [savedBriefs, setSavedBriefs] = useState<SavedBrief[]>([]);
     const briefRef = useRef<HTMLDivElement>(null);
 
+
     React.useEffect(() => {
-        const saved = localStorage.getItem('auto_briefs_history');
-        if (saved) {
-            setSavedBriefs(JSON.parse(saved));
-        }
+        const loadBriefs = async () => {
+            const briefs = await BriefService.getBriefs();
+            setSavedBriefs(briefs);
+        };
+        loadBriefs();
     }, []);
 
     const onSubmit = async (data: AutoBriefInput) => {
@@ -160,7 +158,7 @@ const AutoBriefGenerator: React.FC = () => {
         }
     };
 
-    const handleSaveBrief = () => {
+    const handleSaveBrief = async () => {
         if (!briefData || !currentInput) return;
 
         const newBrief: SavedBrief = {
@@ -170,14 +168,18 @@ const AutoBriefGenerator: React.FC = () => {
             timestamp: Date.now()
         };
 
-        const updated = [newBrief, ...savedBriefs];
-        setSavedBriefs(updated);
-        localStorage.setItem('auto_briefs_history', JSON.stringify(updated));
+        const success = await BriefService.saveBrief(newBrief);
 
-        toast.success('Đã lưu Brief!', {
-            icon: '💾',
-            style: { borderRadius: '12px', background: '#EFF6FF', color: '#1E40AF', fontWeight: 600, fontSize: '14px' }
-        });
+        if (success) {
+            const briefs = await BriefService.getBriefs();
+            setSavedBriefs(briefs);
+            toast.success('Đã lưu Brief!', {
+                icon: '💾',
+                style: { borderRadius: '12px', background: '#EFF6FF', color: '#1E40AF', fontWeight: 600, fontSize: '14px' }
+            });
+        } else {
+            toast.error('Lỗi khi lưu!');
+        }
     };
 
     const handleNew = () => {
@@ -195,11 +197,16 @@ const AutoBriefGenerator: React.FC = () => {
         toast.success('Đã tải Brief!', { icon: '📂' });
     };
 
-    const handleDeleteBrief = (id: string) => {
-        const updated = savedBriefs.filter(b => b.id !== id);
-        setSavedBriefs(updated);
-        localStorage.setItem('auto_briefs_history', JSON.stringify(updated));
-        toast.success('Đã xóa!', { icon: '🗑️' });
+    const handleDeleteBrief = async (id: string) => {
+        const success = await BriefService.deleteBrief(id);
+
+        if (success) {
+            const briefs = await BriefService.getBriefs();
+            setSavedBriefs(briefs);
+            toast.success('Đã xóa!', { icon: '🗑️' });
+        } else {
+            toast.error('Lỗi khi xóa!');
+        }
     };
 
     const handleExportPDF = async () => {

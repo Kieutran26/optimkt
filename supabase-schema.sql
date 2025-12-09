@@ -1,35 +1,34 @@
--- =============================================
--- OptiMKT Database Schema for Supabase - V2
--- Run this in Supabase SQL Editor
--- =============================================
+-- ============================================
+-- OPTIMKT - SUPABASE MIGRATION SCHEMA
+-- Complete database schema for all migrated features
+-- ============================================
 
--- Drop existing brands table if needed (CAREFUL!)
--- DROP TABLE IF EXISTS brands CASCADE;
+-- 1. BRAND VAULT TABLE
+-- Stores saved brand information
+DROP TABLE IF EXISTS brands CASCADE;
 
--- 1. Brands Table (Brand Vault) - Enhanced Structure
-CREATE TABLE IF NOT EXISTS brands (
+CREATE TABLE brands (
   id TEXT PRIMARY KEY,
-  name TEXT NOT NULL,
-  logo_url TEXT,
-  logos JSONB DEFAULT '[]',
-  colors JSONB DEFAULT '[]',
-  font_family TEXT DEFAULT 'Inter',
-  vision TEXT,
-  mission TEXT,
-  core_values JSONB DEFAULT '[]',
-  tone_of_voice TEXT,
-  short_term_goals JSONB DEFAULT '[]',
-  long_term_goals JSONB DEFAULT '[]',
-  target_objectives JSONB DEFAULT '[]',
-  demographics JSONB DEFAULT '[]',
-  psychographics JSONB DEFAULT '[]',
-  pain_points JSONB DEFAULT '[]',
-  created_at TIMESTAMPTZ DEFAULT NOW(),
-  updated_at TIMESTAMPTZ DEFAULT NOW()
+  brand_name TEXT NOT NULL,
+  industry TEXT NOT NULL,
+  description TEXT,
+  core_values JSONB,
+  target_audience JSONB,
+  brand_personality JSONB,
+  visual_identity JSONB,
+  created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
--- 2. Saved Prompts Table
-CREATE TABLE IF NOT EXISTS prompts (
+ALTER TABLE brands ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "Allow all operations on brands" ON brands
+FOR ALL USING (true) WITH CHECK (true);
+
+
+-- 2. SAVED PROMPTS TABLE
+-- Stores user's saved AI prompts
+DROP TABLE IF EXISTS prompts CASCADE;
+
+CREATE TABLE prompts (
   id TEXT PRIMARY KEY,
   ai_model TEXT NOT NULL,
   title TEXT NOT NULL,
@@ -37,84 +36,61 @@ CREATE TABLE IF NOT EXISTS prompts (
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
--- 3. Customer Journeys Table
-CREATE TABLE IF NOT EXISTS customer_journeys (
+ALTER TABLE prompts ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "Allow all operations on prompts" ON prompts
+FOR ALL USING (true) WITH CHECK (true);
+
+
+-- 3. CUSTOMER JOURNEY TABLE
+-- Stores customer journey maps
+DROP TABLE IF EXISTS customer_journeys CASCADE;
+
+CREATE TABLE customer_journeys (
+  id TEXT PRIMARY KEY,
+  input JSONB NOT NULL,
+  journey_data JSONB NOT NULL,
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+ALTER TABLE customer_journeys ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "Allow all operations on customer_journeys" ON customer_journeys
+FOR ALL USING (true) WITH CHECK (true);
+
+
+-- 4. EMOTION MAPS TABLE
+-- Stores audience emotion maps
+DROP TABLE IF EXISTS emotion_maps CASCADE;
+
+CREATE TABLE emotion_maps (
   id TEXT PRIMARY KEY,
   input JSONB NOT NULL,
   result JSONB NOT NULL,
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
--- 4. Emotion Maps Table
-CREATE TABLE IF NOT EXISTS emotion_maps (
+ALTER TABLE emotion_maps ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "Allow all operations on emotion_maps" ON emotion_maps
+FOR ALL USING (true) WITH CHECK (true);
+
+
+-- 5. AUTO BRIEFS TABLE
+-- Stores automatically generated marketing briefs
+DROP TABLE IF EXISTS auto_briefs CASCADE;
+
+CREATE TABLE auto_briefs (
   id TEXT PRIMARY KEY,
   input JSONB NOT NULL,
-  result JSONB NOT NULL,
+  brief_data JSONB NOT NULL,
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
--- 5. Auto Briefs Table
-CREATE TABLE IF NOT EXISTS auto_briefs (
-  id TEXT PRIMARY KEY,
-  input JSONB NOT NULL,
-  result JSONB NOT NULL,
-  created_at TIMESTAMPTZ DEFAULT NOW()
-);
+ALTER TABLE auto_briefs ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "Allow all operations on auto_briefs" ON auto_briefs
+FOR ALL USING (true) WITH CHECK (true);
 
--- 6. SOPs Table
-CREATE TABLE IF NOT EXISTS sops (
-  id TEXT PRIMARY KEY,
-  input JSONB NOT NULL,
-  result JSONB NOT NULL,
-  created_at TIMESTAMPTZ DEFAULT NOW()
-);
 
--- 7. Hooks Table
-CREATE TABLE IF NOT EXISTS hooks (
-  id TEXT PRIMARY KEY,
-  input JSONB NOT NULL,
-  result JSONB NOT NULL,
-  created_at TIMESTAMPTZ DEFAULT NOW()
-);
-
--- 8. Insights Table
-CREATE TABLE IF NOT EXISTS insights (
-  id TEXT PRIMARY KEY,
-  input JSONB NOT NULL,
-  result JSONB NOT NULL,
-  created_at TIMESTAMPTZ DEFAULT NOW()
-);
-
--- 9. Pricing Analyses Table
-CREATE TABLE IF NOT EXISTS pricing_analyses (
-  id TEXT PRIMARY KEY,
-  input JSONB NOT NULL,
-  result JSONB NOT NULL,
-  created_at TIMESTAMPTZ DEFAULT NOW()
-);
-
--- 10. Personas Table
-CREATE TABLE IF NOT EXISTS personas (
-  id TEXT PRIMARY KEY,
-  brand_id TEXT REFERENCES brands(id) ON DELETE CASCADE,
-  name TEXT NOT NULL,
-  data JSONB NOT NULL,
-  created_at TIMESTAMPTZ DEFAULT NOW()
-);
-
--- If tables already exist, add missing columns:
-ALTER TABLE brands ADD COLUMN IF NOT EXISTS logos JSONB DEFAULT '[]';
-ALTER TABLE brands ADD COLUMN IF NOT EXISTS core_values JSONB DEFAULT '[]';
-ALTER TABLE brands ADD COLUMN IF NOT EXISTS short_term_goals JSONB DEFAULT '[]';
-ALTER TABLE brands ADD COLUMN IF NOT EXISTS long_term_goals JSONB DEFAULT '[]';
-ALTER TABLE brands ADD COLUMN IF NOT EXISTS target_objectives JSONB DEFAULT '[]';
-ALTER TABLE brands ADD COLUMN IF NOT EXISTS demographics JSONB DEFAULT '[]';
-ALTER TABLE brands ADD COLUMN IF NOT EXISTS psychographics JSONB DEFAULT '[]';
-ALTER TABLE brands ADD COLUMN IF NOT EXISTS pain_points JSONB DEFAULT '[]';
-ALTER TABLE brands ADD COLUMN IF NOT EXISTS font_family TEXT DEFAULT 'Inter';
-ALTER TABLE brands ADD COLUMN IF NOT EXISTS vision TEXT;
-ALTER TABLE brands ADD COLUMN IF NOT EXISTS mission TEXT;
-ALTER TABLE brands ADD COLUMN IF NOT EXISTS tone_of_voice TEXT;
-
--- Success message
-SELECT 'All tables updated successfully! ✅' as message;
+-- ============================================
+-- MIGRATION COMPLETE
+-- Total tables: 5
+-- All RLS policies enabled with permissive access
+-- ============================================
