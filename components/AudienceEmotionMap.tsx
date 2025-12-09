@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { AudienceEmotionMapInput, AudienceEmotionMapResult, EmotionStage } from '../types';
+import { AudienceEmotionMapInput, AudienceEmotionMapResult } from '../types';
 import { analyzeEmotionalJourney } from '../services/geminiService';
+import { EmotionMapService, SavedEmotionMap } from '../services/emotionMapService';
 import toast from 'react-hot-toast';
 import {
     Heart,
@@ -34,12 +35,7 @@ interface Props {
     isActive: boolean;
 }
 
-interface SavedEmotionMap {
-    id: string;
-    input: AudienceEmotionMapInput;
-    result: AudienceEmotionMapResult;
-    timestamp: number;
-}
+
 
 const AudienceEmotionMap: React.FC<Props> = ({ isActive }) => {
     const [input, setInput] = useState<AudienceEmotionMapInput>({
@@ -59,11 +55,13 @@ const AudienceEmotionMap: React.FC<Props> = ({ isActive }) => {
     const [showHistory, setShowHistory] = useState(false);
     const [savedMaps, setSavedMaps] = useState<SavedEmotionMap[]>([]);
 
+
     useEffect(() => {
-        const saved = localStorage.getItem('emotion_map_history');
-        if (saved) {
-            setSavedMaps(JSON.parse(saved));
-        }
+        const loadMaps = async () => {
+            const maps = await EmotionMapService.getEmotionMaps();
+            setSavedMaps(maps);
+        };
+        loadMaps();
     }, []);
 
     const handleAnalyze = async () => {
@@ -89,7 +87,7 @@ const AudienceEmotionMap: React.FC<Props> = ({ isActive }) => {
         setProgress('');
     };
 
-    const handleSave = () => {
+    const handleSave = async () => {
         if (!result) return;
         const newMap: SavedEmotionMap = {
             id: Date.now().toString(),
@@ -97,18 +95,30 @@ const AudienceEmotionMap: React.FC<Props> = ({ isActive }) => {
             result: { ...result },
             timestamp: Date.now(),
         };
-        const updated = [newMap, ...savedMaps];
-        setSavedMaps(updated);
-        localStorage.setItem('emotion_map_history', JSON.stringify(updated));
-        toast.success('Đã lưu bản đồ cảm xúc!');
+
+        const success = await EmotionMapService.saveEmotionMap(newMap);
+
+        if (success) {
+            const maps = await EmotionMapService.getEmotionMaps();
+            setSavedMaps(maps);
+            toast.success('Đã lưu bản đồ cảm xúc!');
+        } else {
+            toast.error('Lỗi khi lưu!');
+        }
     };
 
-    const handleDelete = (id: string, e: React.MouseEvent) => {
+    const handleDelete = async (id: string, e: React.MouseEvent) => {
         e.stopPropagation();
-        const updated = savedMaps.filter(m => m.id !== id);
-        setSavedMaps(updated);
-        localStorage.setItem('emotion_map_history', JSON.stringify(updated));
-        toast.success('Đã xóa bản lưu!');
+
+        const success = await EmotionMapService.deleteEmotionMap(id);
+
+        if (success) {
+            const maps = await EmotionMapService.getEmotionMaps();
+            setSavedMaps(maps);
+            toast.success('Đã xóa bản lưu!');
+        } else {
+            toast.error('Lỗi khi xóa!');
+        }
     };
 
     const handleLoad = (map: SavedEmotionMap) => {
