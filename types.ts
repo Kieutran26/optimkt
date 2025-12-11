@@ -53,7 +53,76 @@ export interface ToDoTask {
   note?: string;
 }
 
-// IMC Planner Types
+// IMC Planner V2 Types - Strategic Framework
+
+// 3-Layer Strategic Foundation
+export interface IMCStrategicFoundation {
+  business_obj: string;      // Revenue/Market share target (e.g., "Tăng 20% doanh thu Q4")
+  marketing_obj: string;     // Behavior change: Trial/Switch/Repeat/Increase Basket
+  communication_obj: string; // Perception change in consumer's mind
+}
+
+// KPI structure for each phase
+export interface IMCPhaseKPI {
+  metric: string;  // e.g., "Reach & View", "Engagement Rate", "Orders & Shares"
+  target: string;  // e.g., "5,000,000 Reach", "50,000 Interactions"
+}
+
+// 3-Phase Execution Model
+export type IMCPhaseType = 'AWARE' | 'TRIGGER' | 'CONVERT';
+
+// Budget Split structure (Production vs Media)
+export interface IMCBudgetSplit {
+  production: number;     // Production cost (30%)
+  media: number;          // Media/Distribution cost (70%)
+  production_percent: string;
+  media_percent: string;
+}
+
+// Content Volume Estimation
+export interface IMCContentItem {
+  type: string;           // e.g., "Video TikTok", "Bài Post FB", "Landing Page"
+  quantity: number;
+  estimated_cost: string; // e.g., "5M VND"
+  notes?: string;         // e.g., "Quay bằng điện thoại, low-cost"
+}
+
+// Execution Deep-dive details
+export interface IMCExecutionDetails {
+  week_range: string;           // e.g., "Tuần 1-3"
+  start_week: number;
+  end_week: number;
+  budget_split: IMCBudgetSplit;
+  content_items: IMCContentItem[];
+}
+
+export interface IMCExecutionPhase {
+  phase: IMCPhaseType;
+  objective_detail: string;    // What this phase aims to achieve
+  key_hook: string;            // The attention-grabbing message
+  channels: string[];          // Marketing channels for this phase
+  budget_allocation: string;   // Percentage like "40%"
+  kpis: IMCPhaseKPI;
+  // Deep-dive fields
+  execution_details?: IMCExecutionDetails;
+}
+
+// Main IMC Plan V2 Interface
+export interface IMCPlan {
+  id: string;
+  campaign_name: string;
+  brand: string;
+  product: string;
+  industry: string;
+  total_budget: number;
+  timeline_weeks: number;
+  strategic_foundation: IMCStrategicFoundation;
+  imc_execution: IMCExecutionPhase[];
+  validation_warnings?: string[];  // Golden Thread validation warnings
+  created_at: number;
+}
+
+// Legacy types for backward compatibility
 export interface IMCActivity {
   channel_type: 'Paid' | 'Owned' | 'Earned' | 'Shared';
   channel_name: string;
@@ -64,7 +133,7 @@ export interface IMCActivity {
 export interface IMCPhase {
   phase_name: string;
   objective: string;
-  budget_allocation: string; // percentage like "15%"
+  budget_allocation: string;
   duration_weeks: number;
   activities: IMCActivity[];
 }
@@ -76,19 +145,6 @@ export interface IMCChannelMatrix {
   shared: string[];
 }
 
-export interface IMCPlan {
-  id: string;
-  campaign_name: string;
-  big_idea: string;
-  key_message: string;
-  brand: string;
-  product: string;
-  total_budget: number;
-  timeline_weeks: number;
-  phases: IMCPhase[];
-  channel_matrix: IMCChannelMatrix;
-  created_at: number;
-}
 
 
 export interface ContentHistoryRecord {
