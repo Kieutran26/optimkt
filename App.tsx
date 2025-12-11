@@ -37,6 +37,7 @@ import AdsHealthChecker from './components/AdsHealthChecker';
 import BrandPositioningBuilder from './components/BrandPositioningBuilder';
 import PricingAnalyzer from './components/PricingAnalyzer';
 import AudienceEmotionMap from './components/AudienceEmotionMap';
+import IMCPlanner from './components/IMCPlanner';
 import HomePage from './components/HomePage';
 import FeaturesGuide from './components/FeaturesGuide';
 import { ViewState, StudyMode, Word, MastermindStrategy } from './types';
@@ -185,6 +186,8 @@ function AppContent() {
         return <PricingAnalyzer isActive={true} />;
       case 'AUDIENCE_EMOTION_MAP':
         return <AudienceEmotionMap isActive={true} />;
+      case 'IMC_PLANNER':
+        return <IMCPlanner />;
       default:
         return <TranslationView />;
     }
