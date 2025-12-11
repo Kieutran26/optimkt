@@ -585,9 +585,49 @@ export interface HookGeneratorResult {
 // --- CUSTOMER JOURNEY MAPPER ---
 export interface JourneyStage {
   stage: string;
+  stage_goal: string;            // Goal of this stage
+
+  // Layer 1: Customer Mindset (Enhanced)
+  mindset: {
+    doing: string;         // What they're physically doing
+    feeling: string;       // Emotional state with emoji
+    thinking: string;      // Inner thoughts/questions
+  };
+
+  // Layer 2: The "Brick Wall" (Pain Points/Barriers)
+  barriers: string[];      // What stops them from moving forward
+
+  // Layer 3: The "Hammer" (Solutions/Triggers)
+  solutions: string[];     // Tactics to break the barrier
+
+  // Layer 4: Touchpoints & Formats (Specific)
+  touchpoints: {
+    channel: string;       // e.g., "Facebook Reels"
+    format: string;        // e.g., "Problem/Solution format"
+    action: string;        // e.g., "Show pain point, introduce solution"
+  }[];
+
+  // Layer 5: Success Metrics (KPIs)
+  kpis: {
+    metric: string;        // e.g., "CTR", "Conversion Rate"
+    target: string;        // e.g., ">2%", "15-20%"
+    description: string;   // What it measures
+  }[];
+
+  // NEW: Detailed Action Items with Psychological Drivers
+  action_items: {
+    touchpoint: string;           // Specific channel (e.g., "Group Seeding", "Shopee Live")
+    trigger_message: string;      // The exact headline or hook
+    psychological_driver: string; // Emotion: FOMO, Trust, Greed, Pride, Fear, Curiosity
+    format: string;               // Video Short, Long-form Blog, Infographic, DM
+  }[];
+
+  // Critical Action for stage
+  critical_action: string;
+
+  // Legacy fields for backward compatibility
   customer_mindset: string;
   emotional_state: string;
-  touchpoints: string[];
   key_message: string;
   content_ideas: string[];
 }

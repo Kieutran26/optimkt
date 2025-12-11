@@ -1175,87 +1175,161 @@ export interface JourneyMapperInput {
     targetAudience: string;
     conversionGoal: string;
     channels: string;
+    // Contextual Intelligence
+    involvementLevel: 'low' | 'medium' | 'high';
+    competitor?: string;
+    // NEW: Deep Dive Context
+    usp?: string;                                  // Unique Selling Point
+    painPoint?: string;                            // Customer Pain Point
+    priceSegment: 'low' | 'mid' | 'high';         // Product Price Segment
 }
 
 export const generateCustomerJourney = async (
     input: JourneyMapperInput,
     onProgress?: (step: string) => void
 ): Promise<JourneyStage[] | null> => {
-    const systemPrompt = `Bạn là Senior Marketing Strategist với 15 + năm kinh nghiệm về Customer Journey Mapping.
-Nhiệm vụ: Tạo bản đồ hành trình khách hàng 4 giai đoạn(Awareness → Consideration → Conversion → Loyalty).
+    // Map price segment to journey characteristics
+    const priceConfig = {
+        low: {
+            considerationLength: 'Rất ngắn (vài giây - phút)',
+            trustSignals: 'Social proof, Flash deal, Số lượng bán',
+            retentionFocus: 'Repurchase frequency'
+        },
+        mid: {
+            considerationLength: 'Trung bình (1-7 ngày)',
+            trustSignals: 'Review, So sánh, Influencer',
+            retentionFocus: 'Product satisfaction & support'
+        },
+        high: {
+            considerationLength: 'Dài (1-6 tháng)',
+            trustSignals: 'Case study, Demo 1-1, Warranty, Expert consultation',
+            retentionFocus: 'Onboarding success & dedicated support'
+        }
+    };
+    const pConfig = priceConfig[input.priceSegment || 'mid'];
 
-=== CONTEXTUAL TOUCHPOINTS(Điểm chạm theo ngữ cảnh) ===
-    Tự động phát hiện ngành hàng và điều chỉnh touchpoints phù hợp:
-• B2B Software → LinkedIn, Whitepaper, Email Demo, Webinar, Case Study
-• B2C Fashion → TikTok, Instagram Ads, Shopee, Influencer Review, Flash Sale
-• F & B → Facebook Local, Grab / ShopeeFood, UGC Review, Location - based Ads
-• Education → Facebook Groups, Webinar Free, Blog SEO, Email Nurture
-• Beauty → TikTok Review, KOL, Shopee Live, Before / After Content
+    const systemPrompt = `### ROLE & PERSONA
+Bạn là **Strategic Marketing Planner** chuyên sâu về Consumer Behavior và CX theo framework 5-giai đoạn chuẩn agency Vietnam.
+Triết lý: "Bản đồ hành trình không phải 'content list' mà là 'psychological battle plan' để chiến thắng ở mọi touchpoint."
 
-    === EMOTIONAL MAPPING(Biểu đồ cảm xúc) ===
-        Tại mỗi giai đoạn, xác định cảm xúc chủ đạo:
-1. Awareness: Confused / Frustrated → Curious(Bối rối → Tò mò)
-2. Consideration: Analytical / Cautious → Comparing(Phân tích → So sánh)
-3. Conversion: Anxious / Excited → Ready to buy(Hồi hộp → Sẵn sàng mua)
-4. Loyalty: Satisfied / Proud → Advocate(Hài lòng → Muốn giới thiệu)
+### THE 5-STAGE MODEL (BẮT BUỘC)
+1. **Awareness (Nhận biết)** - Khách biết đến vấn đề/brand
+2. **Consideration (Cân nhắc)** - Khách so sánh các lựa chọn
+3. **Conversion (Chuyển đổi)** - Khách quyết định mua
+4. **Retention (Giữ chân)** - Khách sử dụng thành công, KHÔNG churn
+5. **Loyalty (Trung thành)** - Khách trở thành Advocate
 
-    === NUDGE LOGIC(Cú hích chuyển đổi) ===
-        Key Message PHẢI:
-- Trả lời trực tiếp Pain Point tại giai đoạn đó
-    - Đẩy khách hàng sang bước tiếp theo
-        - KHÔNG viết chung chung, phải cụ thể cho sản phẩm
+### INPUT CONTEXT
+- **Sản phẩm:** ${input.productBrand}
+- **Target:** ${input.targetAudience}
+- **USP:** ${input.usp || 'Chưa xác định'}
+- **Pain Point khách hàng:** ${input.painPoint || 'Chưa xác định'}
+- **Đối thủ:** ${input.competitor || 'Chưa xác định'}
+- **Phân khúc giá:** ${input.priceSegment?.toUpperCase() || 'MID'}
+  → Thời gian cân nhắc: ${pConfig.considerationLength}
+  → Trust signals cần: ${pConfig.trustSignals}
+  → Retention focus: ${pConfig.retentionFocus}
 
-            === OUTPUT FORMAT(STRICT JSON ARRAY) ===
-                [
-                    {
-                        "stage": "1. Awareness (Nhận biết)",
-                        "customer_mindset": "Tôi đang gặp vấn đề X nhưng chưa biết giải pháp nào.",
-                        "emotional_state": "Confused / Frustrated (Bối rối)",
-                        "touchpoints": ["Viral Video TikTok", "PR Article", "Google Search"],
-                        "key_message": "Câu trả lời cho pain point cụ thể...",
-                        "content_ideas": ["Video '5 dấu hiệu...'", "Bài viết 'Tại sao...'"]
-                    },
-                    {
-                        "stage": "2. Consideration (Cân nhắc)",
-                        "customer_mindset": "Tôi biết vài giải pháp, cái nào tốt nhất?",
-                        "emotional_state": "Analytical / Cautious (Phân tích/Thận trọng)",
-                        "touchpoints": ["Review Group", "Comparison Table", "Webinar"],
-                        "key_message": "[Sản phẩm] vượt trội ở tính năng A và mức giá B.",
-                        "content_ideas": ["Video so sánh", "Testimonial"]
-                    },
-                    {
-                        "stage": "3. Conversion (Chuyển đổi)",
-                        "customer_mindset": "Tôi thích rồi, nhưng sợ mua hớ.",
-                        "emotional_state": "Anxious / Excited (Hồi hộp/Hào hứng)",
-                        "touchpoints": ["Landing Page", "Remarketing Ads", "Livechat"],
-                        "key_message": "Mua ngay với ưu đãi X. Cam kết hoàn tiền.",
-                        "content_ideas": ["Flash Sale", "Case Study thành công"]
-                    },
-                    {
-                        "stage": "4. Loyalty (Trung thành)",
-                        "customer_mindset": "Sản phẩm tốt. Có nên giới thiệu bạn bè?",
-                        "emotional_state": "Satisfied / Proud (Hài lòng/Tự hào)",
-                        "touchpoints": ["Email CSKH", "Community", "Referral Program"],
-                        "key_message": "Cảm ơn bạn. Quà tặng VIP đang chờ.",
-                        "content_ideas": ["Referral rewards", "Advanced tips"]
-                    }
-                ]
+### OUTPUT STRUCTURE PER STAGE
+Mỗi stage PHẢI có đầy đủ:
 
-Output PHẢI là JSON array valid, không có markdown.`;
+{
+  "stage": "1. Awareness (Nhận biết)",
+  "stage_goal": "Mục tiêu của giai đoạn này",
+  "mindset": {
+    "doing": "Hành động vật lý: Lướt TikTok lúc 10h đêm",
+    "feeling": "😕 Confused - Cảm xúc hiện tại",
+    "thinking": "Câu hỏi/suy nghĩ trong đầu"
+  },
+  "barriers": ["Rào cản 1", "Rào cản 2"],
+  "solutions": ["Giải pháp 1", "Giải pháp 2"],
+  "touchpoints": [
+    { "channel": "Kênh cụ thể", "format": "Định dạng nội dung", "action": "Hành động triển khai" }
+  ],
+  "kpis": [
+    { "metric": "Tên KPI", "target": "Mục tiêu số", "description": "Ý nghĩa" }
+  ],
+  "action_items": [
+    {
+      "touchpoint": "Kênh cụ thể (Group Seeding, Shopee Live...)",
+      "trigger_message": "Headline/Hook chính xác sẽ dùng",
+      "psychological_driver": "FOMO | Trust | Greed | Pride | Fear | Curiosity",
+      "format": "Video Short | Long-form Blog | Infographic | Direct Message"
+    }
+  ],
+  "critical_action": "Hành động quan trọng nhất ở stage này",
+  "customer_mindset": "Tóm tắt mindset",
+  "emotional_state": "Emoji + Trạng thái",
+  "key_message": "Thông điệp chính",
+  "content_ideas": ["Ý tưởng 1", "Ý tưởng 2"]
+}
+
+### 5-STAGE DETAILED REQUIREMENTS
+
+**Stage 1: AWARENESS**
+- Goal: Khách biết đến vấn đề/brand
+- Mindset: "Tôi có vấn đề nhưng chưa biết giải pháp"
+- Sử dụng Pain Point "${input.painPoint}" để tạo Hook
+- Psychological Drivers: Curiosity, Fear (of problem)
+
+**Stage 2: CONSIDERATION**
+- Goal: Khách chọn brand trong các lựa chọn
+- Mindset: "Brand nào tốt nhất? So với ${input.competitor || 'đối thủ'} thì sao?"
+- Sử dụng USP "${input.usp}" để differentiate
+- Psychological Drivers: Trust, Logic (comparison)
+
+**Stage 3: CONVERSION**
+- Goal: Khách quyết định mua
+- Mindset: "Tôi thích nhưng sợ mua hớ/lừa"
+- Psychological Drivers: FOMO, Greed (deal), Trust (guarantee)
+
+**Stage 4: RETENTION (QUAN TRỌNG)**
+- Goal: Khách sử dụng THÀNH CÔNG, không churn
+- Mindset: "Làm sao dùng hiệu quả? Có ai hỗ trợ không?"
+- Actions: Onboarding Email, Zalo OA Support, User Manual, Warranty
+- KPIs: Active Rate, CSAT, Churn Rate
+- Psychological Drivers: Security, Support
+
+**Stage 5: LOYALTY**
+- Goal: Khách thành Advocate (Raving Fans)
+- Mindset: "Sản phẩm tuyệt vời, muốn khoe với bạn bè"
+- Actions: Referral Program, VIP Club, Early Access
+- KPIs: NPS, Referral Count, CLV
+- Psychological Drivers: Pride, Greed (rewards), Belonging
+
+### CRITICAL RULES
+1. Output PHẢI có ĐÚNG 5 stages, không hơn không kém
+2. action_items PHẢI có psychological_driver từ list: FOMO, Trust, Greed, Pride, Fear, Curiosity, Security, Belonging
+3. trigger_message PHẢI là headline/hook CỤ THỂ có thể dùng ngay
+4. barriers và solutions PHẢI cụ thể cho ${input.productBrand}
+5. Output là JSON array valid, không markdown`;
 
     try {
-        onProgress?.('Phân tích ngành hàng...');
+        onProgress?.('Phân tích tâm lý khách hàng...');
 
         const userPrompt = `SẢN PHẨM / THƯƠNG HIỆU: ${input.productBrand}
 TARGET AUDIENCE: ${input.targetAudience}
+MỤC TIÊU CHUYỂN ĐỔI: ${input.conversionGoal}
+KÊNH CHÍNH: ${input.channels}
 
-Hãy tạo Customer Journey Map 4 giai đoạn cho sản phẩm trên.Nhớ:
-1. Phát hiện ngành hàng và chọn touchpoints phù hợp
-2. Xác định emotional state cho từng giai đoạn
-3. Key message phải đánh trúng pain point
-4. Content ideas phải actionable và cụ thể`;
+=== DEEP DIVE CONTEXT ===
+USP (Điểm bán hàng độc đáo): ${input.usp || 'Chưa xác định'}
+PAIN POINT KHÁCH HÀNG: ${input.painPoint || 'Chưa xác định'}
+ĐỐI THỦ CẠNH TRANH: ${input.competitor || 'Chưa xác định'}
+PHÂN KHÚC GIÁ: ${input.priceSegment?.toUpperCase() || 'MID'}
 
-        onProgress?.('Xây dựng hành trình...');
+Hãy tạo Customer Journey Map 5 GIAI ĐOẠN (Awareness → Consideration → Conversion → Retention → Loyalty).
+
+YÊU CẦU BẮT BUỘC:
+1. PHẢI có ĐÚNG 5 stages: Awareness, Consideration, Conversion, Retention, Loyalty
+2. Mỗi stage có: stage_goal, mindset, barriers, solutions, touchpoints, kpis, action_items
+3. action_items có: touchpoint, trigger_message (headline cụ thể), psychological_driver, format
+4. Sử dụng USP "${input.usp}" trong Consideration để đánh đối thủ "${input.competitor}"
+5. Sử dụng Pain Point "${input.painPoint}" trong Awareness để tạo Hook
+6. Stage 4 (Retention) focus: Onboarding, Support, Usage success
+7. Stage 5 (Loyalty) focus: Referral, VIP, Advocacy`;
+
+        onProgress?.('Xây dựng 5-Stage Psychological Battle Plan...');
 
         const response = await ai.models.generateContent({
             model: 'gemini-2.5-flash',
@@ -1267,7 +1341,7 @@ Hãy tạo Customer Journey Map 4 giai đoạn cho sản phẩm trên.Nhớ:
             },
         });
 
-        onProgress?.('Hoàn thiện bản đồ...');
+        onProgress?.('Hoàn thiện bản đồ 5 giai đoạn...');
 
         const text = response.text?.trim() || '';
         const jsonMatch = text.match(/\[[\s\S]*\]/);
@@ -1281,7 +1355,105 @@ Hãy tạo Customer Journey Map 4 giai đoạn cho sản phẩm trên.Nhớ:
     }
 };
 
-// --- BUDGET ALLOCATOR ---
+// --- JOURNEY INPUT VALIDATION (Sanity Check) ---
+export interface JourneyValidationResult {
+    validation_status: 'PASS' | 'FAIL' | 'WARNING';
+    reason_code: 'LOGIC_ERROR' | 'GIBBERISH' | 'BRAND_MISMATCH' | 'NEW_BRAND' | 'VALID';
+    message_to_user: string;
+    corrected_suggestion: string | null;
+}
+
+export const validateJourneyInput = async (
+    input: JourneyMapperInput
+): Promise<JourneyValidationResult> => {
+    const systemPrompt = `### ROLE & PERSONA
+Bạn là **Senior Marketing Auditor** và Data Validator. Nhiệm vụ của bạn là ngăn chặn "Hallucinations" và đảm bảo tính toàn vẹn dữ liệu trước khi lập kế hoạch chiến lược.
+Quy tắc: Bạn đại diện cho thực tế. KHÔNG tạo kế hoạch cho dữ liệu vô nghĩa, ngành nghề không khớp, hoặc gibberish rõ ràng.
+
+### TASK: Sanity Check
+Đánh giá dữ liệu đầu vào theo 3 tiêu chí:
+
+**1. Logical Consistency (Tính Logic):**
+- Sản phẩm có khớp với ngành không? (VD: Brand "Vinamilk" + Industry "Real Estate" → FAIL)
+- Sản phẩm có khớp với brand nổi tiếng không? (VD: Brand "Apple" + Product "Cá đông lạnh" → FAIL)
+
+**2. Data Quality (Chất lượng dữ liệu):**
+- Input có phải gibberish không? ("asdf", "test 123", "no name") → FAIL
+- Target Audience có thực tế không? ("Trẻ 0-1 tuổi" không thể là BUYER của "Bất động sản") → FAIL
+
+**3. Brand Recognition Status:**
+- Đây là thương hiệu nổi tiếng? (Yes/No)
+- Nếu Yes: Sản phẩm có thuộc về họ thật không?
+- Nếu No (Unknown/Startup): Input có đủ coherent để lập kế hoạch không?
+
+### OUTPUT FORMAT (JSON ONLY)
+{
+  "validation_status": "PASS" | "FAIL" | "WARNING",
+  "reason_code": "LOGIC_ERROR" | "GIBBERISH" | "BRAND_MISMATCH" | "NEW_BRAND" | "VALID",
+  "message_to_user": "String bằng tiếng Việt",
+  "corrected_suggestion": "String hoặc null"
+}
+
+### SCENARIO EXAMPLES
+
+**Case 1 (FAIL - Brand Mismatch):**
+Input: Brand "Coca-Cola", Product "Laptop Gaming"
+Output: {"validation_status": "FAIL", "reason_code": "BRAND_MISMATCH", "message_to_user": "Phát hiện mâu thuẫn: Thương hiệu Coca-Cola nổi tiếng về đồ uống, không kinh doanh Laptop. Vui lòng kiểm tra lại.", "corrected_suggestion": "Coca-Cola - Nước giải khát"}
+
+**Case 2 (FAIL - Gibberish):**
+Input: Brand "Test", Product "abc"
+Output: {"validation_status": "FAIL", "reason_code": "GIBBERISH", "message_to_user": "Dữ liệu đầu vào không hợp lệ hoặc vô nghĩa. Vui lòng nhập thông tin thật để có kế hoạch chính xác.", "corrected_suggestion": null}
+
+**Case 3 (WARNING - New Brand):**
+Input: Brand "VietBeans", Product "Cà phê organic"
+Output: {"validation_status": "WARNING", "reason_code": "NEW_BRAND", "message_to_user": "Thương hiệu này có vẻ mới hoặc chưa phổ biến. Hệ thống sẽ lập kế hoạch cho kịch bản 'Tung sản phẩm mới'. Bạn có muốn tiếp tục?", "corrected_suggestion": null}
+
+**Case 4 (PASS):**
+Input: Brand "VinFast", Product "VF3"
+Output: {"validation_status": "PASS", "reason_code": "VALID", "message_to_user": "Dữ liệu hợp lệ. Đang tiến hành lập kế hoạch...", "corrected_suggestion": null}
+
+### NOTES
+- Với thương hiệu Việt Nam nổi tiếng: Vinamilk, VinFast, FPT, VNG, Thế Giới Di Động, Bách Hóa Xanh, Highland Coffee, Phúc Long, The Coffee House... hãy validate chặt.
+- Với thương hiệu quốc tế: Apple, Samsung, Google, Microsoft, Nike, Coca-Cola, Pepsi... hãy validate chặt.
+- Với thương hiệu không rõ: cho WARNING với reason_code NEW_BRAND
+- Output PHẢI là JSON valid, không markdown`;
+
+    try {
+        const userPrompt = `VALIDATE INPUT:
+- Brand Name: ${input.productBrand}
+- Product/Service: ${input.productBrand}
+- Target Audience: ${input.targetAudience}
+- Conversion Goal: ${input.conversionGoal}
+- USP: ${input.usp || 'Chưa xác định'}
+- Competitor: ${input.competitor || 'Chưa xác định'}
+
+Hãy thực hiện Sanity Check và trả về JSON validation result.`;
+
+        const response = await ai.models.generateContent({
+            model: 'gemini-2.5-flash',
+            contents: userPrompt,
+            config: {
+                systemInstruction: systemPrompt,
+                temperature: 0.3,
+                responseMimeType: 'application/json',
+                safetySettings: SAFETY_SETTINGS,
+            },
+        });
+
+        const text = response.text?.trim() || '';
+        const result = JSON.parse(text) as JourneyValidationResult;
+        return result;
+    } catch (error) {
+        console.error("Validation Error:", error);
+        // Default to PASS if validation fails (don't block user)
+        return {
+            validation_status: 'PASS',
+            reason_code: 'VALID',
+            message_to_user: 'Không thể xác thực. Tiếp tục với dữ liệu hiện tại.',
+            corrected_suggestion: null
+        };
+    }
+};
 import { BudgetAllocationResult, BudgetAllocatorInput } from '../types';
 
 export const generateBudgetAllocation = async (
