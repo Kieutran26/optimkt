@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { Calculator, AlertCircle, ArrowUpRight, ArrowDownRight, Minus, BarChart3, HelpCircle, DollarSign, TrendingUp, Info, Wallet, Users, Target, Activity } from 'lucide-react';
+import { Calculator, AlertCircle, ArrowUpRight, ArrowDownRight, Minus, BarChart3, HelpCircle, DollarSign, TrendingUp, Info, Wallet, Users, Target, Activity, Save, FolderOpen, Trash2, XCircle } from 'lucide-react';
+import { ABTestService, SavedABTest, ABTestInput as ABTestInputType, ABTestResult as ABTestResultType } from '../services/abTestService';
 
 // --- Statistical Math Helpers ---
 
@@ -109,10 +110,107 @@ const ABTestingCalc: React.FC = () => {
     const [result, setResult] = useState<TestResult | null>(null);
     const [error, setError] = useState<string | null>(null);
 
+    // Persistence state
+    const [savedTests, setSavedTests] = useState<SavedABTest[]>([]);
+    const [selectedTestId, setSelectedTestId] = useState<string>('');
+    const [showSaveModal, setShowSaveModal] = useState(false);
+    const [showHistoryModal, setShowHistoryModal] = useState(false);
+    const [testName, setTestName] = useState('');
+    const [saveError, setSaveError] = useState('');
+
+    // Load saved tests on mount
+    useEffect(() => {
+        loadSavedTests();
+    }, []);
+
     // Real-time calculation
     useEffect(() => {
         calculateResults();
     }, [visitorsA, conversionsA, visitorsB, conversionsB, confidence, avgOrderValue]);
+
+    const loadSavedTests = async () => {
+        const tests = await ABTestService.getABTests();
+        setSavedTests(tests);
+    };
+
+    const handleLoadTest = (testId: string) => {
+        if (!testId) {
+            setSelectedTestId('');
+            return;
+        }
+
+        const test = savedTests.find(t => t.id === testId);
+        if (test) {
+            setSelectedTestId(testId);
+            setVisitorsA(test.input.visitorsA);
+            setConversionsA(test.input.conversionsA);
+            setVisitorsB(test.input.visitorsB);
+            setConversionsB(test.input.conversionsB);
+            setConfidence(test.input.confidence);
+            setAvgOrderValue(test.input.avgOrderValue);
+        }
+    };
+
+    const handleSaveTest = async () => {
+        if (!testName.trim()) {
+            setSaveError('Vui lòng nhập tên cho test');
+            return;
+        }
+
+        if (!result) {
+            setSaveError('Không có kết quả để lưu');
+            return;
+        }
+
+        const newTest: SavedABTest = {
+            id: Date.now().toString(),
+            name: testName.trim(),
+            input: {
+                visitorsA,
+                conversionsA,
+                visitorsB,
+                conversionsB,
+                confidence,
+                avgOrderValue
+            },
+            result: {
+                crA: result.crA,
+                crB: result.crB,
+                uplift: result.uplift,
+                pValue: result.pValue,
+                zScore: result.zScore,
+                isSignificant: result.isSignificant,
+                confidenceLevel: result.confidenceLevel,
+                winner: result.winner,
+                rpvA: result.rpvA,
+                rpvB: result.rpvB,
+                rpvUplift: result.rpvUplift,
+                potentialRevenue: result.potentialRevenue
+            },
+            createdAt: Date.now()
+        };
+
+        const success = await ABTestService.saveABTest(newTest);
+        if (success) {
+            setShowSaveModal(false);
+            setTestName('');
+            setSaveError('');
+            await loadSavedTests();
+        } else {
+            setSaveError('Lỗi khi lưu test');
+        }
+    };
+
+    const handleDeleteTest = async (testId: string) => {
+        const success = await ABTestService.deleteABTest(testId);
+        if (success) {
+            await loadSavedTests();
+            if (selectedTestId === testId) {
+                setSelectedTestId('');
+            }
+        }
+    };
+
 
     const calculateResults = () => {
         // Validation
@@ -324,8 +422,8 @@ const ABTestingCalc: React.FC = () => {
                 {result.isSignificant && (
                     <div className="flex justify-center mt-6">
                         <div className={`inline-flex items-center gap-2 px-4 py-2 rounded-xl shadow-sm border bg-white ${result.uplift > 0
-                                ? 'border-green-100 text-green-700'
-                                : 'border-red-100 text-red-700'
+                            ? 'border-green-100 text-green-700'
+                            : 'border-red-100 text-red-700'
                             }`}>
                             {result.uplift > 0 ? <TrendingUp size={18} className="text-green-500" /> : <ArrowDownRight size={18} className="text-red-500" />}
                             <span className="text-sm font-bold">
@@ -356,12 +454,50 @@ const ABTestingCalc: React.FC = () => {
 
     return (
         <div className="max-w-6xl mx-auto pt-10 px-6 pb-20">
-            <div className="mb-8">
-                <h2 className="text-3xl font-bold text-slate-800 flex items-center gap-3">
-                    <Calculator className="text-teal-600" strokeWidth={1.5} />
-                    Kiểm định A/B Testing
-                </h2>
-                <p className="text-slate-500 mt-2">Công cụ thống kê giúp bạn quyết định phiên bản quảng cáo/landing page hiệu quả nhất.</p>
+            <div className="mb-8 flex items-start justify-between gap-4">
+                <div>
+                    <h2 className="text-3xl font-bold text-slate-800 flex items-center gap-3">
+                        <Calculator className="text-teal-600" strokeWidth={1.5} />
+                        Kiểm định A/B Testing
+                    </h2>
+                    <p className="text-slate-500 mt-2">Công cụ thống kê giúp bạn quyết định phiên bản quảng cáo/landing page hiệu quả nhất.</p>
+                </div>
+
+                {/* Action Buttons */}
+                <div className="flex gap-3">
+                    <button
+                        onClick={() => {
+                            setVisitorsA(1000);
+                            setConversionsA(50);
+                            setVisitorsB(1000);
+                            setConversionsB(65);
+                            setConfidence(0.95);
+                            setAvgOrderValue(0);
+                            setSelectedTestId('');
+                            setError(null);
+                        }}
+                        className="px-4 py-2.5 bg-slate-600 hover:bg-slate-700 text-white font-semibold rounded-xl shadow-lg shadow-slate-200 hover:shadow-xl hover:-translate-y-0.5 transition-all flex items-center gap-2 whitespace-nowrap"
+                    >
+                        <Calculator className="w-4 h-4" />
+                        Tạo mới
+                    </button>
+                    {result && (
+                        <button
+                            onClick={() => setShowSaveModal(true)}
+                            className="px-4 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-semibold rounded-xl shadow-lg shadow-emerald-200 hover:shadow-xl hover:-translate-y-0.5 transition-all flex items-center gap-2 whitespace-nowrap"
+                        >
+                            <Save className="w-4 h-4" />
+                            Lưu Test
+                        </button>
+                    )}
+                    <button
+                        onClick={() => setShowHistoryModal(true)}
+                        className="px-4 py-2.5 bg-teal-600 hover:bg-teal-700 text-white font-semibold rounded-xl shadow-lg shadow-teal-200 hover:shadow-xl hover:-translate-y-0.5 transition-all flex items-center gap-2 whitespace-nowrap"
+                    >
+                        <FolderOpen className="w-4 h-4" />
+                        Lịch sử ({savedTests.length})
+                    </button>
+                </div>
             </div>
 
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
@@ -521,6 +657,177 @@ const ABTestingCalc: React.FC = () => {
                     </div>
                 </div>
             </div>
+
+            {/* Save Modal */}
+            {showSaveModal && (
+                <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 animate-in fade-in duration-200">
+                    <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full mx-4 p-8 animate-in zoom-in-95 duration-300">
+                        <div className="flex items-center gap-3 mb-6">
+                            <div className="p-3 bg-emerald-50 rounded-xl">
+                                <Save className="w-6 h-6 text-emerald-600" />
+                            </div>
+                            <div>
+                                <h3 className="text-xl font-bold text-slate-900">Lưu A/B Test</h3>
+                                <p className="text-sm text-slate-500">Đặt tên để dễ quản lý sau này</p>
+                            </div>
+                        </div>
+
+                        <div className="space-y-4">
+                            <div>
+                                <label className="text-xs font-semibold uppercase tracking-wider text-slate-500 ml-1 mb-2 block">
+                                    Tên test
+                                </label>
+                                <input
+                                    type="text"
+                                    className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-medium text-slate-700 placeholder:text-slate-400 focus:border-emerald-500 focus:bg-white focus:ring-4 focus:ring-emerald-500/10 transition-all outline-none"
+                                    placeholder="VD: Landing Page A vs B - Tháng 12"
+                                    value={testName}
+                                    onChange={(e) => setTestName(e.target.value)}
+                                    onKeyPress={(e) => e.key === 'Enter' && handleSaveTest()}
+                                    autoFocus
+                                />
+                            </div>
+
+                            {saveError && (
+                                <div className="p-3 bg-rose-50 border border-rose-100 text-rose-600 text-sm font-medium rounded-xl flex items-start gap-2">
+                                    <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" />
+                                    <p>{saveError}</p>
+                                </div>
+                            )}
+
+                            <div className="flex gap-3 pt-2">
+                                <button
+                                    onClick={() => {
+                                        setShowSaveModal(false);
+                                        setTestName('');
+                                        setSaveError('');
+                                    }}
+                                    className="flex-1 px-4 py-3 bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold rounded-xl transition-all"
+                                >
+                                    Bỏ qua
+                                </button>
+                                <button
+                                    onClick={handleSaveTest}
+                                    className="flex-1 px-4 py-3 bg-emerald-600 hover:bg-emerald-700 text-white font-semibold rounded-xl shadow-lg shadow-emerald-200 hover:shadow-xl hover:-translate-y-0.5 transition-all flex items-center justify-center gap-2"
+                                >
+                                    <Save className="w-4 h-4" />
+                                    Lưu lại
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* History Modal */}
+            {showHistoryModal && (
+                <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 animate-in fade-in duration-200">
+                    <div className="bg-white rounded-2xl shadow-2xl max-w-3xl w-full mx-4 max-h-[80vh] flex flex-col animate-in zoom-in-95 duration-300">
+                        {/* Header */}
+                        <div className="p-6 border-b border-slate-100">
+                            <div className="flex items-center justify-between">
+                                <div className="flex items-center gap-3">
+                                    <div className="p-3 bg-teal-50 rounded-xl">
+                                        <FolderOpen className="w-6 h-6 text-teal-600" />
+                                    </div>
+                                    <div>
+                                        <h3 className="text-xl font-bold text-slate-900">Lịch sử A/B Test</h3>
+                                        <p className="text-sm text-slate-500">{savedTests.length} test đã lưu</p>
+                                    </div>
+                                </div>
+                                <button
+                                    onClick={() => setShowHistoryModal(false)}
+                                    className="p-2 hover:bg-slate-100 rounded-lg transition-colors"
+                                >
+                                    <XCircle className="w-5 h-5 text-slate-400" />
+                                </button>
+                            </div>
+                        </div>
+
+                        {/* Content */}
+                        <div className="flex-1 overflow-y-auto p-6">
+                            {savedTests.length === 0 ? (
+                                <div className="flex flex-col items-center justify-center py-12 text-center">
+                                    <div className="w-20 h-20 bg-slate-100 rounded-full flex items-center justify-center mb-4">
+                                        <FolderOpen className="w-10 h-10 text-slate-300" />
+                                    </div>
+                                    <h4 className="text-lg font-bold text-slate-600 mb-2">Chưa có test nào</h4>
+                                    <p className="text-slate-500 max-w-sm">
+                                        Các test bạn lưu sẽ hiển thị ở đây để bạn có thể xem lại bất cứ lúc nào.
+                                    </p>
+                                </div>
+                            ) : (
+                                <div className="space-y-3">
+                                    {savedTests.map((test) => (
+                                        <div
+                                            key={test.id}
+                                            className="bg-slate-50 hover:bg-slate-100 rounded-xl border border-slate-200 p-4 transition-all group"
+                                        >
+                                            <div className="flex items-start justify-between gap-4">
+                                                <div className="flex-1 min-w-0">
+                                                    <h4 className="font-bold text-slate-900 mb-1 truncate">
+                                                        {test.name}
+                                                    </h4>
+                                                    <div className="flex flex-wrap gap-3 text-xs text-slate-500">
+                                                        <span className="flex items-center gap-1">
+                                                            <Users className="w-3 h-3" />
+                                                            A: {test.input.visitorsA.toLocaleString()} | B: {test.input.visitorsB.toLocaleString()}
+                                                        </span>
+                                                        <span className="flex items-center gap-1">
+                                                            <TrendingUp className="w-3 h-3" />
+                                                            Uplift: {test.result.uplift > 0 ? '+' : ''}{test.result.uplift.toFixed(2)}%
+                                                        </span>
+                                                        <span className={`font-semibold ${test.result.isSignificant ? 'text-green-600' : 'text-amber-600'}`}>
+                                                            {test.result.isSignificant ? '✓ Có ý nghĩa' : '⚠ Chưa rõ'}
+                                                        </span>
+                                                        <span>
+                                                            {new Date(test.createdAt).toLocaleDateString('vi-VN')}
+                                                        </span>
+                                                    </div>
+                                                </div>
+                                                <div className="flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                                                    <button
+                                                        onClick={() => {
+                                                            handleLoadTest(test.id);
+                                                            setShowHistoryModal(false);
+                                                        }}
+                                                        className="px-3 py-2 bg-teal-600 hover:bg-teal-700 text-white rounded-lg text-sm font-medium transition-all flex items-center gap-1.5"
+                                                        title="Tải test này"
+                                                    >
+                                                        <FolderOpen className="w-3.5 h-3.5" />
+                                                        Tải
+                                                    </button>
+                                                    <button
+                                                        onClick={async () => {
+                                                            if (confirm(`Xóa "${test.name}"?`)) {
+                                                                await handleDeleteTest(test.id);
+                                                            }
+                                                        }}
+                                                        className="px-3 py-2 bg-rose-50 hover:bg-rose-100 text-rose-600 rounded-lg text-sm font-medium transition-all"
+                                                        title="Xóa"
+                                                    >
+                                                        <Trash2 className="w-3.5 h-3.5" />
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
+                        </div>
+
+                        {/* Footer */}
+                        <div className="p-6 border-t border-slate-100">
+                            <button
+                                onClick={() => setShowHistoryModal(false)}
+                                className="w-full px-4 py-3 bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold rounded-xl transition-all"
+                            >
+                                Đóng
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 };

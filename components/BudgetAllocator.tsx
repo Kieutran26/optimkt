@@ -479,18 +479,38 @@ const BudgetAllocator: React.FC = () => {
                                                 data={chartData}
                                                 cx="50%"
                                                 cy="50%"
-                                                labelLine={false}
-                                                label={(entry) => `${entry.name}: ${entry.value}%`}
-                                                outerRadius={100}
+                                                labelLine={true}
+                                                label={({ name, value }) => `${name} (${value.toFixed(1)}%)`}
+                                                outerRadius={90}
                                                 fill="#8884d8"
                                                 dataKey="value"
+                                                animationDuration={800}
+                                                animationBegin={0}
                                             >
                                                 {chartData.map((entry, index) => (
                                                     <Cell key={`cell-${index}`} fill={entry.fill} />
                                                 ))}
                                             </Pie>
-                                            <Tooltip />
-                                            <Legend />
+                                            <Tooltip
+                                                formatter={(value, name, props) => {
+                                                    const amount = props.payload.amount;
+                                                    return [
+                                                        `${(value as number).toFixed(2)}% - ${new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND', maximumFractionDigits: 0 }).format(amount)}`,
+                                                        name
+                                                    ];
+                                                }}
+                                                contentStyle={{
+                                                    backgroundColor: 'white',
+                                                    border: '1px solid #e2e8f0',
+                                                    borderRadius: '12px',
+                                                    padding: '8px 12px'
+                                                }}
+                                            />
+                                            <Legend
+                                                verticalAlign="bottom"
+                                                height={36}
+                                                formatter={(value) => <span className="text-xs font-medium text-slate-700">{value}</span>}
+                                            />
                                         </RechartsPie>
                                     </ResponsiveContainer>
                                 </div>
