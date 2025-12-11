@@ -27,11 +27,19 @@ interface TestResult {
     rpvB: number;
     rpvUplift: number;
     potentialRevenue: number; // Projected extra revenue
+
+    // NEW: Sample Size & Duration Analysis
+    requiredSampleSize: number;  // Per variation
+    currentTotalVisitors: number;
+    visitorsNeeded: number;
+    daysRemaining: number;
+    testStatus: 'WINNER' | 'LOSER' | 'POTENTIAL' | 'INCONCLUSIVE';
+    statusMessage: string;
 }
 
 // Sub-component for Animated Circular Progress
 const AnimatedCircularProgress = ({ percentage, colorClass, icon: Icon, label, isWinner }: { percentage: number, colorClass: string, icon: any, label: string, isWinner?: boolean }) => {
-    const radius = 30;
+    const radius = 40;
     const circumference = 2 * Math.PI * radius;
     const strokeDashoffset = circumference - (Math.min(percentage, 100) / 100) * circumference;
 
@@ -45,25 +53,24 @@ const AnimatedCircularProgress = ({ percentage, colorClass, icon: Icon, label, i
 
     return (
         <div className="flex flex-col items-center gap-3">
-            <div className="relative w-28 h-28 group">
+            <div className="relative w-32 h-32 group">
                 {/* Background Circle */}
-                <svg className="w-full h-full transform -rotate-90 drop-shadow-sm">
+                <svg className="w-full h-full transform -rotate-90" viewBox="0 0 100 100">
                     <circle
-                        cx="56"
-                        cy="56"
+                        cx="50"
+                        cy="50"
                         r={radius}
-                        stroke="currentColor"
-                        strokeWidth="8"
+                        stroke="#f1f5f9"
+                        strokeWidth="6"
                         fill="transparent"
-                        className="text-slate-100"
                     />
                     {/* Foreground Circle - Animated */}
                     <circle
-                        cx="56"
-                        cy="56"
+                        cx="50"
+                        cy="50"
                         r={radius}
                         stroke={getStrokeColor()}
-                        strokeWidth="8"
+                        strokeWidth="6"
                         fill="transparent"
                         strokeDasharray={circumference}
                         strokeDashoffset={strokeDashoffset}
@@ -77,7 +84,7 @@ const AnimatedCircularProgress = ({ percentage, colorClass, icon: Icon, label, i
                     <div className={`p-2 rounded-full mb-1 transition-colors ${isWinner ? 'bg-yellow-100 text-yellow-600' : 'bg-slate-50 text-slate-400'}`}>
                         <Icon size={20} strokeWidth={2} />
                     </div>
-                    <span className={`text-sm font-bold ${colorClass}`}>
+                    <span className={`text-base font-bold ${colorClass}`}>
                         {percentage.toFixed(2)}%
                     </span>
                 </div>
@@ -106,6 +113,14 @@ const ABTestingCalc: React.FC = () => {
     const [confidence, setConfidence] = useState<number>(0.95);
     const [avgOrderValue, setAvgOrderValue] = useState<number>(0); // Optional AOV
 
+    // NEW: Pre-test Planning
+    const [testHypothesis, setTestHypothesis] = useState<string>('');
+    const [dailyTraffic, setDailyTraffic] = useState<number>(500); // Per variation
+    const [mde, setMde] = useState<number>(0.10); // Minimum Detectable Effect (10%)
+
+    // NEW: Traffic Split Setting (for SRM check)
+    const [expectedSplit, setExpectedSplit] = useState<number>(0.5); // 50/50 default
+
     // Results State
     const [result, setResult] = useState<TestResult | null>(null);
     const [error, setError] = useState<string | null>(null);
@@ -118,15 +133,72 @@ const ABTestingCalc: React.FC = () => {
     const [testName, setTestName] = useState('');
     const [saveError, setSaveError] = useState('');
 
+    // ═══════════════════════════════════════════════════════════════
+    // SAMPLE RATIO MISMATCH (SRM) DETECTION
+    // ═══════════════════════════════════════════════════════════════
+    const srmCheck = React.useMemo(() => {
+        if (visitorsA <= 0 || visitorsB <= 0) return { hasSRM: false, ratio: 1, message: '' };
+
+        const totalVisitors = visitorsA + visitorsB;
+        const observedRatioA = visitorsA / totalVisitors;
+        const expectedRatioA = expectedSplit;
+
+        // Allow 10% tolerance around expected split
+        const tolerance = 0.1;
+        const lowerBound = Math.max(0, expectedRatioA - tolerance);
+        const upperBound = Math.min(1, expectedRatioA + tolerance);
+
+        const hasSRM = observedRatioA < lowerBound || observedRatioA > upperBound;
+        const actualRatio = visitorsA / visitorsB;
+
+        let message = '';
+        if (hasSRM) {
+            const ratioText = actualRatio > 1
+                ? `${actualRatio.toFixed(1)}:1`
+                : `1:${(1 / actualRatio).toFixed(1)}`;
+            message = `Cảnh báo: Lượng truy cập giữa hai mẫu chênh lệch quá lớn (Tỷ lệ ${ratioText}). Điều này có thể làm sai lệch kết quả kiểm định. Hãy kiểm tra lại luồng phân phối traffic.`;
+        }
+
+        return { hasSRM, ratio: actualRatio, message };
+    }, [visitorsA, visitorsB, expectedSplit]);
+
     // Load saved tests on mount
     useEffect(() => {
         loadSavedTests();
     }, []);
 
-    // Real-time calculation
+    // Real-time calculation - include new dependencies
     useEffect(() => {
         calculateResults();
-    }, [visitorsA, conversionsA, visitorsB, conversionsB, confidence, avgOrderValue]);
+    }, [visitorsA, conversionsA, visitorsB, conversionsB, confidence, avgOrderValue, dailyTraffic, mde]);
+
+    // ═══════════════════════════════════════════════════════════════
+    // SAMPLE SIZE CALCULATOR (Power Analysis - Evan Miller formula)
+    // Based on: 95% Confidence + 80% Power
+    // ═══════════════════════════════════════════════════════════════
+    const calculateRequiredSampleSize = (baselineRate: number, mdePercent: number): number => {
+        // Z-scores for 95% confidence (α=0.05, two-tailed) and 80% power (β=0.20)
+        const zAlpha = 1.96;  // 95% confidence
+        const zBeta = 0.84;   // 80% power
+
+        const p1 = baselineRate;
+        const p2 = baselineRate * (1 + mdePercent); // Expected conversion rate after effect
+
+        if (p1 <= 0 || p1 >= 1 || p2 <= 0 || p2 >= 1) return 0;
+
+        const pBar = (p1 + p2) / 2;
+        const q1 = 1 - p1;
+        const q2 = 1 - p2;
+        const qBar = 1 - pBar;
+
+        // Sample size formula
+        const numerator = Math.pow(zAlpha * Math.sqrt(2 * pBar * qBar) + zBeta * Math.sqrt(p1 * q1 + p2 * q2), 2);
+        const denominator = Math.pow(p2 - p1, 2);
+
+        if (denominator === 0) return 0;
+
+        return Math.ceil(numerator / denominator);
+    };
 
     const loadSavedTests = async () => {
         const tests = await ABTestService.getABTests();
@@ -280,6 +352,51 @@ const ABTestingCalc: React.FC = () => {
         const rateDiff = pB - pA;
         const potentialRevenue = rateDiff * totalTraffic * aov;
 
+        // ═══════════════════════════════════════════════════════════════
+        // NEW: Sample Size & Duration Analysis
+        // ═══════════════════════════════════════════════════════════════
+
+        // Calculate required sample size based on baseline CR and MDE
+        const requiredSampleSize = calculateRequiredSampleSize(pA, mde);
+        const currentTotalVisitors = visitorsA + visitorsB;
+        const requiredTotal = requiredSampleSize * 2; // Both variations need this
+        const visitorsNeeded = Math.max(0, requiredTotal - currentTotalVisitors);
+
+        // Days remaining calculation
+        const dailyTotalTraffic = dailyTraffic * 2; // Split between A and B
+        const daysRemaining = dailyTotalTraffic > 0 ? Math.ceil(visitorsNeeded / dailyTotalTraffic) : 999;
+
+        // ═══════════════════════════════════════════════════════════════
+        // WINNER DECLARATION LOGIC (Strict Evan Miller Standards)
+        // ═══════════════════════════════════════════════════════════════
+        let testStatus: 'WINNER' | 'LOSER' | 'POTENTIAL' | 'INCONCLUSIVE';
+        let statusMessage: string;
+
+        const hasEnoughSamples = currentTotalVisitors >= requiredTotal;
+
+        if (pValue < alpha && hasEnoughSamples) {
+            // Significant AND enough samples -> Confident result
+            if (uplift > 0) {
+                testStatus = 'WINNER';
+                statusMessage = `✅ Mẫu B đạt độ tin cậy ${(confidence * 100).toFixed(0)}% với ${currentTotalVisitors.toLocaleString()} visitors. Có thể triển khai ngay.`;
+            } else {
+                testStatus = 'LOSER';
+                statusMessage = `❌ Mẫu B thua Mẫu A với độ tin cậy ${(confidence * 100).toFixed(0)}%. Nên giữ Mẫu A.`;
+            }
+        } else if (pValue < alpha && !hasEnoughSamples) {
+            // Significant BUT not enough samples -> Potential
+            testStatus = 'POTENTIAL';
+            statusMessage = `⚠️ Có vẻ hứa hẹn, nhưng sample size chưa đủ. Cần thêm ${visitorsNeeded.toLocaleString()} visitors nữa (≈ ${daysRemaining} ngày với ${dailyTraffic.toLocaleString()}/ngày). CHƯA NÊN DỪNG TEST.`;
+        } else {
+            // Not significant -> Inconclusive
+            testStatus = 'INCONCLUSIVE';
+            if (visitorsNeeded > 0) {
+                statusMessage = `📊 Kết quả chưa rõ ràng. Bạn cần thêm khoảng ${visitorsNeeded.toLocaleString()} visitors nữa (≈ ${daysRemaining} ngày) để đạt độ tin cậy ${(confidence * 100).toFixed(0)}%.`;
+            } else {
+                statusMessage = `📊 Không có sự khác biệt có ý nghĩa giữa 2 mẫu. Có thể 2 mẫu tương đương hoặc thay đổi quá nhỏ để phát hiện.`;
+            }
+        }
+
         setResult({
             crA: pA,
             crB: pB,
@@ -292,7 +409,14 @@ const ABTestingCalc: React.FC = () => {
             rpvA,
             rpvB,
             rpvUplift,
-            potentialRevenue
+            potentialRevenue,
+            // NEW fields
+            requiredSampleSize,
+            currentTotalVisitors,
+            visitorsNeeded,
+            daysRemaining,
+            testStatus,
+            statusMessage
         });
     };
 
@@ -305,79 +429,126 @@ const ABTestingCalc: React.FC = () => {
     const renderConclusion = () => {
         if (!result) return null;
 
-        if (result.isSignificant) {
-            if (result.winner === 'B') {
-                return (
-                    <div className="space-y-4 animate-in fade-in zoom-in">
-                        {/* Statistical Conclusion */}
-                        <div className="bg-green-50 border border-green-200 rounded-2xl p-6 text-center">
-                            <div className="inline-flex bg-green-100 p-3 rounded-full text-green-600 mb-3">
-                                <ArrowUpRight size={32} strokeWidth={2} />
+        // Status-based rendering with specific colors and messages
+        const statusConfig = {
+            WINNER: {
+                bgColor: 'bg-green-50 border-green-200',
+                iconBg: 'bg-green-100 text-green-600',
+                titleColor: 'text-green-800',
+                textColor: 'text-green-700',
+                icon: ArrowUpRight,
+                title: 'Mẫu B Chiến Thắng!'
+            },
+            LOSER: {
+                bgColor: 'bg-red-50 border-red-200',
+                iconBg: 'bg-red-100 text-red-600',
+                titleColor: 'text-red-800',
+                textColor: 'text-red-700',
+                icon: ArrowDownRight,
+                title: 'Mẫu B Thua Cuộc'
+            },
+            POTENTIAL: {
+                bgColor: 'bg-amber-50 border-amber-200',
+                iconBg: 'bg-amber-100 text-amber-600',
+                titleColor: 'text-amber-800',
+                textColor: 'text-amber-700',
+                icon: AlertCircle,
+                title: 'Có Tiềm Năng - Chưa Đủ Dữ Liệu'
+            },
+            INCONCLUSIVE: {
+                bgColor: 'bg-slate-50 border-slate-200',
+                iconBg: 'bg-slate-200 text-slate-500',
+                titleColor: 'text-slate-700',
+                textColor: 'text-slate-500',
+                icon: Minus,
+                title: 'Chưa Đủ Kết Luận'
+            }
+        };
+
+        const config = statusConfig[result.testStatus];
+        const Icon = config.icon;
+
+        return (
+            <div className="space-y-4 animate-in fade-in zoom-in">
+                {/* Main Status Card */}
+                <div className={`${config.bgColor} border rounded-2xl p-6 text-center`}>
+                    <div className={`inline-flex ${config.iconBg} p-3 rounded-full mb-3`}>
+                        <Icon size={32} strokeWidth={2} />
+                    </div>
+                    <h3 className={`text-2xl font-bold ${config.titleColor} mb-2`}>{config.title}</h3>
+
+                    {/* Status Message - Dynamic */}
+                    <p className={`${config.textColor} font-medium mb-4`}>
+                        {result.statusMessage}
+                    </p>
+
+                    {/* Sample Size Progress Bar */}
+                    {result.requiredSampleSize > 0 && (
+                        <div className="bg-white p-4 rounded-xl border border-slate-100 mb-4">
+                            <div className="flex justify-between text-xs text-slate-500 mb-2">
+                                <span>Sample Progress</span>
+                                <span>{result.currentTotalVisitors.toLocaleString()} / {(result.requiredSampleSize * 2).toLocaleString()} visitors</span>
                             </div>
-                            <h3 className="text-2xl font-bold text-green-800 mb-2">Mẫu B Chiến Thắng!</h3>
-                            <p className="text-green-700 font-medium mb-4">
-                                Tỷ lệ chuyển đổi tăng <strong>{result.uplift.toFixed(2)}%</strong> với độ tin cậy {result.confidenceLevel * 100}%.
-                            </p>
-                            <div className="bg-white p-3 rounded-xl border border-green-100 text-sm text-slate-600 shadow-sm">
-                                💡 <strong>Hành động:</strong> Bạn nên áp dụng Mẫu B và tắt Mẫu A để tối ưu hiệu quả chuyển đổi ngay lập tức.
+                            <div className="h-2 bg-slate-100 rounded-full overflow-hidden">
+                                <div
+                                    className={`h-full transition-all duration-500 ${result.testStatus === 'WINNER' || result.testStatus === 'LOSER'
+                                        ? 'bg-green-500'
+                                        : result.testStatus === 'POTENTIAL'
+                                            ? 'bg-amber-500'
+                                            : 'bg-slate-400'
+                                        }`}
+                                    style={{ width: `${Math.min(100, (result.currentTotalVisitors / (result.requiredSampleSize * 2)) * 100)}%` }}
+                                />
                             </div>
+                            {result.visitorsNeeded > 0 && (
+                                <p className="text-xs text-slate-400 mt-2">
+                                    Cần thêm <strong className="text-slate-600">{result.visitorsNeeded.toLocaleString()}</strong> visitors
+                                    (≈ <strong className="text-slate-600">{result.daysRemaining}</strong> ngày)
+                                </p>
+                            )}
                         </div>
+                    )}
 
-                        {/* Financial Impact Card - ONLY if AOV > 0 */}
-                        {avgOrderValue > 0 && result.potentialRevenue > 0 && (
-                            <div className="bg-emerald-600 text-white rounded-2xl p-6 shadow-lg shadow-emerald-200 border border-emerald-500 relative overflow-hidden group">
-                                <div className="absolute top-0 right-0 -mt-4 -mr-4 w-24 h-24 bg-white/10 rounded-full blur-2xl group-hover:bg-white/20 transition-all"></div>
-
-                                <div className="flex items-start gap-4 relative z-10">
-                                    <div className="p-3 bg-white/20 rounded-xl backdrop-blur-sm">
-                                        <Wallet size={32} strokeWidth={1.5} className="text-white" />
-                                    </div>
-                                    <div>
-                                        <h4 className="text-lg font-bold text-emerald-50 uppercase tracking-wide mb-1">Tác động tài chính</h4>
-                                        <p className="text-sm text-emerald-100 leading-relaxed mb-3">
-                                            Nếu áp dụng Mẫu B cho toàn bộ <strong>{(visitorsA + visitorsB).toLocaleString()}</strong> lượt truy cập này, bạn sẽ kiếm thêm được:
-                                        </p>
-                                        <div className="text-4xl font-bold text-white tracking-tight">
-                                            +{formatCurrency(result.potentialRevenue)}
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
+                    {/* Action Box */}
+                    <div className="bg-white p-3 rounded-xl border border-slate-100 text-sm text-slate-600 shadow-sm">
+                        {result.testStatus === 'WINNER' && (
+                            <>💡 <strong>Hành động:</strong> Triển khai Mẫu B ngay và tắt Mẫu A để tối ưu chuyển đổi.</>
+                        )}
+                        {result.testStatus === 'LOSER' && (
+                            <>💡 <strong>Hành động:</strong> Giữ nguyên Mẫu A. Thử ý tưởng khác cho Mẫu B.</>
+                        )}
+                        {result.testStatus === 'POTENTIAL' && (
+                            <>⚠️ <strong>CẢNH BÁO:</strong> CHƯA DỪNG TEST! Sample size chưa đủ để tin cậy. Tiếp tục chạy thêm.</>
+                        )}
+                        {result.testStatus === 'INCONCLUSIVE' && (
+                            <>💡 <strong>Hành động:</strong> Tiếp tục thu thập data hoặc thử thay đổi lớn hơn.</>
                         )}
                     </div>
-                );
-            } else {
-                return (
-                    <div className="bg-red-50 border border-red-200 rounded-2xl p-6 text-center animate-in fade-in zoom-in">
-                        <div className="inline-flex bg-red-100 p-3 rounded-full text-red-600 mb-3">
-                            <ArrowDownRight size={32} strokeWidth={2} />
-                        </div>
-                        <h3 className="text-2xl font-bold text-red-800 mb-2">Mẫu B Thua Cuộc</h3>
-                        <p className="text-red-700 font-medium mb-4">
-                            Mẫu A vẫn hiệu quả hơn Mẫu B với độ tin cậy {result.confidenceLevel * 100}%.
-                        </p>
-                        <div className="bg-white p-3 rounded-xl border border-red-100 text-sm text-slate-600 shadow-sm">
-                            💡 <strong>Hành động:</strong> Giữ nguyên Mẫu A. Hãy thử nghiệm ý tưởng mới khác cho Mẫu B.
-                        </div>
-                    </div>
-                );
-            }
-        } else {
-            return (
-                <div className="bg-slate-50 border border-slate-200 rounded-2xl p-6 text-center animate-in fade-in">
-                    <div className="inline-flex bg-slate-200 p-3 rounded-full text-slate-500 mb-3">
-                        <Minus size={32} strokeWidth={2} />
-                    </div>
-                    <h3 className="text-xl font-bold text-slate-700 mb-2">Chưa đủ kết luận</h3>
-                    <p className="text-slate-500 mb-4">
-                        Sự khác biệt chưa có ý nghĩa thống kê. Có thể do dữ liệu chưa đủ lớn hoặc hai mẫu tương đương nhau.
-                    </p>
-                    <div className="bg-white p-3 rounded-xl border border-slate-200 text-sm text-slate-600 shadow-sm">
-                        💡 <strong>Hành động:</strong> Tiếp tục chạy thử nghiệm để thu thập thêm dữ liệu hoặc thử thay đổi khác biệt lớn hơn.
-                    </div>
                 </div>
-            );
-        }
+
+                {/* Financial Impact Card - Show for WINNER only */}
+                {result.testStatus === 'WINNER' && avgOrderValue > 0 && result.potentialRevenue > 0 && (
+                    <div className="bg-emerald-600 text-white rounded-2xl p-6 shadow-lg shadow-emerald-200 border border-emerald-500 relative overflow-hidden group">
+                        <div className="absolute top-0 right-0 -mt-4 -mr-4 w-24 h-24 bg-white/10 rounded-full blur-2xl group-hover:bg-white/20 transition-all"></div>
+
+                        <div className="flex items-start gap-4 relative z-10">
+                            <div className="p-3 bg-white/20 rounded-xl backdrop-blur-sm">
+                                <Wallet size={32} strokeWidth={1.5} className="text-white" />
+                            </div>
+                            <div>
+                                <h4 className="text-lg font-bold text-emerald-50 uppercase tracking-wide mb-1">Tác động tài chính</h4>
+                                <p className="text-sm text-emerald-100 leading-relaxed mb-3">
+                                    Nếu áp dụng Mẫu B cho toàn bộ <strong>{(visitorsA + visitorsB).toLocaleString()}</strong> lượt truy cập này, bạn sẽ kiếm thêm được:
+                                </p>
+                                <div className="text-4xl font-bold text-white tracking-tight">
+                                    +{formatCurrency(result.potentialRevenue)}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                )}
+            </div>
+        );
     };
 
     const renderVisualComparison = () => {
@@ -562,6 +733,59 @@ const ABTestingCalc: React.FC = () => {
                             </div>
                         </div>
 
+                        {/* SRM Warning Banner */}
+                        {srmCheck.hasSRM && (
+                            <div className="mb-4 p-4 bg-rose-50 border border-rose-200 rounded-xl animate-in slide-in-from-top-2">
+                                <div className="flex items-start gap-3">
+                                    <div className="p-2 bg-rose-100 rounded-lg shrink-0">
+                                        <AlertCircle size={18} className="text-rose-600" />
+                                    </div>
+                                    <div>
+                                        <h4 className="text-sm font-bold text-rose-800 mb-1">⚠️ Sample Ratio Mismatch (SRM)</h4>
+                                        <p className="text-xs text-rose-600 leading-relaxed">
+                                            {srmCheck.message}
+                                        </p>
+                                        <div className="mt-2 flex items-center gap-2">
+                                            <span className="text-[10px] font-medium text-rose-500 bg-rose-100 px-2 py-0.5 rounded">
+                                                Observed: {visitorsA.toLocaleString()} vs {visitorsB.toLocaleString()}
+                                            </span>
+                                            <span className="text-[10px] font-medium text-rose-500 bg-rose-100 px-2 py-0.5 rounded">
+                                                Expected: {(expectedSplit * 100).toFixed(0)}% / {((1 - expectedSplit) * 100).toFixed(0)}%
+                                            </span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        )}
+
+                        {/* Traffic Split Setting */}
+                        <div className="mb-6">
+                            <div className="flex justify-between items-center mb-1.5">
+                                <label className="block text-xs font-bold text-slate-500 uppercase">Traffic Split (A/B)</label>
+                                <div className="group relative">
+                                    <HelpCircle size={14} className="text-slate-400 cursor-help" />
+                                    <div className="absolute bottom-full right-0 mb-2 w-52 bg-slate-800 text-white text-xs p-2 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-10">
+                                        Chọn tỷ lệ phân chia traffic mong đợi. Nếu traffic thực tế lệch quá 10% sẽ hiển thị cảnh báo SRM.
+                                    </div>
+                                </div>
+                            </div>
+                            <div className="grid grid-cols-3 gap-2 p-1 bg-slate-100 rounded-xl">
+                                {[
+                                    { value: 0.5, label: '50/50' },
+                                    { value: 0.7, label: '70/30' },
+                                    { value: 0.9, label: '90/10' }
+                                ].map(opt => (
+                                    <button
+                                        key={opt.value}
+                                        onClick={() => setExpectedSplit(opt.value)}
+                                        className={`py-2 rounded-lg text-sm font-bold transition-all ${expectedSplit === opt.value ? 'bg-white text-teal-700 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+                                    >
+                                        {opt.label}
+                                    </button>
+                                ))}
+                            </div>
+                        </div>
+
                         {/* Financial Input */}
                         <div className="mb-6">
                             <div className="flex justify-between items-center mb-1.5">
@@ -582,7 +806,7 @@ const ABTestingCalc: React.FC = () => {
                         </div>
 
                         {/* Confidence Settings */}
-                        <div>
+                        <div className="mb-6">
                             <div className="flex justify-between items-center mb-2">
                                 <label className="text-sm font-bold text-slate-700">Độ tin cậy (Confidence Level)</label>
                                 <div className="group relative">
@@ -602,6 +826,64 @@ const ABTestingCalc: React.FC = () => {
                                         {level * 100}%
                                     </button>
                                 ))}
+                            </div>
+                        </div>
+
+                        {/* NEW: Pre-test Planning Section */}
+                        <div className="bg-amber-50/50 border border-amber-200 rounded-2xl p-5 space-y-4">
+                            <div className="flex items-center gap-2 mb-2">
+                                <Target size={18} className="text-amber-600" />
+                                <h4 className="text-sm font-bold text-amber-800">Pre-test Planning</h4>
+                            </div>
+
+                            {/* Hypothesis */}
+                            <div>
+                                <label className="block text-xs font-bold text-amber-700 uppercase mb-1.5">Giả thuyết Test</label>
+                                <input
+                                    type="text"
+                                    className="w-full p-3 bg-white border border-amber-200 rounded-xl focus:outline-none focus:border-amber-500 focus:ring-2 focus:ring-amber-100 transition-all text-sm"
+                                    placeholder="VD: Đổi CTA từ Xanh sang Cam..."
+                                    value={testHypothesis}
+                                    onChange={(e) => setTestHypothesis(e.target.value)}
+                                />
+                            </div>
+
+                            {/* Daily Traffic */}
+                            <div>
+                                <label className="block text-xs font-bold text-amber-700 uppercase mb-1.5">Traffic hàng ngày (mỗi biến thể)</label>
+                                <input
+                                    type="number"
+                                    min="1"
+                                    className="w-full p-3 bg-white border border-amber-200 rounded-xl focus:outline-none focus:border-amber-500 focus:ring-2 focus:ring-amber-100 transition-all text-sm font-medium"
+                                    placeholder="VD: 500"
+                                    value={dailyTraffic}
+                                    onChange={(e) => setDailyTraffic(Number(e.target.value))}
+                                />
+                                <p className="text-[10px] text-amber-600 mt-1">Dùng để ước tính số ngày cần chạy test.</p>
+                            </div>
+
+                            {/* MDE - Minimum Detectable Effect */}
+                            <div>
+                                <div className="flex justify-between items-center mb-1.5">
+                                    <label className="text-xs font-bold text-amber-700 uppercase">MDE (Thay đổi tối thiểu muốn phát hiện)</label>
+                                    <div className="group relative">
+                                        <HelpCircle size={14} className="text-amber-500 cursor-help" />
+                                        <div className="absolute bottom-full right-0 mb-2 w-56 bg-slate-800 text-white text-xs p-2 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-10">
+                                            Thay đổi nhỏ (5%) cần nhiều traffic hơn. Thay đổi lớn (20%) cần ít traffic hơn để phát hiện.
+                                        </div>
+                                    </div>
+                                </div>
+                                <div className="grid grid-cols-3 gap-2 p-1 bg-white border border-amber-200 rounded-xl">
+                                    {[0.05, 0.10, 0.20].map(effect => (
+                                        <button
+                                            key={effect}
+                                            onClick={() => setMde(effect)}
+                                            className={`py-2 rounded-lg text-sm font-bold transition-all ${mde === effect ? 'bg-amber-500 text-white shadow-sm' : 'text-amber-700 hover:bg-amber-100'}`}
+                                        >
+                                            {(effect * 100).toFixed(0)}%
+                                        </button>
+                                    ))}
+                                </div>
                             </div>
                         </div>
 
@@ -635,7 +917,14 @@ const ABTestingCalc: React.FC = () => {
                         <div className="flex items-center justify-between mb-6">
                             <h3 className="text-lg font-bold text-slate-800">Kết luận kiểm định</h3>
                             {result && (
-                                <div className={`px-3 py-1 rounded-full text-xs font-bold uppercase ${result.uplift > 0 ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
+                                <div className={`px-3 py-1 rounded-full text-xs font-bold uppercase ${result.testStatus === 'WINNER'
+                                    ? 'bg-green-100 text-green-700'
+                                    : result.testStatus === 'LOSER'
+                                        ? 'bg-red-100 text-red-700'
+                                        : result.testStatus === 'POTENTIAL'
+                                            ? 'bg-amber-100 text-amber-700'
+                                            : 'bg-slate-100 text-slate-500' // INCONCLUSIVE - Gray/Neutral
+                                    }`}>
                                     Uplift: {result.uplift > 0 ? '+' : ''}{result.uplift.toFixed(2)}%
                                 </div>
                             )}
