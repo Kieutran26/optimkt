@@ -3,9 +3,9 @@ import {
     Lightbulb, TrendingUp, DollarSign, Calendar, Sparkles, Check, Trash2, Target,
     Users, Megaphone, Globe, Plus, History, ArrowLeft, AlertTriangle, Briefcase,
     Eye, Zap, ShoppingCart, Building2, ChevronDown, ChevronUp, Package, Film, FileText, Save,
-    Wallet, TrendingDown, Scale
+    Wallet, Scale, Monitor, Database, Image
 } from 'lucide-react';
-import { IMCService, IMCInput, PlanningMode, CampaignFocus, CalculatedMetrics } from '../services/imcService';
+import { IMCService, IMCInput, PlanningMode, CampaignFocus, CalculatedMetrics, AssetChecklist, BudgetDistribution } from '../services/imcService';
 import { IMCPlan, IMCExecutionPhase } from '../types';
 
 type ViewMode = 'create' | 'history' | 'detail';
@@ -58,8 +58,14 @@ const IMCPlanner: React.FC = () => {
     const [revenueTarget, setRevenueTarget] = useState('');
     const [productPrice, setProductPrice] = useState('');
 
-    // Preview metrics
+    // Asset Checklist
+    const [hasWebsite, setHasWebsite] = useState(true);
+    const [hasCustomerList, setHasCustomerList] = useState(true);
+    const [hasCreativeAssets, setHasCreativeAssets] = useState(true);
+
+    // Preview metrics & budget distribution
     const [previewMetrics, setPreviewMetrics] = useState<CalculatedMetrics | null>(null);
+    const [budgetDistribution, setBudgetDistribution] = useState<BudgetDistribution | null>(null);
 
     useEffect(() => {
         loadPlans();
@@ -68,7 +74,7 @@ const IMCPlanner: React.FC = () => {
     // Calculate preview when inputs change
     useEffect(() => {
         calculatePreview();
-    }, [planningMode, budget, revenueTarget, productPrice, campaignFocus]);
+    }, [planningMode, budget, revenueTarget, productPrice, campaignFocus, hasWebsite, hasCustomerList, hasCreativeAssets, industry]);
 
     const loadPlans = async () => {
         setLoading(true);
@@ -82,32 +88,56 @@ const IMCPlanner: React.FC = () => {
         const budgetNum = parseFloat(budget) || 0;
         const targetNum = parseFloat(revenueTarget) || 0;
 
+        const assets: AssetChecklist = {
+            has_website: hasWebsite,
+            has_customer_list: hasCustomerList,
+            has_creative_assets: hasCreativeAssets
+        };
+
         if (priceNum <= 0) {
             setPreviewMetrics(null);
+            setBudgetDistribution(null);
             return;
         }
 
         let metrics: CalculatedMetrics | null = null;
+        let effectiveBudget = budgetNum;
 
         switch (planningMode) {
             case 'BUDGET_DRIVEN':
                 if (budgetNum > 0) {
                     metrics = IMCService.calculateFromBudget(budgetNum, priceNum, campaignFocus);
+                    effectiveBudget = budgetNum;
                 }
                 break;
             case 'GOAL_DRIVEN':
                 if (targetNum > 0) {
                     metrics = IMCService.calculateFromTarget(targetNum, priceNum, campaignFocus);
+                    effectiveBudget = metrics?.total_budget || 0;
                 }
                 break;
             case 'AUDIT':
                 if (budgetNum > 0 && targetNum > 0) {
                     metrics = IMCService.auditPlan(budgetNum, targetNum, priceNum, campaignFocus);
+                    effectiveBudget = budgetNum;
                 }
                 break;
         }
 
         setPreviewMetrics(metrics);
+
+        // Calculate budget distribution if we have a budget
+        if (effectiveBudget > 0) {
+            const distribution = IMCService.calculateBudgetDistribution(
+                effectiveBudget,
+                campaignFocus,
+                industry,
+                assets
+            );
+            setBudgetDistribution(distribution);
+        } else {
+            setBudgetDistribution(null);
+        }
     };
 
     const handleGenerate = async () => {
@@ -188,7 +218,11 @@ const IMCPlanner: React.FC = () => {
         setIndustry('FMCG');
         setPlanningMode('BUDGET_DRIVEN');
         setCampaignFocus('CONVERSION');
+        setHasWebsite(true);
+        setHasCustomerList(true);
+        setHasCreativeAssets(true);
         setPreviewMetrics(null);
+        setBudgetDistribution(null);
         setCurrentPlan(null);
         setSaved(false);
         setViewMode('create');
@@ -752,6 +786,80 @@ const IMCPlanner: React.FC = () => {
                                     </div>
                                 </div>
 
+                                {/* Asset Checklist */}
+                                <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-6">
+                                    <h2 className="text-lg font-bold text-slate-800 mb-4 flex items-center gap-2">
+                                        <Package size={20} className="text-indigo-600" />
+                                        Asset Checklist
+                                    </h2>
+                                    <p className="text-xs text-slate-500 mb-4">Điều chỉnh channels dựa trên tài sản hiện có</p>
+
+                                    <div className="space-y-3">
+                                        {/* Website Toggle */}
+                                        <label className="flex items-center justify-between p-3 bg-slate-50 rounded-xl cursor-pointer hover:bg-slate-100 transition-colors">
+                                            <div className="flex items-center gap-3">
+                                                <Monitor size={18} className={hasWebsite ? 'text-green-600' : 'text-slate-400'} />
+                                                <div>
+                                                    <div className="text-sm font-medium">Website</div>
+                                                    <div className="text-xs text-slate-500">Bật Remarketing, Google Ads</div>
+                                                </div>
+                                            </div>
+                                            <button
+                                                onClick={() => setHasWebsite(!hasWebsite)}
+                                                className={`w-12 h-6 rounded-full transition-colors ${hasWebsite ? 'bg-green-500' : 'bg-slate-300'} relative`}
+                                            >
+                                                <span className={`absolute top-1 w-4 h-4 bg-white rounded-full transition-all ${hasWebsite ? 'right-1' : 'left-1'}`} />
+                                            </button>
+                                        </label>
+
+                                        {/* Customer List Toggle */}
+                                        <label className="flex items-center justify-between p-3 bg-slate-50 rounded-xl cursor-pointer hover:bg-slate-100 transition-colors">
+                                            <div className="flex items-center gap-3">
+                                                <Database size={18} className={hasCustomerList ? 'text-green-600' : 'text-slate-400'} />
+                                                <div>
+                                                    <div className="text-sm font-medium">Customer List</div>
+                                                    <div className="text-xs text-slate-500">Bật CRM, Email, SMS, Zalo</div>
+                                                </div>
+                                            </div>
+                                            <button
+                                                onClick={() => setHasCustomerList(!hasCustomerList)}
+                                                className={`w-12 h-6 rounded-full transition-colors ${hasCustomerList ? 'bg-green-500' : 'bg-slate-300'} relative`}
+                                            >
+                                                <span className={`absolute top-1 w-4 h-4 bg-white rounded-full transition-all ${hasCustomerList ? 'right-1' : 'left-1'}`} />
+                                            </button>
+                                        </label>
+
+                                        {/* Creative Assets Toggle */}
+                                        <label className="flex items-center justify-between p-3 bg-slate-50 rounded-xl cursor-pointer hover:bg-slate-100 transition-colors">
+                                            <div className="flex items-center gap-3">
+                                                <Image size={18} className={hasCreativeAssets ? 'text-green-600' : 'text-slate-400'} />
+                                                <div>
+                                                    <div className="text-sm font-medium">Creative Assets</div>
+                                                    <div className="text-xs text-slate-500">Có Video/Ảnh sẵn</div>
+                                                </div>
+                                            </div>
+                                            <button
+                                                onClick={() => setHasCreativeAssets(!hasCreativeAssets)}
+                                                className={`w-12 h-6 rounded-full transition-colors ${hasCreativeAssets ? 'bg-green-500' : 'bg-slate-300'} relative`}
+                                            >
+                                                <span className={`absolute top-1 w-4 h-4 bg-white rounded-full transition-all ${hasCreativeAssets ? 'right-1' : 'left-1'}`} />
+                                            </button>
+                                        </label>
+                                    </div>
+
+                                    {/* Disabled channels warning */}
+                                    {budgetDistribution && budgetDistribution.disabled_channels.length > 0 && (
+                                        <div className="mt-4 p-3 bg-amber-50 border border-amber-200 rounded-lg">
+                                            <div className="text-xs font-medium text-amber-800 mb-1">Channels bị tắt:</div>
+                                            <ul className="text-xs text-amber-700 space-y-1">
+                                                {budgetDistribution.disabled_channels.map((ch, i) => (
+                                                    <li key={i}>• {ch}</li>
+                                                ))}
+                                            </ul>
+                                        </div>
+                                    )}
+                                </div>
+
                                 {/* Financial Inputs - Dynamic based on Planning Mode */}
                                 <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-6">
                                     <h2 className="text-lg font-bold text-slate-800 mb-4 flex items-center gap-2">
@@ -911,6 +1019,68 @@ const IMCPlanner: React.FC = () => {
                                             <div>• CPC: 4,000 VND | CR: {campaignFocus === 'CONVERSION' ? '2%' : '1%'}</div>
                                             <div>• Target ROAS: {campaignFocus === 'CONVERSION' ? '3.0x' : '1.5x'}</div>
                                         </div>
+
+                                        {/* Budget Distribution Breakdown */}
+                                        {budgetDistribution && (
+                                            <div className="mt-4 space-y-3">
+                                                <div className="text-sm font-bold text-slate-700">💰 Budget Split</div>
+
+                                                {/* Stacked Bar */}
+                                                <div className="h-6 rounded-lg overflow-hidden flex">
+                                                    <div
+                                                        className="bg-purple-500 flex items-center justify-center text-white text-xs font-bold"
+                                                        style={{ width: `${budgetDistribution.production_ratio * 100}%` }}
+                                                    >
+                                                        {Math.round(budgetDistribution.production_ratio * 100)}%
+                                                    </div>
+                                                    <div
+                                                        className="bg-blue-500 flex items-center justify-center text-white text-xs font-bold"
+                                                        style={{ width: `${(1 - budgetDistribution.production_ratio) * 100}%` }}
+                                                    >
+                                                        {Math.round((1 - budgetDistribution.production_ratio) * 100)}%
+                                                    </div>
+                                                </div>
+                                                <div className="flex justify-between text-xs text-slate-500">
+                                                    <span>🎨 Production: {IMCService.formatVND(budgetDistribution.production_budget)}</span>
+                                                    <span>📺 Media: {IMCService.formatVND(budgetDistribution.media_budget)}</span>
+                                                </div>
+
+                                                {/* Channel Breakdown */}
+                                                <div className="text-sm font-bold text-slate-700 mt-4">📊 Channel Allocation</div>
+                                                <div className="space-y-2 max-h-64 overflow-y-auto">
+                                                    {budgetDistribution.channels.map((ch, i) => (
+                                                        <div
+                                                            key={i}
+                                                            className={`p-3 rounded-lg border text-xs ${ch.warning ? 'bg-amber-50 border-amber-200' : 'bg-slate-50 border-slate-200'
+                                                                }`}
+                                                        >
+                                                            <div className="flex justify-between items-start mb-2">
+                                                                <div className="font-medium text-slate-800">{ch.channel_name}</div>
+                                                                <div className="text-right">
+                                                                    <div className="font-bold text-indigo-600">{IMCService.formatVND(ch.total_allocation)}</div>
+                                                                </div>
+                                                            </div>
+                                                            <div className="flex gap-2 mb-2">
+                                                                <span className="px-2 py-0.5 bg-blue-100 text-blue-700 rounded">
+                                                                    Media: {IMCService.formatVND(ch.media_spend)}
+                                                                </span>
+                                                                <span className="px-2 py-0.5 bg-purple-100 text-purple-700 rounded">
+                                                                    Sản xuất: {IMCService.formatVND(ch.production_cost)}
+                                                                </span>
+                                                            </div>
+                                                            <div className="text-slate-600 mb-1">
+                                                                Est. {ch.estimated_kpi.metric}: <strong>{ch.estimated_kpi.value.toLocaleString()}</strong>
+                                                                {ch.estimated_kpi.unit_cost > 0 && ` @ ${IMCService.formatVND(ch.estimated_kpi.unit_cost)}`}
+                                                            </div>
+                                                            <div className="text-indigo-600 italic">{ch.action_item}</div>
+                                                            {ch.warning && (
+                                                                <div className="mt-1 text-amber-700 font-medium">{ch.warning}</div>
+                                                            )}
+                                                        </div>
+                                                    ))}
+                                                </div>
+                                            </div>
+                                        )}
                                     </div>
                                 ) : (
                                     /* Default Instructions */

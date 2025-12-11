@@ -17,6 +17,48 @@ const SAFETY_SETTINGS = [
 
 export type PlanningMode = 'BUDGET_DRIVEN' | 'GOAL_DRIVEN' | 'AUDIT';
 export type CampaignFocus = 'BRANDING' | 'CONVERSION';
+export type ChannelType = 'PAID_MEDIA' | 'CRM' | 'CONTENT' | 'TOOLS';
+
+// ═══════════════════════════════════════════════════════════════
+// ASSET CHECKLIST - User's Current Status
+// ═══════════════════════════════════════════════════════════════
+
+export interface AssetChecklist {
+    has_website: boolean;        // Controls Remarketing/SEO
+    has_customer_list: boolean;  // Controls CRM/Email/SMS
+    has_creative_assets: boolean; // Affects Production budget ratio
+}
+
+// ═══════════════════════════════════════════════════════════════
+// CHANNEL ALLOCATION BREAKDOWN
+// ═══════════════════════════════════════════════════════════════
+
+export interface ChannelAllocation {
+    channel_name: string;
+    channel_type: ChannelType;
+    phase: 'AWARE' | 'TRIGGER' | 'CONVERT';
+    total_allocation: number;
+    media_spend: number;
+    production_cost: number;
+    platform_fee?: number;
+    estimated_kpi: {
+        metric: string;      // "Clicks" | "Messages" | "Impressions" | "Reach"
+        value: number;
+        unit_cost: number;
+    };
+    action_item: string;
+    warning?: string;
+}
+
+export interface BudgetDistribution {
+    total_budget: number;
+    production_budget: number;
+    media_budget: number;
+    production_ratio: number;
+    channels: ChannelAllocation[];
+    warnings: string[];
+    disabled_channels: string[];  // Channels disabled due to missing assets
+}
 
 export interface IMCInput {
     brand: string;
@@ -27,9 +69,11 @@ export interface IMCInput {
     planning_mode: PlanningMode;
     campaign_focus: CampaignFocus;
     // Flexible inputs
-    budget?: number;          // For BUDGET_DRIVEN and AUDIT modes
-    revenue_target?: number;  // For GOAL_DRIVEN and AUDIT modes
-    product_price: number;    // AOV - Average Order Value
+    budget?: number;
+    revenue_target?: number;
+    product_price: number;
+    // Asset Checklist
+    assets?: AssetChecklist;
 }
 
 export interface FeasibilityResult {
@@ -49,37 +93,56 @@ export interface CalculatedMetrics {
     estimated_revenue: number;
     implied_roas: number;
     feasibility: FeasibilityResult;
+    budget_distribution?: BudgetDistribution;
 }
 
-// ═══════════════════════════════════════════════════════════════
 // INDUSTRY BENCHMARKS (5-Year Expert Constants)
 // ═══════════════════════════════════════════════════════════════
 
 const BENCHMARKS = {
     // Base ROAS by campaign focus
-    ROAS_BRANDING: 1.5,      // Branding campaigns have lower direct ROAS
-    ROAS_CONVERSION: 3.0,    // Conversion campaigns target 3x ROAS
+    ROAS_BRANDING: 1.5,
+    ROAS_CONVERSION: 3.0,
 
-    // Cost metrics
-    CPC: 4_000,              // 4,000 VND per click (Vietnam average)
-    CPM: 50_000,             // 50,000 VND per 1000 impressions
+    // Cost metrics (Vietnam averages)
+    CPC: 4_000,
+    CPM: 50_000,
 
     // Conversion funnel
-    CONVERSION_RATE_BRANDING: 0.01,    // 1% for branding
-    CONVERSION_RATE_CONVERSION: 0.02,  // 2% for conversion focus
+    CONVERSION_RATE_BRANDING: 0.01,
+    CONVERSION_RATE_CONVERSION: 0.02,
 
-    // Budget splits
-    PRODUCTION_RATIO: 0.25,  // 25% for production
-    MEDIA_RATIO: 0.75,       // 75% for media
+    // Budget splits (will be dynamic based on budget tier)
+    PRODUCTION_RATIO: 0.25,
+    MEDIA_RATIO: 0.75,
 
     // Minimums
-    MIN_PRODUCTION_BUDGET: 2_000_000,  // 2M VND minimum
-    MIN_TOTAL_BUDGET: 20_000_000,      // 20M VND minimum
+    MIN_PRODUCTION_BUDGET: 2_000_000,
+    MIN_TOTAL_BUDGET: 20_000_000,
+    MIN_CHANNEL_BUDGET: 2_000_000,  // Warning threshold per channel
 
-    // ROAS thresholds for feasibility
+    // ROAS thresholds
     ROAS_REALISTIC_MAX: 5.0,
     ROAS_OPTIMISTIC_MAX: 8.0,
     ROAS_IMPOSSIBLE: 10.0,
+};
+
+// ═══════════════════════════════════════════════════════════════
+// CHANNEL COST BENCHMARKS (Performance Marketing Standards)
+// ═══════════════════════════════════════════════════════════════
+
+const CHANNEL_COSTS = {
+    'Meta Ads (Prospecting)': { cpc: 8_000, cpm: 40_000, production_ratio: 0.20 },
+    'Meta Ads (Retargeting)': { cpc: 15_000, cpm: 80_000, production_ratio: 0.15 },
+    'Google Ads (Search)': { cpc: 20_000, cpm: null, production_ratio: 0.10 },
+    'Google Ads (Display)': { cpc: 5_000, cpm: 30_000, production_ratio: 0.20 },
+    'TikTok Ads': { cpc: 6_000, cpm: 50_000, production_ratio: 0.25 },
+    'YouTube Ads': { cpc: 10_000, cpm: 60_000, production_ratio: 0.30 },
+    'Zalo OA/ZNS': { cost_per_message: 500, production_ratio: 0.15 },
+    'SMS Marketing': { cost_per_message: 800, production_ratio: 0.10 },
+    'Email Marketing': { cost_per_send: 50, production_ratio: 0.25 },
+    'KOL/Influencer': { flat_fee: true, production_ratio: 0.40 },
+    'PR/Content': { flat_fee: true, production_ratio: 0.60 },
 };
 
 // Industry-specific channel recommendations
@@ -297,6 +360,150 @@ export const IMCService = {
             industry.toLowerCase().includes(k.toLowerCase())
         ) || 'Default';
         return INDUSTRY_CHANNELS[key];
+    },
+
+    /**
+     * Get Production/Media ratio based on budget tier and asset status
+     */
+    getProductionRatio(budget: number, hasCreativeAssets: boolean): number {
+        let baseRatio: number;
+
+        if (budget < 50_000_000) {
+            baseRatio = 0.30;  // Small budget: 30% production
+        } else if (budget < 100_000_000) {
+            baseRatio = 0.25;  // Medium budget: 25% production
+        } else {
+            baseRatio = 0.15;  // Large budget: 15% production
+        }
+
+        // If no creative assets, increase production budget
+        if (!hasCreativeAssets) {
+            baseRatio += 0.10;
+        }
+
+        return Math.min(baseRatio, 0.40); // Cap at 40%
+    },
+
+    /**
+     * Calculate detailed budget distribution with channel breakdown
+     */
+    calculateBudgetDistribution(
+        budget: number,
+        focus: CampaignFocus,
+        industry: string,
+        assets: AssetChecklist = { has_website: true, has_customer_list: true, has_creative_assets: true }
+    ): BudgetDistribution {
+        const warnings: string[] = [];
+        const disabledChannels: string[] = [];
+        const channels: ChannelAllocation[] = [];
+
+        // Step 1: Calculate Production/Media split
+        const productionRatio = this.getProductionRatio(budget, assets.has_creative_assets);
+        const productionBudget = Math.round(budget * productionRatio);
+        const mediaBudget = budget - productionBudget;
+
+        // Step 2: Define channel allocation based on focus
+        const channelConfig = focus === 'CONVERSION'
+            ? [
+                // Conversion-focused allocation
+                { name: 'Meta Ads (Retargeting)', type: 'PAID_MEDIA' as ChannelType, phase: 'CONVERT' as const, share: 0.25, requires: 'website' },
+                { name: 'Meta Ads (Prospecting)', type: 'PAID_MEDIA' as ChannelType, phase: 'AWARE' as const, share: 0.20, requires: null },
+                { name: 'Google Ads (Search)', type: 'PAID_MEDIA' as ChannelType, phase: 'CONVERT' as const, share: 0.15, requires: null },
+                { name: 'Zalo OA/ZNS', type: 'CRM' as ChannelType, phase: 'TRIGGER' as const, share: 0.20, requires: 'customer_list' },
+                { name: 'Email Marketing', type: 'CRM' as ChannelType, phase: 'TRIGGER' as const, share: 0.10, requires: 'customer_list' },
+                { name: 'KOL/Influencer', type: 'CONTENT' as ChannelType, phase: 'TRIGGER' as const, share: 0.10, requires: null },
+            ]
+            : [
+                // Branding-focused allocation
+                { name: 'TikTok Ads', type: 'PAID_MEDIA' as ChannelType, phase: 'AWARE' as const, share: 0.25, requires: null },
+                { name: 'YouTube Ads', type: 'PAID_MEDIA' as ChannelType, phase: 'AWARE' as const, share: 0.20, requires: null },
+                { name: 'Meta Ads (Prospecting)', type: 'PAID_MEDIA' as ChannelType, phase: 'AWARE' as const, share: 0.20, requires: null },
+                { name: 'KOL/Influencer', type: 'CONTENT' as ChannelType, phase: 'TRIGGER' as const, share: 0.20, requires: null },
+                { name: 'PR/Content', type: 'CONTENT' as ChannelType, phase: 'TRIGGER' as const, share: 0.15, requires: null },
+            ];
+
+        // Step 3: Filter and allocate channels
+        let availableShare = 1.0;
+        const filteredConfig = channelConfig.filter(ch => {
+            if (ch.requires === 'website' && !assets.has_website) {
+                disabledChannels.push(`${ch.name} (Cần có Website)`);
+                return false;
+            }
+            if (ch.requires === 'customer_list' && !assets.has_customer_list) {
+                disabledChannels.push(`${ch.name} (Cần có Customer List)`);
+                return false;
+            }
+            return true;
+        });
+
+        // Redistribute disabled shares
+        const totalActiveShare = filteredConfig.reduce((sum, ch) => sum + ch.share, 0);
+
+        // Step 4: Create channel allocations with KPIs
+        filteredConfig.forEach(ch => {
+            const normalizedShare = ch.share / totalActiveShare;
+            const totalAllocation = Math.round(mediaBudget * normalizedShare);
+
+            // Get channel-specific costs
+            const costConfig = CHANNEL_COSTS[ch.name as keyof typeof CHANNEL_COSTS] || { cpc: 8000, production_ratio: 0.20 };
+            const channelProductionRatio = (costConfig as any).production_ratio || 0.20;
+            const channelProductionCost = Math.round(totalAllocation * channelProductionRatio);
+            const channelMediaSpend = totalAllocation - channelProductionCost;
+
+            // Calculate KPIs
+            let kpi: { metric: string; value: number; unit_cost: number };
+            let actionItem: string;
+
+            if ('cost_per_message' in costConfig) {
+                const msgCost = (costConfig as any).cost_per_message;
+                kpi = { metric: 'Messages', value: Math.floor(channelMediaSpend / msgCost), unit_cost: msgCost };
+                actionItem = `Segment danh sách khách hàng và tạo template ${ch.name === 'Zalo OA/ZNS' ? 'ZNS' : 'tin nhắn'}.`;
+            } else if ('cost_per_send' in costConfig) {
+                const sendCost = (costConfig as any).cost_per_send;
+                kpi = { metric: 'Emails', value: Math.floor(channelMediaSpend / sendCost), unit_cost: sendCost };
+                actionItem = 'Thiết kế email template và automation flow.';
+            } else if ('flat_fee' in costConfig) {
+                kpi = { metric: 'Reach (Est.)', value: Math.floor(channelMediaSpend / 50), unit_cost: 0 };
+                actionItem = ch.name.includes('KOL')
+                    ? 'Brief KOL và thương lượng hợp đồng.'
+                    : 'Lên kế hoạch PR và content calendar.';
+            } else {
+                const cpc = (costConfig as any).cpc || 8000;
+                kpi = { metric: 'Clicks', value: Math.floor(channelMediaSpend / cpc), unit_cost: cpc };
+                actionItem = ch.name.includes('Retargeting')
+                    ? 'Setup Pixel và tạo Custom Audience từ 30 ngày gần nhất.'
+                    : `Tạo ad creatives và targeting audience cho ${ch.name}.`;
+            }
+
+            // Check for fragmented budget warning
+            let warning: string | undefined;
+            if (totalAllocation < BENCHMARKS.MIN_CHANNEL_BUDGET) {
+                warning = `⚠️ Budget quá thấp (${this.formatVND(totalAllocation)}). Cân nhắc gộp vào kênh khác.`;
+                warnings.push(`${ch.name}: ${warning}`);
+            }
+
+            channels.push({
+                channel_name: ch.name,
+                channel_type: ch.type,
+                phase: ch.phase,
+                total_allocation: totalAllocation,
+                media_spend: channelMediaSpend,
+                production_cost: channelProductionCost,
+                estimated_kpi: kpi,
+                action_item: actionItem,
+                warning
+            });
+        });
+
+        return {
+            total_budget: budget,
+            production_budget: productionBudget,
+            media_budget: mediaBudget,
+            production_ratio: productionRatio,
+            channels,
+            warnings,
+            disabled_channels: disabledChannels
+        };
     },
 
     /**
