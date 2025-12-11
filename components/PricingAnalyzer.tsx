@@ -1,6 +1,7 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { PricingAnalyzerInput, PricingAnalyzerResult } from '../types';
 import { analyzePricingStrategy } from '../services/geminiService';
+import { PricingAnalyzerService, SavedPricingAnalysis } from '../services/pricingAnalyzerService';
 import {
     DollarSign,
     TrendingUp,
@@ -11,7 +12,12 @@ import {
     BarChart3,
     Loader2,
     AlertCircle,
+    Save,
+    History,
+    X,
+    Trash2
 } from 'lucide-react';
+import { Toast, ToastType } from './Toast';
 
 interface Props {
     isActive: boolean;
@@ -26,12 +32,26 @@ const PricingAnalyzer: React.FC<Props> = ({ isActive }) => {
         competitorMin: 0,
         competitorMax: 0,
         positioning: 'mainstream',
-        fixedCosts: undefined,
+        fixedCosts: 0,
         pricingGoal: '',
     });
     const [result, setResult] = useState<PricingAnalyzerResult | null>(null);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
+
+    // History state
+    const [showHistory, setShowHistory] = useState(false);
+    const [savedAnalyses, setSavedAnalyses] = useState<SavedPricingAnalysis[]>([]);
+    const [toast, setToast] = useState<{ message: string; type: ToastType } | null>(null);
+
+    // Load history on mount
+    useEffect(() => {
+        const loadHistory = async () => {
+            const analyses = await PricingAnalyzerService.getPricingAnalyses();
+            setSavedAnalyses(analyses);
+        };
+        loadHistory();
+    }, []);
     const [progress, setProgress] = useState('');
 
     const handleAnalyze = async () => {
@@ -49,16 +69,63 @@ const PricingAnalyzer: React.FC<Props> = ({ isActive }) => {
         setError(null);
         setResult(null);
 
-        const analysis = await analyzePricingStrategy(input, setProgress);
+        try {
+            const analysis = await analyzePricingStrategy(input, setProgress);
 
-        if (analysis) {
-            setResult(analysis);
-        } else {
-            setError('Không thể phân tích. Vui lòng thử lại.');
+            if (analysis) {
+                setResult(analysis);
+            } else {
+                setError('Không thể phân tích. Vui lòng thử lại.');
+            }
+        } catch (err) {
+            setError('Đã xảy ra lỗi. Vui lòng thử lại.');
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const handleSave = async () => {
+        if (!result) {
+            setToast({ message: 'Chưa có dữ liệu để lưu!', type: 'error' });
+            return;
         }
 
-        setLoading(false);
-        setProgress('');
+        const newAnalysis: SavedPricingAnalysis = {
+            id: Date.now().toString(),
+            name: `${input.productName} - ${new Date().toLocaleDateString()}`,
+            input,
+            result,
+            createdAt: Date.now()
+        };
+
+        const success = await PricingAnalyzerService.savePricingAnalysis(newAnalysis);
+
+        if (success) {
+            const analyses = await PricingAnalyzerService.getPricingAnalyses();
+            setSavedAnalyses(analyses);
+            setToast({ message: 'Đã lưu Pricing Analysis!', type: 'success' });
+        } else {
+            setToast({ message: 'Lỗi khi lưu!', type: 'error' });
+        }
+    };
+
+    const handleLoad = (analysis: SavedPricingAnalysis) => {
+        setInput(analysis.input);
+        setResult(analysis.result);
+        setShowHistory(false);
+        setToast({ message: 'Đã tải Pricing Analysis!', type: 'success' });
+    };
+
+    const handleDelete = async (id: string) => {
+        const success = await PricingAnalyzerService.deletePricingAnalysis(id);
+
+        if (success) {
+            const analyses = await PricingAnalyzerService.getPricingAnalyses();
+            setSavedAnalyses(analyses);
+            setToast({ message: 'Đã xóa!', type: 'success' });
+        } else {
+            setToast({ message: 'Lỗi khi xóa!', type: 'error' });
+        }
     };
 
     // Meter Gauge Component
@@ -128,8 +195,26 @@ const PricingAnalyzer: React.FC<Props> = ({ isActive }) => {
                             <DollarSign className="w-6 h-6 text-emerald-600" />
                         </div>
                         <div>
-                            <h1 className="text-3xl font-bold text-slate-900 tracking-tight">Pricing Analyzer</h1>
-                            <p className="text-slate-500">Phân tích chiến lược giá dựa trên 3 trụ cột: Tài chính, Cạnh tranh, Định vị</p>
+                            <h2 className="text-2xl font-bold text-slate-900 tracking-tight">Pricing Analyzer</h2>
+                            <p className="text-slate-500 text-sm mt-0.5">Phân tích chiến lược giá cả sản phẩm chuyên sâu</p>
+                        </div>
+                        <div className="flex gap-2 ml-auto">
+                            {result && (
+                                <button
+                                    onClick={handleSave}
+                                    className="group bg-white hover:bg-emerald-50 text-slate-700 hover:text-emerald-700 px-4 py-2.5 rounded-xl border border-slate-200 hover:border-emerald-200 shadow-sm hover:shadow-md flex items-center gap-2 text-sm font-bold transition-all"
+                                >
+                                    <Save size={16} className="group-hover:scale-110 transition-transform" />
+                                    Lưu
+                                </button>
+                            )}
+                            <button
+                                onClick={() => setShowHistory(true)}
+                                className="group bg-white hover:bg-blue-50 text-slate-700 hover:text-blue-700 px-4 py-2.5 rounded-xl border border-slate-200 hover:border-blue-200 shadow-sm hover:shadow-md flex items-center gap-2 text-sm font-bold transition-all"
+                            >
+                                <History size={16} className="group-hover:scale-110 transition-transform" />
+                                Lịch sử
+                            </button>
                         </div>
                     </div>
                 </div>
@@ -485,6 +570,38 @@ const PricingAnalyzer: React.FC<Props> = ({ isActive }) => {
                     </div>
                 </div>
             </div>
+
+            {/* History Modal */}
+            {showHistory && (
+                <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+                    <div className="bg-white rounded-3xl w-full max-w-lg shadow-2xl animate-in fade-in zoom-in border border-slate-100 flex flex-col max-h-[80vh]">
+                        <div className="p-6 border-b border-slate-100 flex justify-between items-center bg-slate-50 rounded-t-3xl">
+                            <h3 className="text-xl font-bold text-slate-800 flex items-center gap-2"><History size={20} /> Lịch sử Pricing Analysis</h3>
+                            <button onClick={() => setShowHistory(false)} className="text-slate-400 hover:text-slate-700 bg-white p-1 rounded-full shadow-sm"><X size={20} /></button>
+                        </div>
+                        <div className="p-6 overflow-y-auto space-y-3">
+                            {savedAnalyses.length === 0 ? (
+                                <div className="text-center py-10 text-slate-400">Chưa có Pricing Analysis nào.</div>
+                            ) : savedAnalyses.map(analysis => (
+                                <div key={analysis.id} className="p-4 rounded-2xl border border-slate-100 hover:border-emerald-200 hover:bg-slate-50 transition-all group">
+                                    <div className="flex items-start gap-3">
+                                        <button onClick={() => handleLoad(analysis)} className="flex-1 text-left">
+                                            <div className="font-bold text-slate-800 mb-1">{analysis.name}</div>
+                                            <div className="text-xs text-slate-400 mb-2">{new Date(analysis.createdAt).toLocaleDateString('vi-VN')}</div>
+                                            <div className="text-xs text-emerald-600 font-bold">{analysis.result.verdict.verdict_status}</div>
+                                        </button>
+                                        <button onClick={() => handleDelete(analysis.id)} className="text-slate-400 hover:text-red-600 p-2 rounded-lg hover:bg-red-50 transition-colors opacity-0 group-hover:opacity-100">
+                                            <Trash2 size={16} />
+                                        </button>
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
         </div>
     );
 };

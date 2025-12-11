@@ -3,6 +3,7 @@ import { useForm } from 'react-hook-form';
 import { Zap, Video, Mail, Globe, MessageSquare, Sparkles, Copy, Save, History, Trash2, X, Plus, Loader2, Eye, AlertCircle, Info, CheckCircle2 } from 'lucide-react';
 import { HookGeneratorResult, VideoHook, LandingPageHook, EmailHook, SocialHook } from '../types';
 import { generateHooks, HookInput } from '../services/geminiService';
+import { HookService, SavedHookSet } from '../services/hookService';
 import toast, { Toaster } from 'react-hot-toast';
 
 type TabType = 'video' | 'social' | 'email' | 'web';
@@ -63,12 +64,7 @@ const CopyButton = ({ text }: { text: string }) => {
     );
 };
 
-interface SavedHookSet {
-    id: string;
-    input: HookInput;
-    data: HookGeneratorResult;
-    timestamp: number;
-}
+
 
 const HookGenerator: React.FC = () => {
     const { register, handleSubmit, formState: { errors }, reset } = useForm<HookInput>();
@@ -80,11 +76,13 @@ const HookGenerator: React.FC = () => {
     const [showHistory, setShowHistory] = useState(false);
     const [savedHooks, setSavedHooks] = useState<SavedHookSet[]>([]);
 
+
     React.useEffect(() => {
-        const saved = localStorage.getItem('hook_generator_history');
-        if (saved) {
-            setSavedHooks(JSON.parse(saved));
-        }
+        const loadHooks = async () => {
+            const hooks = await HookService.getHookSets();
+            setSavedHooks(hooks);
+        };
+        loadHooks();
     }, []);
 
     const onSubmit = async (data: HookInput) => {
@@ -115,7 +113,7 @@ const HookGenerator: React.FC = () => {
         }
     };
 
-    const handleSave = () => {
+    const handleSave = async () => {
         if (!hookData || !currentInput) return;
 
         const newSet: SavedHookSet = {
@@ -125,11 +123,15 @@ const HookGenerator: React.FC = () => {
             timestamp: Date.now()
         };
 
-        const updated = [newSet, ...savedHooks];
-        setSavedHooks(updated);
-        localStorage.setItem('hook_generator_history', JSON.stringify(updated));
+        const success = await HookService.saveHookSet(newSet);
 
-        toast.success('Đã lưu!', { icon: '💾' });
+        if (success) {
+            const hooks = await HookService.getHookSets();
+            setSavedHooks(hooks);
+            toast.success('Đã lưu!', { icon: '💾' });
+        } else {
+            toast.error('Lỗi khi lưu!');
+        }
     };
 
     const handleNew = () => {
@@ -147,11 +149,16 @@ const HookGenerator: React.FC = () => {
         toast.success('Đã tải!', { icon: '📂' });
     };
 
-    const handleDelete = (id: string) => {
-        const updated = savedHooks.filter(s => s.id !== id);
-        setSavedHooks(updated);
-        localStorage.setItem('hook_generator_history', JSON.stringify(updated));
-        toast.success('Đã xóa!', { icon: '🗑️' });
+    const handleDelete = async (id: string) => {
+        const success = await HookService.deleteHookSet(id);
+
+        if (success) {
+            const hooks = await HookService.getHookSets();
+            setSavedHooks(hooks);
+            toast.success('Đã xóa!', { icon: '🗑️' });
+        } else {
+            toast.error('Lỗi khi xóa!');
+        }
     };
 
     const tabs = [

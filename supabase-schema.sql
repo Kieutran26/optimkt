@@ -78,7 +78,6 @@ CREATE POLICY "Allow all operations on auto_briefs" ON auto_briefs FOR ALL USING
 -- ===========================================
 
 -- 6. SOP BUILDER TABLE
--- Stores Standard Operating Procedures
 DROP TABLE IF EXISTS sops CASCADE;
 CREATE TABLE sops (
   id TEXT PRIMARY KEY,
@@ -91,7 +90,6 @@ CREATE POLICY "Allow all operations on sops" ON sops FOR ALL USING (true) WITH C
 
 
 -- 7. HOOK GENERATOR TABLE
--- Stores generated hook sets for various channels
 DROP TABLE IF EXISTS hook_sets CASCADE;
 CREATE TABLE hook_sets (
   id TEXT PRIMARY KEY,
@@ -104,7 +102,6 @@ CREATE POLICY "Allow all operations on hook_sets" ON hook_sets FOR ALL USING (tr
 
 
 -- 8. INSIGHT FINDER TABLE
--- Stores deep marketing insights
 DROP TABLE IF EXISTS insights CASCADE;
 CREATE TABLE insights (
   id TEXT PRIMARY KEY,
@@ -116,20 +113,49 @@ ALTER TABLE insights ENABLE ROW LEVEL SECURITY;
 CREATE POLICY "Allow all operations on insights" ON insights FOR ALL USING (true) WITH CHECK (true);
 
 
+-- 9. MASTERMIND STRATEGY TABLE
+DROP TABLE IF EXISTS mastermind_strategies CASCADE;
+CREATE TABLE mastermind_strategies (
+  id TEXT PRIMARY KEY,
+  name TEXT NOT NULL,
+  brand_id TEXT NOT NULL,
+  persona_id TEXT NOT NULL,
+  objective TEXT NOT NULL,
+  perception TEXT NOT NULL,
+  tone TEXT NOT NULL,
+  result JSONB NOT NULL,
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+ALTER TABLE mastermind_strategies ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "Allow all operations on mastermind_strategies" ON mastermind_strategies FOR ALL USING (true) WITH CHECK (true);
+
+
+-- 10. STRATEGIC MODEL GENERATOR TABLE
+DROP TABLE IF EXISTS strategic_models CASCADE;
+CREATE TABLE strategic_models (
+  id TEXT PRIMARY KEY,
+  name TEXT NOT NULL,
+  brand_id TEXT NOT NULL,
+  product_info TEXT NOT NULL,
+  results JSONB NOT NULL,
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+ALTER TABLE strategic_models ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "Allow all operations on strategic_models" ON strategic_models FOR ALL USING (true) WITH CHECK (true);
+
+
 -- ===========================================
 -- NO SAVE FEATURE (No migration needed)
 -- ===========================================
--- 9. Pricing Analyzer - No localStorage/save feature
--- 10. Persona Builder - Uses BrandContext, not localStorage
+-- Pricing Analyzer - No localStorage/save feature
+-- Persona Builder - Uses BrandContext, not localStorage
 
 
 -- ============================================
 -- MIGRATION STATUS
 -- ============================================
--- ✅ Migrated & Ready (5 tables): brands, prompts, customer_journeys, emotion_maps, auto_briefs
--- 📝 Schema Ready (3 tables): sops, hook_sets, insights
--- ❌ No Save Feature (2 features): Pricing Analyzer, Persona Builder
+-- ✅ Migrated & Ready (10 tables): brands, prompts, customer_journeys, emotion_maps, auto_briefs, sops, hook_sets, insights, mastermind_strategies, strategic_models
 -- 
--- Total tables: 8
+-- Total tables: 10
 -- All RLS policies enabled with permissive access
 -- ============================================

@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Brain, Target, Compass, ArrowRight, Loader2, Sparkles, Map, Heart, Lightbulb, Users, CalendarDays, BarChart, History, X, Save, Edit3, Check, Rocket } from 'lucide-react'; import { generateMastermindStrategy } from '../services/geminiService';
+import { MastermindService } from '../services/mastermindService';
 import { StorageService } from '../services/storageService';
 import { useBrand } from './BrandContext';
 import { MastermindStrategy, Persona } from '../types';
@@ -56,7 +57,12 @@ const MastermindStrategyComponent: React.FC<MastermindStrategyProps> = ({ onDepl
         } else {
             setAvailablePersonas([]);
         }
-        setHistoryList(StorageService.getMastermindStrategies());
+
+        const loadHistory = async () => {
+            const strategies = await MastermindService.getMastermindStrategies();
+            setHistoryList(strategies);
+        };
+        loadHistory();
     }, [currentBrand]);
 
     const showToast = (message: string, type: ToastType = 'info') => {
@@ -115,8 +121,13 @@ const MastermindStrategyComponent: React.FC<MastermindStrategyProps> = ({ onDepl
             };
 
             setStrategyResult(newStrategy);
-            StorageService.saveMastermindStrategy(newStrategy);
-            setHistoryList(prev => [newStrategy, ...prev]);
+
+            const success = await MastermindService.saveMastermindStrategy(newStrategy);
+            if (success) {
+                const strategies = await MastermindService.getMastermindStrategies();
+                setHistoryList(strategies);
+            }
+
             setViewMode('dashboard');
         } else {
             showToast("Lỗi khi tạo chiến lược. Vui lòng thử lại.", "error");
@@ -146,17 +157,17 @@ const MastermindStrategyComponent: React.FC<MastermindStrategyProps> = ({ onDepl
         }
     };
 
-    const handleSave = () => {
+    const handleSave = async () => {
         if (strategyResult) {
-            StorageService.saveMastermindStrategy(strategyResult);
-            // Updating history list
-            setHistoryList(prev => {
-                const exists = prev.some(s => s.id === strategyResult.id);
-                if (exists) return prev;
-                return [strategyResult, ...prev];
-            });
-            // Show modal
-            setShowSaveSuccessModal(true);
+            const success = await MastermindService.saveMastermindStrategy(strategyResult);
+
+            if (success) {
+                const strategies = await MastermindService.getMastermindStrategies();
+                setHistoryList(strategies);
+                setShowSaveSuccessModal(true);
+            } else {
+                showToast('Lỗi khi lưu chiến lược!', 'error');
+            }
         }
     };
 

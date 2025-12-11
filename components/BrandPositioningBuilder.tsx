@@ -1,11 +1,13 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { BrandPositioningInput, BrandPositioningResult } from '../types';
 import { buildBrandPositioning } from '../services/geminiService';
+import { BrandPositioningService, SavedBrandPositioning } from '../services/brandPositioningService';
 import {
     Compass, AlertTriangle, RefreshCw, Sparkles, Target, MessageSquare, Quote,
     Shield, Mountain, Lightbulb, Crown, Heart, Smile, Users, Palette, Wand2,
-    Search, Swords, Sun, Download, Building2, Tag, FileText, CheckCircle
+    Search, Swords, Sun, Download, Building2, Tag, FileText, CheckCircle, Save, History, X, Trash2
 } from 'lucide-react';
+import { Toast, ToastType } from './Toast';
 
 interface Props {
     isActive: boolean;
@@ -66,6 +68,20 @@ const BrandPositioningBuilder: React.FC<Props> = ({ isActive }) => {
     const [error, setError] = useState('');
     const canvasRef = useRef<HTMLDivElement>(null);
 
+    // History state
+    const [showHistory, setShowHistory] = useState(false);
+    const [savedPositionings, setSavedPositionings] = useState<SavedBrandPositioning[]>([]);
+    const [toast, setToast] = useState<{ message: string; type: ToastType } | null>(null);
+
+    // Load history on mount
+    useEffect(() => {
+        const loadHistory = async () => {
+            const positionings = await BrandPositioningService.getBrandPositionings();
+            setSavedPositionings(positionings);
+        };
+        loadHistory();
+    }, []);
+
     if (!isActive) return null;
 
     const handleBuild = async () => {
@@ -119,6 +135,50 @@ const BrandPositioningBuilder: React.FC<Props> = ({ isActive }) => {
         }
     };
 
+    const handleSave = async () => {
+        if (!result) {
+            setToast({ message: 'Chưa có dữ liệu để lưu!', type: 'error' });
+            return;
+        }
+
+        const newPositioning: SavedBrandPositioning = {
+            id: Date.now().toString(),
+            name: `${input.brandName} - ${new Date().toLocaleDateString()}`,
+            input,
+            result,
+            createdAt: Date.now()
+        };
+
+        const success = await BrandPositioningService.saveBrandPositioning(newPositioning);
+
+        if (success) {
+            const positionings = await BrandPositioningService.getBrandPositionings();
+            setSavedPositionings(positionings);
+            setToast({ message: 'Đã lưu Brand Positioning!', type: 'success' });
+        } else {
+            setToast({ message: 'Lỗi khi lưu!', type: 'error' });
+        }
+    };
+
+    const handleLoad = (positioning: SavedBrandPositioning) => {
+        setInput(positioning.input);
+        setResult(positioning.result);
+        setShowHistory(false);
+        setToast({ message: 'Đã tải Brand Positioning!', type: 'success' });
+    };
+
+    const handleDelete = async (id: string) => {
+        const success = await BrandPositioningService.deleteBrandPositioning(id);
+
+        if (success) {
+            const positionings = await BrandPositioningService.getBrandPositionings();
+            setSavedPositionings(positionings);
+            setToast({ message: 'Đã xóa!', type: 'success' });
+        } else {
+            setToast({ message: 'Lỗi khi xóa!', type: 'error' });
+        }
+    };
+
     return (
         <div className="w-full p-8 animate-in fade-in duration-500">
             {/* Header */}
@@ -132,15 +192,33 @@ const BrandPositioningBuilder: React.FC<Props> = ({ isActive }) => {
                         <p className="text-slate-500 text-sm mt-0.5">Xây dựng bộ khung định vị thương hiệu chuẩn MBA</p>
                     </div>
                 </div>
-                {result && (
+                <div className="flex gap-2">
+                    {result && (
+                        <>
+                            <button
+                                onClick={handleSave}
+                                className="group bg-white hover:bg-emerald-50 text-slate-700 hover:text-emerald-700 px-4 py-2.5 rounded-xl border border-slate-200 hover:border-emerald-200 shadow-sm hover:shadow-md flex items-center gap-2 text-sm font-bold transition-all"
+                            >
+                                <Save size={16} className="group-hover:scale-110 transition-transform" />
+                                Lưu
+                            </button>
+                            <button
+                                onClick={handleExportPDF}
+                                className="flex items-center gap-2 px-5 py-2.5 bg-teal-600 hover:bg-teal-700 text-white font-semibold rounded-xl shadow-sm hover:shadow-md transition-all"
+                            >
+                                <Download className="w-4 h-4" />
+                                Tải PDF
+                            </button>
+                        </>
+                    )}
                     <button
-                        onClick={handleExportPDF}
-                        className="flex items-center gap-2 px-5 py-2.5 bg-teal-600 hover:bg-teal-700 text-white font-semibold rounded-xl shadow-sm hover:shadow-md transition-all"
+                        onClick={() => setShowHistory(true)}
+                        className="group bg-white hover:bg-blue-50 text-slate-700 hover:text-blue-700 px-4 py-2.5 rounded-xl border border-slate-200 hover:border-blue-200 shadow-sm hover:shadow-md flex items-center gap-2 text-sm font-bold transition-all"
                     >
-                        <Download className="w-4 h-4" />
-                        Tải Brand Guidelines (PDF)
+                        <History size={16} className="group-hover:scale-110 transition-transform" />
+                        Lịch sử
                     </button>
-                )}
+                </div>
             </div>
 
             <div className="grid grid-cols-1 xl:grid-cols-12 gap-8">
@@ -386,6 +464,38 @@ const BrandPositioningBuilder: React.FC<Props> = ({ isActive }) => {
                     )}
                 </div>
             </div>
+
+            {/* History Modal */}
+            {showHistory && (
+                <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+                    <div className="bg-white rounded-3xl w-full max-w-lg shadow-2xl animate-in fade-in zoom-in border border-slate-100 flex flex-col max-h-[80vh]">
+                        <div className="p-6 border-b border-slate-100 flex justify-between items-center bg-slate-50 rounded-t-3xl">
+                            <h3 className="text-xl font-bold text-slate-800 flex items-center gap-2"><History size={20} /> Lịch sử Brand Positioning</h3>
+                            <button onClick={() => setShowHistory(false)} className="text-slate-400 hover:text-slate-700 bg-white p-1 rounded-full shadow-sm"><X size={20} /></button>
+                        </div>
+                        <div className="p-6 overflow-y-auto space-y-3">
+                            {savedPositionings.length === 0 ? (
+                                <div className="text-center py-10 text-slate-400">Chưa có Brand Positioning nào.</div>
+                            ) : savedPositionings.map(positioning => (
+                                <div key={positioning.id} className="p-4 rounded-2xl border border-slate-100 hover:border-teal-200 hover:bg-slate-50 transition-all group">
+                                    <div className="flex items-start gap-3">
+                                        <button onClick={() => handleLoad(positioning)} className="flex-1 text-left">
+                                            <div className="font-bold text-slate-800 mb-1">{positioning.name}</div>
+                                            <div className="text-xs text-slate-400 mb-2">{new Date(positioning.createdAt).toLocaleDateString('vi-VN')}</div>
+                                            <div className="text-xs text-teal-600 font-bold">{positioning.result.brand_identity.archetype}</div>
+                                        </button>
+                                        <button onClick={() => handleDelete(positioning.id)} className="text-slate-400 hover:text-red-600 p-2 rounded-lg hover:bg-red-50 transition-colors opacity-0 group-hover:opacity-100">
+                                            <Trash2 size={16} />
+                                        </button>
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
         </div>
     );
 };

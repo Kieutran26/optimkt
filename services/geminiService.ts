@@ -46,20 +46,22 @@ export const generateMultiPlatformContent = async (
     const systemPrompt = `You are an expert social media content creator and SEO specialist.
   Your task is to take the provided "Sample Content" and rewrite / optimize it for each of the requested platforms.
   
+  **CRITICAL: ALL GENERATED CONTENT MUST BE IN VIETNAMESE LANGUAGE.**
+  
   Guidelines per platform:
-- Facebook: Engaging, conversational, encourage sharing / comments.Use moderate emojis.
-  - Instagram: Visual - oriented caption, use spacing, engaging hook, and 10 - 15 relevant hashtags at the bottom.
-  - LinkedIn: Professional tone, industry insights, business value focus.Minimal emojis.
-  - Threads: Short, punchy, Twitter - style conversation starter.
-  - TikTok: A script or caption concept.Very short, trendy, use popular hashtags.
-  - SEO Web: Title tag, Meta Description, and a short SEO - optimized paragraph(100 - 150 words) focusing on keywords.
+- Facebook: Engaging, conversational, encourage sharing / comments. Use moderate emojis.
+- Instagram: Visual storytelling, concise caption + hashtags. Emoji heavy.
+- LinkedIn: Professional tone, thought leadership, value-driven. Minimal emojis.
+- Threads: Casual, conversational, under 500 chars. Some emojis.
+- TikTok: Trendy, hook-first, call-outs. High energy. Emojis + slang OK.
+- SEO Web: Return a JSON object with {title_tag, meta_description, paragraph} optimized for search engines.
 
-    IMPORTANT: Return the response strictly as a valid JSON object where keys are the platform names(lower case: facebook, instagram, linkedin, threads, tiktok, seo).
-  For most platforms, the value should be a simple string.
-    However, for 'seo', the value MUST be an object with keys: "title_tag", "meta_description", and "paragraph".
-  Do not wrap in markdown code blocks.`;
+  Output Format: JSON object mapping platform name to its optimized content string (or object for SEO).
+  Example: { "facebook": "...", "instagram": "...", "linkedin": "...", "seo": {...} }
+  
+  **IMPORTANT: Generate ALL content in VIETNAMESE. Do not use English.**`;
 
-    const prompt = `Sample Content: "${sampleContent}"\n\nTarget Platforms: ${platforms.join(', ')} `;
+    const prompt = `Sample Content / Topic:\n"${sampleContent}"\n\nPlatforms requested: ${platforms.join(', ')}\n\nGenerate optimized content for each platform IN VIETNAMESE.`;
 
     try {
         const response = await ai.models.generateContent({

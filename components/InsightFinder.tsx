@@ -3,14 +3,10 @@ import { useForm } from 'react-hook-form';
 import { Brain, Sparkles, Loader2, Search, TrendingUp, AlertTriangle, DollarSign, Users, History, Save, Plus, Trash2 } from 'lucide-react';
 import { InsightFinderResult, InsightFinderInput } from '../types';
 import { generateDeepInsights } from '../services/geminiService';
+import { InsightService, SavedInsight } from '../services/insightService';
 import toast, { Toaster } from 'react-hot-toast';
 
-interface SavedInsight {
-    id: string;
-    input: InsightFinderInput;
-    data: InsightFinderResult;
-    timestamp: number;
-}
+
 
 const InsightFinder: React.FC = () => {
     const { register, handleSubmit, formState: { errors }, reset } = useForm<InsightFinderInput>();
@@ -56,7 +52,7 @@ const InsightFinder: React.FC = () => {
         }
     };
 
-    const handleSave = () => {
+    const handleSave = async () => {
         if (!insightData || !currentInput) return;
 
         const newInsight: SavedInsight = {
@@ -66,14 +62,18 @@ const InsightFinder: React.FC = () => {
             timestamp: Date.now()
         };
 
-        const updated = [newInsight, ...savedInsights];
-        setSavedInsights(updated);
-        localStorage.setItem('insight_finder_history', JSON.stringify(updated));
+        const success = await InsightService.saveInsight(newInsight);
 
-        toast.success('Đã lưu Insight!', {
-            icon: '💾',
-            style: { borderRadius: '8px', background: '#f0fdf4', border: '1px solid #bbf7d0' }
-        });
+        if (success) {
+            const insights = await InsightService.getInsights();
+            setSavedInsights(insights);
+            toast.success('Đã lưu Insight!', {
+                icon: '💾',
+                style: { borderRadius: '8px', background: '#f0fdf4', border: '1px solid #bbf7d0' }
+            });
+        } else {
+            toast.error('Lỗi khi lưu!');
+        }
     };
 
     const handleLoad = (insight: SavedInsight) => {
@@ -84,11 +84,16 @@ const InsightFinder: React.FC = () => {
         toast.success('Đã tải Insight!', { icon: '📂' });
     };
 
-    const handleDelete = (id: string) => {
-        const updated = savedInsights.filter(s => s.id !== id);
-        setSavedInsights(updated);
-        localStorage.setItem('insight_finder_history', JSON.stringify(updated));
-        toast.success('Đã xóa!', { icon: '🗑️' });
+    const handleDelete = async (id: string) => {
+        const success = await InsightService.deleteInsight(id);
+
+        if (success) {
+            const insights = await InsightService.getInsights();
+            setSavedInsights(insights);
+            toast.success('Đã xóa!', { icon: '🗑️' });
+        } else {
+            toast.error('Lỗi khi xóa!');
+        }
     };
 
     const handleNew = () => {
