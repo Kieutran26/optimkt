@@ -1923,97 +1923,355 @@ YÊU CẦU ĐẦU RA:
     }
 };
 
+// ═══════════════════════════════════════════════════════════════════════════════
+// ADS HEALTH CHECKER - Performance Marketing Auditor V2
+// Role: Senior Performance Marketing Auditor with 10 years experience
+// Style: Skeptical, Data-driven, Straight-talking
+// ═══════════════════════════════════════════════════════════════════════════════
+
+// BENCHMARK DATABASE (Source of Truth)
+const ADS_HEALTH_BENCHMARKS: Record<string, {
+    ctr: { min: number; avg: number; good: number };
+    cpc_max_vnd?: number;
+    cpl_warning_vnd?: number;
+    cr_target?: number;
+    advice: string;
+}> = {
+    'thoi_trang': {
+        ctr: { min: 1.5, avg: 2.2, good: 3.5 },
+        cpc_max_vnd: 8000,
+        advice: 'Ưu tiên Visual. Nếu CTR thấp, thay đổi hình ảnh ngay.'
+    },
+    'my_pham': {
+        ctr: { min: 1.2, avg: 1.8, good: 3.0 },
+        cpc_max_vnd: 12000,
+        advice: 'Cạnh tranh cao. Chú ý CPM, nếu >150k cần mở rộng tệp.'
+    },
+    'bat_dong_san': {
+        ctr: { min: 0.7, avg: 1.1, good: 2.0 },
+        cpl_warning_vnd: 400000,
+        advice: 'Quan trọng là CPL. CTR thấp là bình thường.'
+    },
+    'gia_dung': {
+        ctr: { min: 1.5, avg: 2.0, good: 3.0 },
+        cr_target: 4.0,
+        advice: 'Sản phẩm dễ mua. CR phải cao mới có lãi.'
+    },
+    'fnb': {
+        ctr: { min: 2.0, avg: 3.0, good: 5.0 },
+        advice: 'Hình ảnh món ăn quyết định 80%.'
+    },
+    'giao_duc': {
+        ctr: { min: 0.8, avg: 1.5, good: 2.5 },
+        cpl_warning_vnd: 200000,
+        advice: 'Lead quality quan trọng hơn số lượng. Chú ý CR từ lead sang học viên.'
+    },
+    'cong_nghe': {
+        ctr: { min: 1.0, avg: 1.8, good: 3.0 },
+        cpc_max_vnd: 15000,
+        advice: 'Target chính xác là chìa khóa. B2B thì CTR thấp hơn B2C.'
+    },
+    'default': {
+        ctr: { min: 1.5, avg: 2.0, good: 3.0 },
+        advice: 'Benchmark trung bình ngành. Cần data cụ thể hơn để phân tích chính xác.'
+    }
+};
+
+// Normalize industry name to match benchmark keys
+const normalizeIndustry = (industry: string): string => {
+    const lower = industry.toLowerCase().trim();
+    if (lower.includes('thời trang') || lower.includes('thoi trang') || lower.includes('fashion')) return 'thoi_trang';
+    if (lower.includes('mỹ phẩm') || lower.includes('my pham') || lower.includes('cosmetic') || lower.includes('beauty')) return 'my_pham';
+    if (lower.includes('bất động sản') || lower.includes('bat dong san') || lower.includes('real estate')) return 'bat_dong_san';
+    if (lower.includes('gia dụng') || lower.includes('gia dung') || lower.includes('home')) return 'gia_dung';
+    if (lower.includes('f&b') || lower.includes('fnb') || lower.includes('đồ ăn') || lower.includes('food') || lower.includes('nhà hàng')) return 'fnb';
+    if (lower.includes('giáo dục') || lower.includes('giao duc') || lower.includes('education') || lower.includes('học')) return 'giao_duc';
+    if (lower.includes('công nghệ') || lower.includes('cong nghe') || lower.includes('tech') || lower.includes('software')) return 'cong_nghe';
+    return 'default';
+};
+
+// Data Sanity Check Types
+interface SanityCheckResult {
+    isValid: boolean;
+    calculatedMetrics: {
+        ctr: number;
+        cpm: number;
+        cpc: number;
+        cr: number;
+        cpa: number;
+    };
+    anomalies: Array<{
+        type: 'error' | 'warning';
+        message: string;
+    }>;
+}
+
+// Pre-AI validation function
+const performDataSanityCheck = (spend: number, impressions: number, clicks: number, conversions: number): SanityCheckResult => {
+    const anomalies: SanityCheckResult['anomalies'] = [];
+
+    // Calculate metrics using strict formulas
+    const ctr = impressions > 0 ? (clicks / impressions) * 100 : 0;
+    const cpm = impressions > 0 ? (spend / impressions) * 1000 : 0;
+    const cpc = clicks > 0 ? spend / clicks : 0;
+    const cr = clicks > 0 ? (conversions / clicks) * 100 : 0;
+    const cpa = conversions > 0 ? spend / conversions : 0;
+
+    // Anomaly Detection Rules
+    // Rule 1: Clicks > Impressions = Impossible
+    if (clicks > impressions) {
+        anomalies.push({
+            type: 'error',
+            message: `❌ DỮ LIỆU PHI LOGIC: Clicks (${clicks.toLocaleString()}) > Impressions (${impressions.toLocaleString()}). Không thể có nhiều click hơn số lần hiển thị.`
+        });
+    }
+
+    // Rule 2: Conversions > Clicks = Impossible (usually)
+    if (conversions > clicks) {
+        anomalies.push({
+            type: 'error',
+            message: `❌ DỮ LIỆU PHI LOGIC: Conversions (${conversions.toLocaleString()}) > Clicks (${clicks.toLocaleString()}). Kiểm tra lại tracking hoặc attribution.`
+        });
+    }
+
+    // Rule 3: CTR > 15% = Suspicious (possible click fraud)
+    if (ctr > 15) {
+        anomalies.push({
+            type: 'warning',
+            message: `⚠️ CTR CAO BẤT THƯỜNG (${ctr.toFixed(2)}%): Nghi ngờ Click ảo hoặc Bot. Kiểm tra kỹ nguồn traffic.`
+        });
+    }
+
+    // Rule 4: CR > 100% = Tracking Error
+    if (cr > 100) {
+        anomalies.push({
+            type: 'error',
+            message: `❌ LỖI TRACKING: CR = ${cr.toFixed(2)}% (>100%). Kiểm tra lại Pixel/Conversion API.`
+        });
+    }
+
+    // Rule 5: Zero data warnings
+    if (impressions === 0) {
+        anomalies.push({
+            type: 'warning',
+            message: '⚠️ Chưa có Impressions. Chiến dịch chưa chạy hoặc data chưa cập nhật.'
+        });
+    }
+
+    // Rule 6: Currency Detection - Suspiciously low CPC (VND context)
+    if (cpc > 0 && cpc < 100) {
+        anomalies.push({
+            type: 'warning',
+            message: `⚠️ CPC RẤT THẤP (${cpc.toFixed(2)} VNĐ): Giá thầu có thể quá thấp để phân phối. Kiểm tra lại đơn vị tiền tệ hoặc dữ liệu nhập vào.`
+        });
+    }
+
+    // Rule 7: CPM sanity check (too low = suspicious)
+    if (cpm > 0 && cpm < 1000) {
+        anomalies.push({
+            type: 'warning',
+            message: `⚠️ CPM RẤT THẤP (${cpm.toFixed(0)} VNĐ): CPM thường từ 5,000-200,000đ. Kiểm tra lại dữ liệu hoặc đơn vị.`
+        });
+    }
+
+    const hasErrors = anomalies.some(a => a.type === 'error');
+
+    return {
+        isValid: !hasErrors,
+        calculatedMetrics: { ctr, cpm, cpc, cr, cpa },
+        anomalies
+    };
+};
+
 export const checkAdsHealth = async (
     input: AdsHealthInput,
     onProgress?: (step: string) => void
 ): Promise<AdsHealthResult | null> => {
-    onProgress?.('Initializing Ads Doctor...');
+    onProgress?.('Khởi động Senior Media Buyer & Strategist (Profit-First)...');
 
-    // Prepare data string with basic cleaning (remove 'đ', commas)
-    let dataStr = '';
+    // Extract core metrics
+    let spend = 0, impressions = 0, clicks = 0, conversions = 0;
+    // V3 Business Metrics
+    let revenue = 0, duration = 1, frequency = 0, reach = 0;
+
     if (input.dataMode === 'manual' && input.manualMetrics) {
-        dataStr = `
-        Spend: ${input.manualMetrics.spend}
-        Impressions: ${input.manualMetrics.impressions}
-        Clicks: ${input.manualMetrics.clicks}
-        Conversions: ${input.manualMetrics.conversions}
-        `;
-    } else {
-        const raw = input.rawText || '';
-        // Clean special characters like 'đ' and commas for number parsing consistency if needed, 
-        // strictly speaking the AI can handle it, but user asked for "Clean Data".
-        // We'll clean it before sending to context just to be safe.
-        dataStr = raw.replace(/[đ,]/g, '');
+        spend = input.manualMetrics.spend || 0;
+        impressions = input.manualMetrics.impressions || 0;
+        clicks = input.manualMetrics.clicks || 0;
+        conversions = input.manualMetrics.conversions || 0;
+        // V3 fields
+        revenue = input.manualMetrics.revenue || 0;
+        duration = input.manualMetrics.duration || 1;
+        frequency = input.manualMetrics.frequency || 0;
+        reach = input.manualMetrics.reach || 0;
+    } else if (input.rawText) {
+        // Parse from raw text - extract numbers
+        const numbers = input.rawText.replace(/[đ,]/g, '').match(/[\d.]+/g)?.map(Number) || [];
+        if (numbers.length >= 4) {
+            spend = numbers[0] || 0;
+            impressions = numbers[1] || 0;
+            clicks = numbers[2] || 0;
+            conversions = numbers[3] || 0;
+            revenue = numbers[4] || 0;
+        }
     }
 
-    const systemPrompt = `You are a Senior Performance Marketer and Data Scientist. 
-    Your task is to analyze raw advertising metrics and diagnose campaign health based on a strict Diagnostic Matrix.
-    
-    IMPORTANT: OUTPUT IN VIETNAMESE (Tiếng Việt) for all explanations, diagnosis, status, and action details. Keep JSON keys in English.
-    
-    CONTEXT:
-    - Industry: ${input.industry}
-    - Platform: ${input.platform}
-    
-    DIAGNOSTIC LOGIC (Apply this strictly):
-    
-    1. Contextual Benchmarking:
-       - Establish baseline CTR, CPM, CPC, CR based on Industry & Platform.
-       
-    2. Root Cause Analysis (Identify ONE primary issue):
-       - Creative Fatigue: CPM stable, CTR drops over time, Frequency > 2.0.
-       - Wrong Targeting: CTR very low (<0.5%) from start, CPM low.
-       - High Competition: CTR good, but CPC very high due to high CPM.
-       - Landing Page Issue: CTR high, CPC cheap, but CR = 0 or very low.
-       
-    3. Structural Recommendation:
-       - Low budget (<500k/day) & many adsets -> Consolidate.
-       - Good efficiency (ROAS > 2.0) -> Scale (Duplicate or +20% budget).
-       
-    OUTPUT FORMAT (Strict JSON):
-    {
-      "health_score": number (0-100),
-      "status": "Tốt" | "Cảnh báo" | "Nguy hiểm",
-      "metrics_analysis": {
-        "cpm": { "value": number, "assessment": "Thấp"|"Tốt"|"Cao", "benchmark": "string" },
-        "ctr": { "value": number (percent), "assessment": "Thấp"|"Tốt"|"Cao", "benchmark": "string" },
-        "cpc": { "value": number, "assessment": "Rẻ"|"Tốt"|"Đắt" },
-        "cr": { "value": number (percent), "assessment": "Thấp"|"Tốt"|"Cao" }
-      },
-      "diagnosis": {
-        "primary_issue": "string (Title in Vietnamese)",
-        "explanation": "string (Detailed explanation in Vietnamese)"
-      },
-      "actionable_steps": [
-        { "action": "Cắt giảm"|"Làm mới Content"|"Cấu trúc lại"|"Scale", "detail": "string (Action detail in Vietnamese)" }
-      ]
+    // Auto-calculate Frequency from Reach if not provided
+    if (frequency === 0 && reach > 0 && impressions > 0) {
+        frequency = impressions / reach;
     }
-    `;
 
-    const userPrompt = `Analyze this clean data:\n${dataStr}`;
+    // Step 1: Data Sanity Check (Pre-AI validation)
+    onProgress?.('Kiểm tra tính logic dữ liệu (Data Sanity Check)...');
+    const sanityCheck = performDataSanityCheck(spend, impressions, clicks, conversions);
 
-    onProgress?.('Analyzing metrics & benchmarking...');
+    // Step 2: Calculate V3 Business Metrics
+    const roas = spend > 0 ? revenue / spend : 0;
+    const aov = conversions > 0 ? revenue / conversions : 0;
+    const cpa = sanityCheck.calculatedMetrics.cpa;
+    const ctr = sanityCheck.calculatedMetrics.ctr;
+    const dailySpend = duration > 0 ? spend / duration : spend;
+
+    // Get industry benchmark
+    const industryKey = normalizeIndustry(input.industry);
+    const benchmark = ADS_HEALTH_BENCHMARKS[industryKey];
+
+    // Build anomaly report for AI
+    const anomalyReport = sanityCheck.anomalies.length > 0
+        ? sanityCheck.anomalies.map(a => a.message).join('\n')
+        : 'Không phát hiện bất thường.';
+
+    // Step 3: Build Diagnostic Matrix Analysis
+    let diagnosticInsights = '';
+
+    // Content vs Audience Analysis (using CTR + Frequency)
+    if (ctr < 1 && frequency < 1.2) {
+        diagnosticInsights += `\n🎨 [CREATIVE ISSUE] CTR thấp (${ctr.toFixed(2)}%) + Frequency thấp (${frequency.toFixed(2)}): Nội dung không hấp dẫn. Khách chưa xem nhiều nhưng đã không muốn click.`;
+    } else if (ctr < 1 && frequency > 2.5) {
+        diagnosticInsights += `\n😫 [AD FATIGUE] CTR thấp + Frequency cao (${frequency.toFixed(2)}): Bão hòa tệp! Khách đã xem quá nhiều lần và chán. Cần thay đổi tệp hoặc làm mới Creative.`;
+    }
+
+    // Profitability Analysis (using CPA + ROAS)
+    if (revenue > 0) {
+        if (cpa > 0 && roas >= 3.0) {
+            diagnosticInsights += `\n💰 [HIGH VALUE] CPA cao nhưng ROAS ${roas.toFixed(2)}x: Trạng thái TỐT! Sản phẩm giá trị cao. Tiếp tục Scale.`;
+        } else if (cpa > 0 && cpa < aov * 0.3 && roas < 1.5) {
+            diagnosticInsights += `\n⚠️ [THIN MARGIN] CPA thấp nhưng ROAS chỉ ${roas.toFixed(2)}x: NGUY HIỂM! Bán được nhiều nhưng lỗ hoặc biên lãi mỏng. Cần tăng AOV hoặc cắt giảm chi phí.`;
+        } else if (roas < 1.0) {
+            diagnosticInsights += `\n🔥 [LOSING MONEY] ROAS ${roas.toFixed(2)}x < 1.0: Đang ĐỐT TIỀN! Mỗi 1đ chi ra chỉ thu về ${roas.toFixed(2)}đ. Dừng ngay hoặc tối ưu urgently.`;
+        }
+    }
+
+    // Scale opportunity check
+    if (roas >= 2.5 && ctr >= benchmark.ctr.avg && frequency < 2.0) {
+        diagnosticInsights += `\n🚀 [SCALE OPPORTUNITY] ROAS ${roas.toFixed(2)}x, CTR tốt, Frequency còn thấp: CƠ HỘI SCALE! Có thể tăng 20-50% ngân sách.`;
+    }
+
+    // Step 4: Prepare AI Prompt with Profit-First persona
+    onProgress?.('Đang phân tích với tư duy Profit-First...');
+
+    const systemPrompt = `### ROLE & CONTEXT:
+Bạn là Senior Media Buyer & Marketing Strategist với tư duy "Profit-First" (Lợi nhuận là trên hết).
+Phong cách: Thẳng thắn, tập trung vào lợi nhuận cuối cùng (ROAS), không chỉ nhìn CTR/CPC.
+
+### THÔNG TIN ĐẦU VÀO:
+- Nền tảng: ${input.platform}
+- Ngành hàng: ${input.industry} (Key: ${industryKey})
+- Thời gian chạy: ${duration} ngày
+- Chi tiêu/ngày: ${dailySpend.toLocaleString()} VNĐ
+
+### HIỆU SUẤT PHỄU (Funnel Metrics):
+- Chi tiêu (Spend): ${spend.toLocaleString()} VNĐ
+- Hiển thị (Impressions): ${impressions.toLocaleString()}
+- Lượt nhấp (Clicks): ${clicks.toLocaleString()}
+- Tần suất (Frequency): ${frequency.toFixed(2)}
+- Chuyển đổi (Conversions): ${conversions.toLocaleString()}
+
+### HIỆU QUẢ KINH DOANH (Business Metrics):
+- Doanh thu (Revenue): ${revenue.toLocaleString()} VNĐ
+- ROAS (Return on Ad Spend): ${roas.toFixed(2)}x
+- AOV (Average Order Value): ${aov.toLocaleString()} VNĐ
+- CPA (Cost Per Action): ${cpa.toLocaleString()} VNĐ
+
+### CHỈ SỐ ĐÃ TÍNH TOÁN:
+- CTR = ${sanityCheck.calculatedMetrics.ctr.toFixed(4)}%
+- CPM = ${sanityCheck.calculatedMetrics.cpm.toLocaleString()} VNĐ
+- CPC = ${sanityCheck.calculatedMetrics.cpc.toLocaleString()} VNĐ
+- CR = ${sanityCheck.calculatedMetrics.cr.toFixed(4)}%
+
+### ANOMALY DETECTION:
+${anomalyReport}
+
+### DIAGNOSTIC MATRIX ANALYSIS:
+${diagnosticInsights || 'Chưa có insight đặc biệt từ ma trận chẩn đoán.'}
+
+### BENCHMARK NGÀNH (${industryKey.toUpperCase()}):
+${JSON.stringify(benchmark, null, 2)}
+
+### MA TRẬN CHẨN ĐOÁN (PHẢI TUÂN THỦ):
+1. Về Nội dung & Tệp:
+   - CTR thấp (<1%) + Frequency thấp (<1.2): Lỗi do Creative kém
+   - CTR thấp + Frequency cao (>2.5): Lỗi do Bão hòa tệp (Ad Fatigue)
+2. Về Hiệu quả Kinh doanh:
+   - CPA cao + ROAS cao (>3.0): TỐT - Tiếp tục Scale
+   - CPA thấp + ROAS thấp (<1.5): NGUY HIỂM - Bán nhiều nhưng lỗ
+
+### OUTPUT FORMAT (Strict JSON):
+{
+  "health_score": number (0-100, dựa trên ROAS và khả năng mở rộng),
+  "status": "Tốt" | "Cần theo dõi" | "Nguy kịch",
+  "metrics_analysis": {
+    "cpm": { "value": number, "assessment": "string" },
+    "ctr": { "value": number, "assessment": "string", "benchmark": "string" },
+    "cpc": { "value": number, "assessment": "string" },
+    "cr": { "value": number, "assessment": "string" },
+    "cpa": { "value": number, "assessment": "string" },
+    "roas": { "value": ${roas.toFixed(2)}, "assessment": "string (so với break-even 2.0x)" },
+    "aov": { "value": ${aov.toFixed(0)}, "assessment": "string" },
+    "frequency": { "value": ${frequency.toFixed(2)}, "assessment": "string (lý tưởng 1.5-2.5)" }
+  },
+  "diagnosis": {
+    "primary_issue": "string (Tiêu đề vấn đề chính)",
+    "explanation": "string (Phân tích gốc rễ sử dụng Frequency để phân biệt Creative Issue vs Ad Fatigue, và ROAS để đánh giá thay vì chỉ CPA)",
+    "root_cause": "creative_fatigue|audience_exhaustion|low_profitability|scale_opportunity|tracking_issue"
+  },
+  "actionable_steps": [
+    { "action": "string", "detail": "string (cụ thể, có con số)", "priority": "urgent|high|medium|low" }
+  ],
+  "break_even_roas": 2.5
+}`;
+
+    const userPrompt = `Phân tích dữ liệu ads này với tư duy Profit-First. Tập trung vào ROAS và Frequency để chỉ ra lỗ hổng đốt tiền hoặc cơ hội Scale.`;
+
+    onProgress?.('Đang lập phác đồ điều trị Profit-First...');
 
     try {
         const response = await ai.models.generateContent({
-            model: 'gemini-2.0-flash-exp',
+            model: 'gemini-2.5-flash',
             contents: userPrompt,
             config: {
                 systemInstruction: systemPrompt,
-                temperature: 0.5,
+                temperature: 0.4,
                 responseMimeType: 'application/json',
                 safetySettings: SAFETY_SETTINGS,
             },
         });
 
-        onProgress?.('Formulating action plan...');
+        onProgress?.('Hoàn tất chẩn đoán!');
 
         const text = response.text?.trim();
         if (!text) return null;
 
         // Clean markdown if present
         const jsonStr = text.replace(/```json|```/g, '').trim();
-        return JSON.parse(jsonStr) as AdsHealthResult;
+        const result = JSON.parse(jsonStr) as AdsHealthResult;
+
+        // Inject anomalies into the result for UI display
+        if (sanityCheck.anomalies.length > 0) {
+            result.diagnosis.explanation = `[CẢNH BÁO TỪ SANITY CHECK]\n${anomalyReport}\n\n${result.diagnosis.explanation}`;
+        }
+
+        return result;
     } catch (error) {
         console.error('Ads Health Check Error:', error);
         return null;

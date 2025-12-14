@@ -776,27 +776,41 @@ export interface AdsHealthInput {
     impressions: number;
     clicks: number;
     conversions: number;
+    // New V3 fields for Profit-First analysis
+    duration?: number;      // Days running
+    frequency?: number;     // Times shown per person
+    reach?: number;         // Unique people reached (alternative to frequency)
+    revenue?: number;       // Total revenue/conversion value
   };
   rawText?: string;
 }
 
 export interface AdsHealthResult {
   health_score: number;
-  status: 'Good' | 'Warning' | 'Critical';
+  status: 'Tốt' | 'Cần theo dõi' | 'Nguy kịch' | 'Good' | 'Warning' | 'Critical';
   metrics_analysis: {
-    cpm: { value: number; assessment: string; benchmark: string };
-    ctr: { value: number; assessment: string; benchmark: string };
+    cpm: { value: number; assessment: string; benchmark?: string };
+    ctr: { value: number; assessment: string; benchmark?: string };
     cpc: { value: number; assessment: string };
     cr: { value: number; assessment: string };
+    cpa?: { value: number; assessment: string };
+    // New V3 metrics for Profit-First analysis
+    roas?: { value: number; assessment: string };
+    aov?: { value: number; assessment: string };
+    frequency?: { value: number; assessment: string };
   };
   diagnosis: {
     primary_issue: string;
     explanation: string;
+    // New V3: Root cause category
+    root_cause?: 'creative_fatigue' | 'audience_exhaustion' | 'low_profitability' | 'scale_opportunity' | 'tracking_issue';
   };
   actionable_steps: Array<{
     action: string;
     detail: string;
+    priority?: 'urgent' | 'high' | 'medium' | 'low';
   }>;
+  break_even_roas?: number;
 }
 
 // --- BRAND POSITIONING BUILDER ---

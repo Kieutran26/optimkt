@@ -13,7 +13,17 @@ const AdsHealthChecker: React.FC<Props> = ({ isActive }) => {
         platform: 'Facebook Ads',
         industry: '',
         dataMode: 'paste',
-        manualMetrics: { spend: 0, impressions: 0, clicks: 0, conversions: 0 },
+        manualMetrics: {
+            spend: 0,
+            impressions: 0,
+            clicks: 0,
+            conversions: 0,
+            // V3 Business Metrics
+            revenue: 0,
+            duration: 0,
+            frequency: 0,
+            reach: 0
+        },
         rawText: ''
     });
     const [result, setResult] = useState<AdsHealthResult | null>(null);
@@ -49,7 +59,7 @@ const AdsHealthChecker: React.FC<Props> = ({ isActive }) => {
                 platform: 'Facebook Ads',
                 industry: '',
                 dataMode: 'paste',
-                manualMetrics: { spend: 0, impressions: 0, clicks: 0, conversions: 0 },
+                manualMetrics: { spend: 0, impressions: 0, clicks: 0, conversions: 0, revenue: 0, duration: 0, frequency: 0, reach: 0 },
                 rawText: ''
             });
             setResult(null);
@@ -104,7 +114,7 @@ const AdsHealthChecker: React.FC<Props> = ({ isActive }) => {
                 platform: 'Facebook Ads',
                 industry: '',
                 dataMode: 'paste',
-                manualMetrics: { spend: 0, impressions: 0, clicks: 0, conversions: 0 },
+                manualMetrics: { spend: 0, impressions: 0, clicks: 0, conversions: 0, revenue: 0, duration: 0, frequency: 0, reach: 0 },
                 rawText: ''
             });
             setResult(null);
@@ -195,7 +205,7 @@ const AdsHealthChecker: React.FC<Props> = ({ isActive }) => {
                                 platform: 'Facebook Ads',
                                 industry: '',
                                 dataMode: 'paste',
-                                manualMetrics: { spend: 0, impressions: 0, clicks: 0, conversions: 0 },
+                                manualMetrics: { spend: 0, impressions: 0, clicks: 0, conversions: 0, revenue: 0, duration: 0, frequency: 0, reach: 0 },
                                 rawText: ''
                             });
                             setResult(null);
@@ -309,24 +319,85 @@ const AdsHealthChecker: React.FC<Props> = ({ isActive }) => {
                                     </p>
                                 </div>
                             ) : (
-                                <div className="grid grid-cols-2 gap-4 animate-in fade-in zoom-in-95 duration-300">
-                                    {[
-                                        { label: 'Chi tiêu (Spend)', key: 'spend', placeholder: '0' },
-                                        { label: 'Hiển thị (Impressions)', key: 'impressions', placeholder: '0' },
-                                        { label: 'Lượt nhấp (Clicks)', key: 'clicks', placeholder: '0' },
-                                        { label: 'Chuyển đổi (Conversions)', key: 'conversions', placeholder: '0' }
-                                    ].map((field) => (
-                                        <div key={field.key} className="space-y-1.5">
-                                            <label className="text-[11px] font-bold uppercase tracking-wider text-slate-500 ml-1">{field.label}</label>
-                                            <input
-                                                type="number"
-                                                className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm font-semibold text-slate-900 focus:border-rose-500 focus:bg-white focus:ring-4 focus:ring-rose-500/10 transition-all outline-none"
-                                                placeholder={field.placeholder}
-                                                value={input.manualMetrics?.[field.key as keyof typeof input.manualMetrics] || 0}
-                                                onChange={(e) => setInput({ ...input, manualMetrics: { ...input.manualMetrics!, [field.key]: Number(e.target.value) } })}
-                                            />
+                                <div className="space-y-5 animate-in fade-in zoom-in-95 duration-300">
+                                    {/* Core Metrics */}
+                                    <div>
+                                        <p className="text-xs font-bold text-slate-500 mb-3 flex items-center gap-2">
+                                            <span className="w-2 h-2 bg-rose-500 rounded-full"></span>
+                                            HIỆU SUẤT PHỄU (Funnel)
+                                        </p>
+                                        <div className="grid grid-cols-2 gap-3">
+                                            {[
+                                                { label: 'Chi tiêu (Spend)', key: 'spend', placeholder: 'VD: 5000000', suffix: '₫' },
+                                                { label: 'Hiển thị (Impressions)', key: 'impressions', placeholder: 'VD: 100000' },
+                                                { label: 'Lượt nhấp (Clicks)', key: 'clicks', placeholder: 'VD: 2000' },
+                                                { label: 'Chuyển đổi (Conversions)', key: 'conversions', placeholder: 'VD: 50' }
+                                            ].map((field) => {
+                                                const currentValue = input.manualMetrics?.[field.key as keyof typeof input.manualMetrics] || 0;
+                                                return (
+                                                    <div key={field.key} className="space-y-1">
+                                                        <label className="text-[10px] font-bold uppercase tracking-wider text-slate-500 ml-1">{field.label}</label>
+                                                        <input
+                                                            type="text"
+                                                            inputMode="numeric"
+                                                            pattern="[0-9]*"
+                                                            className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm font-semibold text-slate-900 focus:border-rose-500 focus:bg-white focus:ring-4 focus:ring-rose-500/10 transition-all outline-none"
+                                                            placeholder={field.placeholder}
+                                                            value={currentValue === 0 ? '' : currentValue}
+                                                            onChange={(e) => {
+                                                                const cleanValue = e.target.value.replace(/^0+(?=\d)/, '').replace(/[^0-9]/g, '');
+                                                                const numValue = cleanValue === '' ? 0 : parseInt(cleanValue, 10);
+                                                                setInput({ ...input, manualMetrics: { ...input.manualMetrics!, [field.key]: numValue } });
+                                                            }}
+                                                        />
+                                                    </div>
+                                                );
+                                            })}
                                         </div>
-                                    ))}
+                                    </div>
+
+                                    {/* Business Metrics - V3 */}
+                                    <div>
+                                        <p className="text-xs font-bold text-slate-500 mb-3 flex items-center gap-2">
+                                            <span className="w-2 h-2 bg-emerald-500 rounded-full"></span>
+                                            HIỆU QUẢ KINH DOANH (Profit-First)
+                                        </p>
+                                        <div className="grid grid-cols-2 gap-3">
+                                            {[
+                                                { label: 'Doanh thu (Revenue)', key: 'revenue', placeholder: 'VD: 25000000', suffix: '₫' },
+                                                { label: 'Thời gian chạy (ngày)', key: 'duration', placeholder: 'VD: 7' },
+                                                { label: 'Tần suất (Frequency)', key: 'frequency', placeholder: 'VD: 1.8', isDecimal: true },
+                                                { label: 'Tiếp cận (Reach)', key: 'reach', placeholder: 'Hoặc nhập Reach' }
+                                            ].map((field) => {
+                                                const currentValue = input.manualMetrics?.[field.key as keyof typeof input.manualMetrics] || 0;
+                                                return (
+                                                    <div key={field.key} className="space-y-1">
+                                                        <label className="text-[10px] font-bold uppercase tracking-wider text-slate-500 ml-1">{field.label}</label>
+                                                        <input
+                                                            type="text"
+                                                            inputMode={field.isDecimal ? "decimal" : "numeric"}
+                                                            className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm font-semibold text-slate-900 focus:border-emerald-500 focus:bg-white focus:ring-4 focus:ring-emerald-500/10 transition-all outline-none"
+                                                            placeholder={field.placeholder}
+                                                            value={currentValue === 0 ? '' : currentValue}
+                                                            onChange={(e) => {
+                                                                let numValue: number;
+                                                                if (field.isDecimal) {
+                                                                    // Allow decimal for frequency
+                                                                    const cleanValue = e.target.value.replace(/[^0-9.]/g, '');
+                                                                    numValue = cleanValue === '' ? 0 : parseFloat(cleanValue) || 0;
+                                                                } else {
+                                                                    const cleanValue = e.target.value.replace(/^0+(?=\d)/, '').replace(/[^0-9]/g, '');
+                                                                    numValue = cleanValue === '' ? 0 : parseInt(cleanValue, 10);
+                                                                }
+                                                                setInput({ ...input, manualMetrics: { ...input.manualMetrics!, [field.key]: numValue } });
+                                                            }}
+                                                        />
+                                                    </div>
+                                                );
+                                            })}
+                                        </div>
+                                        <p className="text-[10px] text-slate-400 mt-2 ml-1">💡 Nhập Frequency HOẶC Reach. Nếu có Reach, hệ thống tự tính Frequency.</p>
+                                    </div>
                                 </div>
                             )}
                         </div>
@@ -603,7 +674,7 @@ const AdsHealthChecker: React.FC<Props> = ({ isActive }) => {
                                                                             platform: 'Facebook Ads',
                                                                             industry: '',
                                                                             dataMode: 'paste',
-                                                                            manualMetrics: { spend: 0, impressions: 0, clicks: 0, conversions: 0 },
+                                                                            manualMetrics: { spend: 0, impressions: 0, clicks: 0, conversions: 0, revenue: 0, duration: 0, frequency: 0, reach: 0 },
                                                                             rawText: ''
                                                                         });
                                                                         setResult(null);
