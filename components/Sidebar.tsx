@@ -33,7 +33,7 @@ const NavGroup = ({ title, icon: Icon, expanded, setExpanded, items, setView, cu
           <div className={`p-1.5 rounded-lg ${expanded ? 'bg-indigo-50 text-indigo-600' : 'bg-transparent text-slate-400'}`}>
             <Icon size={18} strokeWidth={1.5} />
           </div>
-          <span className="text-sm font-semibold">{title}</span>
+          <span className="text-xs font-semibold">{title}</span>
         </div>
         {expanded ? <ChevronDown size={14} strokeWidth={1.5} className="text-slate-400" /> : <ChevronRight size={14} strokeWidth={1.5} className="text-slate-400" />}
       </button>
@@ -45,7 +45,7 @@ const NavGroup = ({ title, icon: Icon, expanded, setExpanded, items, setView, cu
             <button
               key={item.id}
               onClick={() => setView(item.id as ViewState)}
-              className={`w-[calc(100%-32px)] ml-8 flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all duration-200 border border-transparent
+              className={`w-[calc(100%-32px)] ml-8 flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-medium transition-all duration-200 border border-transparent
                   ${active
                   ? 'bg-indigo-50 text-indigo-700 border-indigo-100 shadow-sm translate-x-1'
                   : 'text-slate-500 hover:text-slate-900 hover:bg-slate-50'
@@ -131,7 +131,7 @@ const Sidebar: React.FC<SidebarProps> = ({ currentView, setView }) => {
   ];
 
   return (
-    <div className="w-80 bg-soft-surface h-screen fixed left-0 top-0 border-r border-soft-border flex flex-col shadow-soft z-20">
+    <div className="w-64 bg-soft-surface h-screen fixed left-0 top-0 border-r border-soft-border flex flex-col shadow-soft z-20">
       <div className="p-6 pb-2">
         <button
           onClick={() => setView('HOME_DASHBOARD')}
@@ -225,7 +225,26 @@ const Sidebar: React.FC<SidebarProps> = ({ currentView, setView }) => {
               <div className={`p-1.5 rounded-lg ${currentView === 'TODO' ? 'bg-indigo-50 text-indigo-600' : 'bg-transparent text-slate-400'}`}>
                 <CheckSquare size={18} strokeWidth={1.5} />
               </div>
-              <span className="text-sm font-semibold">To-Do List</span>
+              <span className="text-xs font-semibold">To-Do List</span>
+            </div>
+          </button>
+        </div>
+
+        {/* Single Item: Kho Kiến Thức */}
+        <div className="px-2">
+          <button
+            onClick={() => setView('MARKETING_KNOWLEDGE')}
+            className={`w-full flex items-center justify-between px-4 py-3 rounded-xl font-medium transition-all duration-200
+                  ${currentView === 'MARKETING_KNOWLEDGE'
+                ? 'bg-white shadow-soft text-indigo-700 border border-indigo-50'
+                : 'text-slate-600 hover:bg-slate-50'
+              }`}
+          >
+            <div className="flex items-center gap-3">
+              <div className={`p-1.5 rounded-lg ${currentView === 'MARKETING_KNOWLEDGE' ? 'bg-indigo-50 text-indigo-600' : 'bg-transparent text-slate-400'}`}>
+                <BookOpen size={18} strokeWidth={1.5} />
+              </div>
+              <span className="text-xs font-semibold">Kho Kiến Thức</span>
             </div>
           </button>
         </div>

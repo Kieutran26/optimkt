@@ -38,6 +38,7 @@ import BrandPositioningBuilder from './components/BrandPositioningBuilder';
 import PricingAnalyzer from './components/PricingAnalyzer';
 import AudienceEmotionMap from './components/AudienceEmotionMap';
 import IMCPlanner from './components/IMCPlanner';
+import MarketingKnowledge from './components/MarketingKnowledge';
 import HomePage from './components/HomePage';
 import FeaturesGuide from './components/FeaturesGuide';
 import { ViewState, StudyMode, Word, MastermindStrategy } from './types';
@@ -189,6 +190,8 @@ function AppContent() {
         return <AudienceEmotionMap isActive={true} />;
       case 'IMC_PLANNER':
         return <IMCPlanner />;
+      case 'MARKETING_KNOWLEDGE':
+        return <MarketingKnowledge />;
       default:
         return <TranslationView />;
     }
@@ -201,7 +204,7 @@ function AppContent() {
         <Sidebar currentView={currentView} setView={setCurrentView} />
       )}
 
-      <main className={`flex-1 transition-all duration-300 relative ${currentView !== 'LEARN_SESSION' ? 'ml-80' : ''}`}>
+      <main className={`flex-1 transition-all duration-300 relative ${currentView !== 'LEARN_SESSION' ? 'ml-64' : ''}`}>
         {/* Global Header / Brand Switcher Area */}
         {currentView !== 'LEARN_SESSION' && (
           // Only show BrandSelector on specific pages if needed, or globally here.
