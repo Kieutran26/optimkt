@@ -106,10 +106,14 @@ const MarketingKnowledge: React.FC = () => {
     const [selectedItem, setSelectedItem] = useState<Knowledge | null>(null);
     const [newTerm, setNewTerm] = useState('');
     const [newDefinition, setNewDefinition] = useState('');
+    const [newExample, setNewExample] = useState('');
+    const [newComparison, setNewComparison] = useState('');
     const [newCategory, setNewCategory] = useState('');
     const [editingId, setEditingId] = useState<string | null>(null);
     const [editTerm, setEditTerm] = useState('');
     const [editDefinition, setEditDefinition] = useState('');
+    const [editExample, setEditExample] = useState('');
+    const [editComparison, setEditComparison] = useState('');
     const [editCategory, setEditCategory] = useState('');
 
     useEffect(() => { loadKnowledge(); }, []);
@@ -140,15 +144,39 @@ const MarketingKnowledge: React.FC = () => {
 
     const handleAdd = async () => {
         if (!newTerm.trim() || !newDefinition.trim()) return;
-        const newItem = await KnowledgeService.add({ term: newTerm.trim(), definition: newDefinition.trim(), category: newCategory.trim() || 'Chung' });
-        if (newItem) { setItems(prev => [...prev, newItem]); setNewTerm(''); setNewDefinition(''); setNewCategory(''); setShowAddForm(false); }
+        const newItem = await KnowledgeService.add({
+            term: newTerm.trim(),
+            definition: newDefinition.trim(),
+            example: newExample.trim(),
+            comparison: newComparison.trim(),
+            category: newCategory.trim() || 'Chung'
+        });
+        if (newItem) {
+            setItems(prev => [...prev, newItem]);
+            setNewTerm(''); setNewDefinition(''); setNewExample(''); setNewComparison(''); setNewCategory('');
+            setShowAddForm(false);
+        }
     };
 
-    const startEdit = (item: Knowledge) => { setEditingId(item.id); setEditTerm(item.term); setEditDefinition(item.definition); setEditCategory(item.category); setSelectedItem(null); };
+    const startEdit = (item: Knowledge) => {
+        setEditingId(item.id);
+        setEditTerm(item.term);
+        setEditDefinition(item.definition);
+        setEditExample(item.example || '');
+        setEditComparison(item.comparison || '');
+        setEditCategory(item.category);
+        setSelectedItem(null);
+    };
 
     const handleSaveEdit = async () => {
         if (!editingId || !editTerm.trim() || !editDefinition.trim()) return;
-        const updated = await KnowledgeService.update(editingId, { term: editTerm.trim(), definition: editDefinition.trim(), category: editCategory.trim() || 'Chung' });
+        const updated = await KnowledgeService.update(editingId, {
+            term: editTerm.trim(),
+            definition: editDefinition.trim(),
+            example: editExample.trim(),
+            comparison: editComparison.trim(),
+            category: editCategory.trim() || 'Chung'
+        });
         if (updated) { setItems(prev => prev.map(item => item.id === editingId ? updated : item)); setEditingId(null); }
     };
 
@@ -233,7 +261,20 @@ const MarketingKnowledge: React.FC = () => {
                             <input type="text" value={newTerm} onChange={(e) => setNewTerm(e.target.value)} placeholder="Thuật ngữ *" className="px-4 py-3 bg-slate-50 border border-soft-border rounded-xl text-sm" />
                             <input type="text" value={newCategory} onChange={(e) => setNewCategory(e.target.value)} placeholder="Chủ đề" className="px-4 py-3 bg-slate-50 border border-soft-border rounded-xl text-sm" />
                         </div>
-                        <textarea value={newDefinition} onChange={(e) => setNewDefinition(e.target.value)} placeholder="Định nghĩa và ví dụ..." rows={3} className="w-full px-4 py-3 bg-slate-50 border border-soft-border rounded-xl text-sm resize-none mb-4" />
+                        <div className="space-y-4 mb-4">
+                            <div>
+                                <label className="text-xs font-medium text-slate-500 mb-1 block">Định nghĩa *</label>
+                                <textarea value={newDefinition} onChange={(e) => setNewDefinition(e.target.value)} placeholder="Giải thích khái niệm..." rows={2} className="w-full px-4 py-3 bg-slate-50 border border-soft-border rounded-xl text-sm resize-none" />
+                            </div>
+                            <div>
+                                <label className="text-xs font-medium text-emerald-600 mb-1 block">💡 Ví dụ thực tế</label>
+                                <textarea value={newExample} onChange={(e) => setNewExample(e.target.value)} placeholder="VD: Shopee gửi voucher sinh nhật..." rows={2} className="w-full px-4 py-3 bg-emerald-50 border border-emerald-200 rounded-xl text-sm resize-none" />
+                            </div>
+                            <div>
+                                <label className="text-xs font-medium text-blue-600 mb-1 block">⚖️ So sánh</label>
+                                <textarea value={newComparison} onChange={(e) => setNewComparison(e.target.value)} placeholder="So sánh với khái niệm khác..." rows={2} className="w-full px-4 py-3 bg-blue-50 border border-blue-200 rounded-xl text-sm resize-none" />
+                            </div>
+                        </div>
                         <div className="flex justify-end gap-3">
                             <button onClick={() => setShowAddForm(false)} className="px-5 py-2.5 text-slate-600 hover:bg-slate-100 rounded-xl text-sm">Hủy</button>
                             <button onClick={handleAdd} disabled={!newTerm.trim() || !newDefinition.trim()} className="px-5 py-2.5 bg-indigo-600 text-white rounded-xl text-sm disabled:opacity-50">Lưu</button>
@@ -249,10 +290,23 @@ const MarketingKnowledge: React.FC = () => {
                             <button onClick={() => setEditingId(null)} className="p-2 text-slate-400 hover:text-slate-600 hover:bg-white rounded-lg"><X size={18} /></button>
                         </div>
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-                            <input type="text" value={editTerm} onChange={(e) => setEditTerm(e.target.value)} className="px-4 py-3 bg-white border border-soft-border rounded-xl text-sm" />
-                            <input type="text" value={editCategory} onChange={(e) => setEditCategory(e.target.value)} className="px-4 py-3 bg-white border border-soft-border rounded-xl text-sm" />
+                            <input type="text" value={editTerm} onChange={(e) => setEditTerm(e.target.value)} placeholder="Thuật ngữ" className="px-4 py-3 bg-white border border-soft-border rounded-xl text-sm" />
+                            <input type="text" value={editCategory} onChange={(e) => setEditCategory(e.target.value)} placeholder="Chủ đề" className="px-4 py-3 bg-white border border-soft-border rounded-xl text-sm" />
                         </div>
-                        <textarea value={editDefinition} onChange={(e) => setEditDefinition(e.target.value)} rows={3} className="w-full px-4 py-3 bg-white border border-soft-border rounded-xl text-sm resize-none mb-4" />
+                        <div className="space-y-4 mb-4">
+                            <div>
+                                <label className="text-xs font-medium text-slate-500 mb-1 block">Định nghĩa</label>
+                                <textarea value={editDefinition} onChange={(e) => setEditDefinition(e.target.value)} rows={2} className="w-full px-4 py-3 bg-white border border-soft-border rounded-xl text-sm resize-none" />
+                            </div>
+                            <div>
+                                <label className="text-xs font-medium text-emerald-600 mb-1 block">💡 Ví dụ thực tế</label>
+                                <textarea value={editExample} onChange={(e) => setEditExample(e.target.value)} rows={2} className="w-full px-4 py-3 bg-emerald-50 border border-emerald-200 rounded-xl text-sm resize-none" />
+                            </div>
+                            <div>
+                                <label className="text-xs font-medium text-blue-600 mb-1 block">⚖️ So sánh</label>
+                                <textarea value={editComparison} onChange={(e) => setEditComparison(e.target.value)} rows={2} className="w-full px-4 py-3 bg-blue-50 border border-blue-200 rounded-xl text-sm resize-none" />
+                            </div>
+                        </div>
                         <div className="flex justify-end gap-3">
                             <button onClick={() => setEditingId(null)} className="px-5 py-2.5 text-slate-600 hover:bg-white rounded-xl text-sm">Hủy</button>
                             <button onClick={handleSaveEdit} className="px-5 py-2.5 bg-amber-500 text-white rounded-xl text-sm flex items-center gap-2"><Save size={14} /> Lưu</button>
@@ -299,12 +353,12 @@ const MarketingKnowledge: React.FC = () => {
                 )}
             </div>
 
-            {/* Detail Modal */}
+            {/* Detail Modal - Large 2-column layout */}
             {selectedItem && (
                 <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4" onClick={() => setSelectedItem(null)}>
-                    <div className="bg-white rounded-2xl max-w-xl w-full max-h-[80vh] overflow-hidden shadow-xl" onClick={(e) => e.stopPropagation()}>
+                    <div className="bg-white rounded-2xl max-w-4xl w-full max-h-[85vh] overflow-hidden shadow-xl" onClick={(e) => e.stopPropagation()}>
                         {/* Modal Header */}
-                        <div className={`${getColor(selectedItem.category).bg} px-6 py-5`}>
+                        <div className={`${getColor(selectedItem.category).bg} px-6 py-4`}>
                             <div className="flex items-start justify-between">
                                 <div>
                                     <span className={`text-xs font-bold px-2.5 py-1 rounded-full ${getColor(selectedItem.category).text} bg-white/80`}>
@@ -318,13 +372,40 @@ const MarketingKnowledge: React.FC = () => {
                             </div>
                         </div>
 
-                        {/* Modal Content */}
-                        <div className="p-6 overflow-y-auto max-h-[50vh]">
-                            {selectedItem.definition.split('\n\n').map((paragraph, idx) => (
-                                <p key={idx} className="text-slate-600 mb-4 leading-relaxed">
-                                    {paragraph.split('**').map((part, i) => i % 2 === 1 ? <strong key={i} className="text-slate-800">{part}</strong> : part)}
-                                </p>
-                            ))}
+                        {/* Modal Content - 2 Column Layout */}
+                        <div className="p-6 overflow-y-auto max-h-[60vh]">
+                            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                                {/* Left Column - Definition */}
+                                <div className="bg-slate-50 rounded-xl p-5 border border-slate-200">
+                                    <h4 className="text-xs font-semibold text-slate-500 uppercase mb-3 flex items-center gap-2">
+                                        📖 Định nghĩa
+                                    </h4>
+                                    <p className="text-slate-700 leading-relaxed text-sm whitespace-pre-wrap">{selectedItem.definition}</p>
+                                </div>
+
+                                {/* Right Column - Example & Comparison */}
+                                <div className="flex flex-col gap-4">
+                                    {/* Example - Top */}
+                                    <div className="bg-emerald-50 rounded-xl p-5 border border-emerald-200 flex-1">
+                                        <h4 className="text-xs font-semibold text-emerald-600 uppercase mb-3 flex items-center gap-2">
+                                            💡 Ví dụ thực tế
+                                        </h4>
+                                        <p className="text-emerald-800 text-sm leading-relaxed whitespace-pre-wrap">
+                                            {selectedItem.example || <span className="text-emerald-400 italic">Chưa có ví dụ</span>}
+                                        </p>
+                                    </div>
+
+                                    {/* Comparison - Bottom */}
+                                    <div className="bg-blue-50 rounded-xl p-5 border border-blue-200 flex-1">
+                                        <h4 className="text-xs font-semibold text-blue-600 uppercase mb-3 flex items-center gap-2">
+                                            ⚖️ So sánh
+                                        </h4>
+                                        <p className="text-blue-800 text-sm leading-relaxed whitespace-pre-wrap">
+                                            {selectedItem.comparison || <span className="text-blue-400 italic">Chưa có so sánh</span>}
+                                        </p>
+                                    </div>
+                                </div>
+                            </div>
                         </div>
 
                         {/* Modal Footer */}

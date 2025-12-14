@@ -4,6 +4,8 @@ export interface Knowledge {
     id: string;
     term: string;
     definition: string;
+    example?: string;
+    comparison?: string;
     category: string;
     created_at?: string;
     updated_at?: string;

@@ -5,10 +5,16 @@ CREATE TABLE IF NOT EXISTS marketing_knowledge (
     id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
     term TEXT NOT NULL,
     definition TEXT NOT NULL,
+    example TEXT DEFAULT '',
+    comparison TEXT DEFAULT '',
     category TEXT DEFAULT 'Chung',
     created_at TIMESTAMPTZ DEFAULT NOW(),
     updated_at TIMESTAMPTZ DEFAULT NOW()
 );
+
+-- Add columns if table already exists
+ALTER TABLE marketing_knowledge ADD COLUMN IF NOT EXISTS example TEXT DEFAULT '';
+ALTER TABLE marketing_knowledge ADD COLUMN IF NOT EXISTS comparison TEXT DEFAULT '';
 
 -- Create indexes for search
 CREATE INDEX IF NOT EXISTS idx_knowledge_term ON marketing_knowledge USING gin(to_tsvector('simple', term));
