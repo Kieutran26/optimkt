@@ -744,21 +744,33 @@ export interface InsightFinderInput {
 // --- CREATIVE ANGLE EXPLORER ---
 export interface CreativeAngleInput {
   productName: string;
-  productDescription: string;
+  productDescription?: string;
   targetAudience?: string;
-  keyFeatures?: string[];
-  desiredAngleCount?: number; // 20-50
+  keyFeatures?: string[] | string;
+  desiredAngleCount?: number; // 5-15
+  // V2 Performance Creative fields
+  painPoints?: string;
+  brandVibe?: 'fun' | 'premium' | 'meme' | 'minimalist' | 'professional';
+  desiredFormat?: 'video_short' | 'carousel' | 'static' | 'meme' | 'mixed';
 }
 
 export interface CreativeAngle {
   id: number;
-  framework: 'PAS' | 'BAB' | 'Emotional Hook' | 'Story-driven';
+  framework: string;
   angleName: string;
   hookText: string;
   adCopyOutline: string;
   visualDirection: string;
   suggestedFormat: string;
-  emotionTag?: string; // For Emotional Hooks: FOMO, Vanity, Greed, Laziness, Curiosity, Altruism, Fear
+  emotionTag?: string;
+  // V2 Concept Card fields
+  hookType?: string;
+  headlineOverlay?: string;
+  scriptOutline?: {
+    opening_0_3s: string;
+    body: string;
+    cta: string;
+  };
 }
 
 export interface CreativeAngleResult {

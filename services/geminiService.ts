@@ -1819,77 +1819,124 @@ export const generateCreativeAngles = async (
     input: any,
     onProgress?: (step: string) => void
 ): Promise<any> => {
-    const { productName, productDescription, targetAudience, keyFeatures, desiredAngleCount } = input;
-    const count = desiredAngleCount || 30;
+    const {
+        productName,
+        keyFeatures,
+        painPoints,
+        targetAudience,
+        brandVibe,
+        desiredFormat,
+        desiredAngleCount
+    } = input;
+    const count = Math.min(Math.max(desiredAngleCount || 8, 5), 15);
 
-    onProgress?.('Khởi động Ma trận Sáng tạo...');
+    // Map brand vibe to Vietnamese description
+    const brandVibeMap: Record<string, string> = {
+        'fun': 'Vui vẻ, trẻ trung, năng động',
+        'premium': 'Sang trọng, cao cấp, đẳng cấp',
+        'meme': 'Bựa, hài hước, viral',
+        'minimalist': 'Tối giản, thanh lịch, nhã nhặn',
+        'professional': 'Chuyên nghiệp, đáng tin cậy'
+    };
 
-    const prompt = `Bạn là Creative Strategist chuyên nghiệp. Nhiệm vụ: Tạo ra ${count} góc tiếp cận quảng cáo (Ad Angles) HOÀN TOÀN ĐỘC ĐÁO cho sản phẩm sau:
+    // Map format to Vietnamese description
+    const formatMap: Record<string, string> = {
+        'video_short': 'Video ngắn dạng TikTok/Reels (9:16, 15-60s)',
+        'carousel': 'Carousel Ads (nhiều slide)',
+        'static': 'Ảnh tĩnh single image',
+        'meme': 'Ảnh chế/Meme format',
+        'mixed': 'Đa dạng format'
+    };
 
-SẢN PHẨM:
-- Tên: ${productName}
-- Mô tả: ${productDescription}
-${targetAudience ? `- Đối tượng mục tiêu: ${targetAudience}` : ''}
-${keyFeatures && keyFeatures.length > 0 ? `- Tính năng nổi bật: ${keyFeatures.join(', ')}` : ''}
+    const brandVibeDesc = brandVibeMap[brandVibe] || brandVibeMap['fun'];
+    const formatDesc = formatMap[desiredFormat] || formatMap['video_short'];
 
-QUY TẮC SÁNG TẠO:
-1. Chạy qua 4 FRAMEWORK song song để đảm bảo đa dạng:
-   - PAS (Pain-Agitate-Solve): Tìm nỗi đau → Xát muối → Giải pháp
-   - BAB (Before-After-Bridge): Viễn cảnh xấu → Viễn cảnh đẹp → Sản phẩm là cầu nối
-   - Emotional Hooks: FOMO, Vanity, Greed, Laziness, Curiosity, Altruism, Fear
-   - Story-driven: Founder Story, User Testimonial, Behind the Scenes
+    onProgress?.('Khởi động Creative Strategist (Performance Creative)...');
 
-2. PERMUTATION LOGIC (Tránh lặp):
-   - Kết hợp: [Framework] + [Persona cụ thể] + [Feature X]
-   - Ví dụ: PAS + Mẹ bỉm sữa + Tính năng an toàn = Angle 1
-   - Mỗi angle phải có góc nhìn KHÁC BIỆT hoàn toàn
+    const systemPrompt = `### ROLE & CONTEXT:
+Bạn là Creative Strategist & Content Director (Chiến lược gia Sáng tạo & Giám đốc Nội dung) với tư duy "Performance Creative".
+Bạn am hiểu sâu sắc tâm lý hành vi Gen Z và văn hóa các nền tảng (TikTok, Reels, Facebook Ads).
+Nhiệm vụ: Biến thông tin sản phẩm thành các ý tưởng quảng cáo (Creative Angles) có khả năng THUMB-STOP.
 
-3. Mỗi angle BẮT BUỘC có:
-   - framework: Tên framework được dùng
-   - angle_name: Tên angle bằng tiếng Anh (ngắn gọn, catchy)
-   - hook_text: Câu mở đầu hấp dẫn (bằng Tiếng Việt)
-   - ad_copy_outline: Outline nội dung quảng cáo (3-4 câu, Tiếng Việt)
-   - visual_direction: Hướng dẫn hình ảnh/video chi tiết (Tiếng Việt)
-   - suggested_format: 'Video TikTok', 'Video YouTube', 'Static Image', 'Carousel', 'Meme'
-   - emotion_tag: (Nếu dùng Emotional Hook framework) - FOMO, Vanity, Greed, Laziness, Curiosity, Altruism, Fear
+### QUY TẮC AN TOÀN (ANTI-HALLUCINATION - BẮT BUỘC TUÂN THỦ):
 
-YÊU CẦU ĐẦU RA:
-- Trả về JSON object với cấu trúc:
+1. **TRUNG THỰC TUYỆT ĐỐI**: 
+   - Chỉ được phát triển ý tưởng DỰA TRÊN các tính năng được cung cấp trong Input
+   - KHÔNG ĐƯỢC tự bịa thêm tính năng không có trong USP
+   - Ví dụ: Nếu input không nói "thấm hút mồ hôi" thì KHÔNG ĐƯỢC đề cập tính năng đó
+
+2. **TRÁNH SÁO RỖNG**:
+   - KHÔNG dùng: "Sản phẩm hàng đầu", "Chất lượng tuyệt vời", "Giá cả hợp lý"
+   - PHẢI dùng: Ngôn ngữ đời thường, slang Gen Z, văn nói tự nhiên
+   - Ví dụ tốt: "Đỉnh của chóp", "Xịn xò", "Real 100%", "Chuẩn cơm mẹ nấu"
+
+3. **TÍNH THỰC THI (Production-Ready)**:
+   - Visual Direction phải ĐỦ CHI TIẾT để Editor/Cameraman hiểu cần quay gì
+   - Bao gồm: Góc máy, ánh sáng, đạo cụ, biểu cảm diễn viên, filter nếu cần
+
+### INPUT DATA:
+- **Sản phẩm**: ${productName}
+- **Tính năng cốt lõi (USP)**: ${typeof keyFeatures === 'string' ? keyFeatures : (keyFeatures || []).join(', ')}
+- **Nỗi đau khách hàng**: ${painPoints || 'Chưa xác định'}
+- **Đối tượng mục tiêu**: ${targetAudience || 'Gen Z, 18-30 tuổi'}
+- **Phong cách thương hiệu**: ${brandVibeDesc}
+- **Định dạng mong muốn**: ${formatDesc}
+
+### OUTPUT FORMAT (Concept Card):
+Trả về JSON với ${count} concept cards. Mỗi card có cấu trúc:
+
 {
-  "product_context": "...",
+  "product_context": "string (tóm tắt hiểu biết về sản phẩm)",
   "total_angles": ${count},
   "angles": [
     {
-      "id": 1,
-      "framework": "PAS",
-      "angle_name": "The Morning Chaos Angle",
-      "hook_text": "...",
-      "ad_copy_outline": "...",
-      "visual_direction": "...",
-      "suggested_format": "Video TikTok",
-      "emotion_tag": "Laziness"
+      "id": number,
+      "angle_name": "string (Tên hấp dẫn, VD: 'Thí nghiệm tàn bạo', 'POV Crush')",
+      "hook_type": "Negative Hook|ASMR|Story-telling|Challenge|POV|Before-After|Unboxing|Tutorial|Reaction|Meme",
+      "headline_overlay": "string (Text xuất hiện 3 giây đầu để giật tít, dưới 10 từ)",
+      "script_outline": {
+        "opening_0_3s": "string (Mô tả hành động gây chú ý trong 3 giây đầu)",
+        "body": "string (Cách lồng ghép sản phẩm giải quyết vấn đề)",
+        "cta": "string (Lời kêu gọi hành động cụ thể)"
+      },
+      "visual_direction": "string (Mô tả CỰC KỲ CỤ THỂ: bối cảnh, đạo cụ, góc máy, ánh sáng, diễn xuất, filter)",
+      "emotion_trigger": "FOMO|Vanity|Greed|Laziness|Curiosity|Fear|Joy|Surprise",
+      "suggested_format": "${formatDesc}"
     }
   ]
 }
 
-- QUAN TRỌNG: Mỗi angle phải ĐỘC ĐÁO về cả góc nhìn, cảm xúc, và visual
-- Hãy sáng tạo tối đa, đừng sợ ý tưởng điên rồ!`;
+### HOOK TYPES REFERENCE:
+- **Negative Hook**: "Đừng mua X nếu bạn không muốn Y" / "Sai lầm khi mua X"
+- **POV**: "POV: Crush thấy bạn mặc áo này..."
+- **Challenge**: "Thử thách giặt 50 lần xem có phai màu không"
+- **ASMR**: Tiếng unboxing, tiếng vải, tiếng bấm nút
+- **Before-After**: So sánh trước/sau khi dùng sản phẩm
+- **Story-telling**: Kể chuyện cá nhân liên quan đến nỗi đau
 
-    onProgress?.('Đang chạy 4 Framework Matrix...');
+### QUAN TRỌNG:
+- Headline Overlay phải GIẬT TÍT, gây tò mò, dưới 10 từ
+- Script Outline phải thực thi được ngay, không mơ hồ
+- Visual Direction phải như brief cho production team`;
+
+    const userPrompt = `Tạo ${count} Concept Cards cho sản phẩm "${productName}" với các góc tiếp cận ĐỘC ĐÁO, phù hợp Gen Z và văn hóa ${formatDesc}.`;
+
+    onProgress?.('Đang phân tích tâm lý khách hàng...');
 
     try {
         const response = await ai.models.generateContent({
-            model: 'gemini-2.0-flash-exp',
-            contents: prompt,
+            model: 'gemini-2.5-flash',
+            contents: userPrompt,
             config: {
-                temperature: 0.8, // High creativity
+                systemInstruction: systemPrompt,
+                temperature: 0.85, // High creativity
                 maxOutputTokens: 8000,
                 responseMimeType: 'application/json',
                 safetySettings: SAFETY_SETTINGS,
             },
         });
 
-        onProgress?.('Parsing kết quả...');
+        onProgress?.('Đang tạo Concept Cards...');
 
         const text = response.text?.trim();
         if (!text) return null;
@@ -1899,13 +1946,16 @@ YÊU CẦU ĐẦU RA:
         // Map snake_case from AI to camelCase for frontend
         const mappedAngles = rawData.angles?.map((angle: any) => ({
             id: angle.id,
-            framework: angle.framework,
-            angleName: angle.angle_name, // Map angle_name -> angleName
-            hookText: angle.hook_text,   // Map hook_text -> hookText
-            adCopyOutline: angle.ad_copy_outline, // Map ad_copy_outline -> adCopyOutline
-            visualDirection: angle.visual_direction, // Map visual_direction -> visualDirection
-            suggestedFormat: angle.suggested_format, // Map suggested_format -> suggestedFormat
-            emotionTag: angle.emotion_tag // Map emotion_tag -> emotionTag
+            framework: angle.hook_type, // Map hook_type -> framework for filter compatibility
+            angleName: angle.angle_name,
+            hookType: angle.hook_type,
+            headlineOverlay: angle.headline_overlay,
+            scriptOutline: angle.script_outline,
+            hookText: angle.headline_overlay, // For backward compatibility
+            adCopyOutline: `🎬 Mở đầu (0-3s): ${angle.script_outline?.opening_0_3s || ''}\n\n📝 Nội dung: ${angle.script_outline?.body || ''}\n\n👆 CTA: ${angle.script_outline?.cta || ''}`,
+            visualDirection: angle.visual_direction,
+            suggestedFormat: angle.suggested_format,
+            emotionTag: angle.emotion_trigger
         })) || [];
 
         const data = {

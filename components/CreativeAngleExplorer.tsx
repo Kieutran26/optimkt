@@ -1,16 +1,10 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import toast from 'react-hot-toast';
-import { Lightbulb, Filter, Copy, Maximize2, Save, Trash2, Plus, Sparkles } from 'lucide-react';
+import { Lightbulb, Filter, Copy, Maximize2, Save, Trash2, Plus, Sparkles, Cloud } from 'lucide-react';
 import { CreativeAngleInput, CreativeAngle, CreativeAngleResult } from '../types';
 import { generateCreativeAngles } from '../services/geminiService';
-
-interface SavedAngleSet {
-    id: string;
-    input: CreativeAngleInput;
-    result: CreativeAngleResult;
-    timestamp: number;
-}
+import { CreativeAngleService, SavedAngleSet } from '../services/creativeAngleService';
 
 const CreativeAngleExplorer: React.FC = () => {
     const { register, handleSubmit, reset } = useForm<CreativeAngleInput>();
@@ -27,12 +21,28 @@ const CreativeAngleExplorer: React.FC = () => {
     // Expand modal
     const [expandedAngle, setExpandedAngle] = useState<CreativeAngle | null>(null);
 
-    // History
-    const [savedSets, setSavedSets] = useState<SavedAngleSet[]>(() => {
-        const saved = localStorage.getItem('creative_angle_history');
-        return saved ? JSON.parse(saved) : [];
-    });
+    // History - now from Supabase
+    const [savedSets, setSavedSets] = useState<SavedAngleSet[]>([]);
     const [showHistory, setShowHistory] = useState(false);
+
+    // Load from Supabase on mount
+    useEffect(() => {
+        const loadData = async () => {
+            // Try to migrate from localStorage first (one-time)
+            const localData = localStorage.getItem('creative_angle_history');
+            if (localData) {
+                const migrated = await CreativeAngleService.migrateFromLocalStorage();
+                if (migrated > 0) {
+                    toast.success(`☁️ Đã migrate ${migrated} bản ghi lên cloud!`, { duration: 3000 });
+                }
+            }
+
+            // Load from Supabase
+            const data = await CreativeAngleService.getAngleSets();
+            setSavedSets(data);
+        };
+        loadData();
+    }, []);
 
     const onSubmit = async (data: CreativeAngleInput) => {
         setIsGenerating(true);
@@ -55,7 +65,7 @@ const CreativeAngleExplorer: React.FC = () => {
 
             if (angles) {
                 setResult(angles);
-                toast.success(`✨ Đã tạo ${angles.total_angles} angles!`, { duration: 4000 });
+                toast.success(`✨ Đã tạo ${angles.totalAngles || angles.total_angles} Concept Cards!`, { duration: 4000 });
             } else {
                 toast.error('Không thể tạo angles. Vui lòng thử lại.');
             }
@@ -68,20 +78,24 @@ const CreativeAngleExplorer: React.FC = () => {
         }
     };
 
-    const handleSave = () => {
+    const handleSave = async () => {
         if (!result || !currentInput) return;
 
         const newSet: SavedAngleSet = {
             id: Date.now().toString(),
+            name: currentInput.productName,
             input: currentInput,
             result: result,
             timestamp: Date.now()
         };
 
-        const updated = [newSet, ...savedSets];
-        setSavedSets(updated);
-        localStorage.setItem('creative_angle_history', JSON.stringify(updated));
-        toast.success('💾 Đã lưu!');
+        const success = await CreativeAngleService.saveAngleSet(newSet);
+        if (success) {
+            setSavedSets(prev => [newSet, ...prev]);
+            toast.success('☁️ Đã lưu lên cloud!');
+        } else {
+            toast.error('Lỗi khi lưu!');
+        }
     };
 
     const handleLoad = (set: SavedAngleSet) => {
@@ -92,11 +106,14 @@ const CreativeAngleExplorer: React.FC = () => {
         toast.success('📂 Đã tải!');
     };
 
-    const handleDelete = (id: string) => {
-        const updated = savedSets.filter(s => s.id !== id);
-        setSavedSets(updated);
-        localStorage.setItem('creative_angle_history', JSON.stringify(updated));
-        toast.success('🗑️ Đã xóa!');
+    const handleDelete = async (id: string) => {
+        const success = await CreativeAngleService.deleteAngleSet(id);
+        if (success) {
+            setSavedSets(prev => prev.filter(s => s.id !== id));
+            toast.success('🗑️ Đã xóa!');
+        } else {
+            toast.error('Lỗi khi xóa!');
+        }
     };
 
     const handleNew = () => {
@@ -118,10 +135,10 @@ const CreativeAngleExplorer: React.FC = () => {
         if (filterEmotion !== 'All' && angle.emotionTag !== filterEmotion) return false;
         return true;
     }) || [];
-
-    const frameworks = ['All', 'PAS', 'BAB', 'Emotional Hook', 'Story-driven'];
-    const formats = ['All', 'Video TikTok', 'Video YouTube', 'Static Image', 'Carousel', 'Meme'];
-    const emotions = ['All', 'FOMO', 'Vanity', 'Greed', 'Laziness', 'Curiosity', 'Altruism', 'Fear'];
+    // V2 Hook Types and Filters
+    const hookTypes = ['All', 'Negative Hook', 'ASMR', 'Story-telling', 'Challenge', 'POV', 'Before-After', 'Unboxing', 'Tutorial', 'Reaction', 'Meme'];
+    const formats = ['All', 'Video ngắn (TikTok/Reels)', 'Carousel Ads', 'Ảnh tĩnh', 'Ảnh chế/Meme'];
+    const emotions = ['All', 'FOMO', 'Vanity', 'Greed', 'Laziness', 'Curiosity', 'Fear', 'Joy', 'Surprise'];
 
     return (
         <div className="h-screen bg-slate-50 flex flex-col overflow-hidden">
@@ -141,8 +158,8 @@ const CreativeAngleExplorer: React.FC = () => {
                     <button
                         onClick={() => setShowHistory(!showHistory)}
                         className={`px-3 py-2 text-sm font-medium rounded-lg border transition-all flex items-center gap-2 ${showHistory
-                                ? 'bg-amber-50 border-amber-200 text-amber-700'
-                                : 'bg-white border-slate-200 text-slate-600 hover:border-slate-300 hover:bg-slate-50'
+                            ? 'bg-amber-50 border-amber-200 text-amber-700'
+                            : 'bg-white border-slate-200 text-slate-600 hover:border-slate-300 hover:bg-slate-50'
                             }`}
                     >
                         <Sparkles className="w-4 h-4" />
@@ -211,71 +228,126 @@ const CreativeAngleExplorer: React.FC = () => {
                 <div className="flex-1 grid overflow-hidden" style={{ gridTemplateColumns: '380px 1fr' }}>
                     {/* Form Section */}
                     <div className="bg-white border-r border-slate-200 overflow-y-auto p-6">
-                        <h2 className="text-sm font-medium text-slate-700 mb-4">Thông tin sản phẩm</h2>
+                        <div className="mb-4">
+                            <h2 className="text-sm font-medium text-slate-700">Performance Creative V2</h2>
+                            <p className="text-xs text-slate-500 mt-1">Tạo Concept Card cho Video ngắn, Reels, TikTok</p>
+                        </div>
                         <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+                            {/* Product Name */}
                             <div>
-                                <label className="block text-sm text-slate-600 mb-1">Tên sản phẩm *</label>
+                                <label className="block text-xs font-semibold text-slate-600 mb-1 uppercase tracking-wider">
+                                    <span className="text-rose-500">*</span> Tên sản phẩm
+                                </label>
                                 <input
                                     {...register('productName', { required: true })}
-                                    className="w-full px-3 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500"
-                                    placeholder="VD: Máy xay sinh tố cầm tay"
+                                    className="w-full px-3 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500 text-sm"
+                                    placeholder="VD: Áo thun cotton cao cấp"
                                 />
                             </div>
 
+                            {/* USP / Key Features */}
                             <div>
-                                <label className="block text-sm text-slate-600 mb-1">Mô tả sản phẩm *</label>
+                                <label className="block text-xs font-semibold text-slate-600 mb-1 uppercase tracking-wider">
+                                    <span className="text-rose-500">*</span> Tính năng cốt lõi (USP)
+                                </label>
                                 <textarea
-                                    {...register('productDescription', { required: true })}
-                                    rows={4}
-                                    className="w-full px-3 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500 resize-none"
-                                    placeholder="Mô tả chi tiết về sản phẩm, lợi ích..."
+                                    {...register('keyFeatures', { required: true })}
+                                    rows={2}
+                                    className="w-full px-3 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500 resize-none text-sm"
+                                    placeholder="VD: Bền màu sau 50 lần giặt, Giá chỉ 199k"
+                                />
+                                <p className="text-[10px] text-amber-600 mt-1">⚠️ AI chỉ sử dụng các tính năng bạn nhập, không tự bịa thêm</p>
+                            </div>
+
+                            {/* Pain Points */}
+                            <div>
+                                <label className="block text-xs font-semibold text-slate-600 mb-1 uppercase tracking-wider">
+                                    Nỗi đau khách hàng (Pain Point)
+                                </label>
+                                <textarea
+                                    {...register('painPoints')}
+                                    rows={2}
+                                    className="w-full px-3 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500 resize-none text-sm"
+                                    placeholder="VD: Mua áo rẻ tiền bị phai màu sau 2 lần giặt"
                                 />
                             </div>
 
+                            {/* Target Audience */}
                             <div>
-                                <label className="block text-sm text-slate-600 mb-1">Đối tượng mục tiêu</label>
+                                <label className="block text-xs font-semibold text-slate-600 mb-1 uppercase tracking-wider">
+                                    Đối tượng mục tiêu
+                                </label>
                                 <input
                                     {...register('targetAudience')}
-                                    className="w-full px-3 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500"
-                                    placeholder="VD: Mẹ bỉm sữa, Gen Z..."
+                                    className="w-full px-3 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500 text-sm"
+                                    placeholder="VD: Gen Z, Nam 18-25 tuổi, yêu thích thời trang"
                                 />
                             </div>
 
-                            <div>
-                                <label className="block text-sm text-slate-600 mb-1">Tính năng nổi bật (ngăn cách bởi dấu phẩy)</label>
-                                <input
-                                    {...register('keyFeatures')}
-                                    className="w-full px-3 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500"
-                                    placeholder="VD: An toàn, Giá rẻ, Tiện lợi"
-                                />
+                            {/* Brand Vibe & Format Row */}
+                            <div className="grid grid-cols-2 gap-3">
+                                <div>
+                                    <label className="block text-xs font-semibold text-slate-600 mb-1 uppercase tracking-wider">
+                                        Phong cách Brand
+                                    </label>
+                                    <select
+                                        {...register('brandVibe')}
+                                        className="w-full px-3 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500 text-sm bg-white"
+                                    >
+                                        <option value="fun">🎉 Vui vẻ / Trẻ trung</option>
+                                        <option value="premium">✨ Sang trọng / Premium</option>
+                                        <option value="meme">🤣 Bựa / Meme</option>
+                                        <option value="minimalist">🌿 Minimalist / Tối giản</option>
+                                        <option value="professional">💼 Chuyên nghiệp</option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <label className="block text-xs font-semibold text-slate-600 mb-1 uppercase tracking-wider">
+                                        Định dạng mong muốn
+                                    </label>
+                                    <select
+                                        {...register('desiredFormat')}
+                                        className="w-full px-3 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500 text-sm bg-white"
+                                    >
+                                        <option value="video_short">📱 Video ngắn (TikTok/Reels)</option>
+                                        <option value="carousel">📸 Carousel Ads</option>
+                                        <option value="static">🖼️ Ảnh tĩnh</option>
+                                        <option value="meme">🎭 Ảnh chế / Meme</option>
+                                        <option value="mixed">🔀 Đa dạng (Mix)</option>
+                                    </select>
+                                </div>
                             </div>
 
+                            {/* Angle Count */}
                             <div>
-                                <label className="block text-sm text-slate-600 mb-1">Số lượng angles (20-50)</label>
+                                <label className="block text-xs font-semibold text-slate-600 mb-1 uppercase tracking-wider">
+                                    Số lượng Concept Cards (5-15)
+                                </label>
                                 <input
                                     {...register('desiredAngleCount')}
                                     type="number"
-                                    min="20"
-                                    max="50"
-                                    defaultValue="30"
-                                    className="w-full px-3 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500"
+                                    min="5"
+                                    max="15"
+                                    defaultValue="8"
+                                    className="w-full px-3 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500 text-sm"
                                 />
+                                <p className="text-[10px] text-slate-400 mt-1">Mỗi card là 1 kịch bản tóm tắt production-ready</p>
                             </div>
 
                             <button
                                 type="submit"
                                 disabled={isGenerating}
-                                className="w-full px-4 py-3 bg-amber-600 text-white rounded-lg hover:bg-amber-700 disabled:bg-slate-300 disabled:cursor-not-allowed transition-colors font-medium flex items-center justify-center gap-2"
+                                className="w-full px-4 py-3 bg-gradient-to-r from-amber-500 to-orange-500 text-white rounded-xl hover:from-amber-600 hover:to-orange-600 disabled:from-slate-300 disabled:to-slate-300 disabled:cursor-not-allowed transition-all font-semibold flex items-center justify-center gap-2 shadow-lg shadow-amber-200"
                             >
                                 {isGenerating ? (
                                     <>
                                         <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                                        {thinkingStep || 'Đang tạo angles...'}
+                                        {thinkingStep || 'Đang tạo Concept Cards...'}
                                     </>
                                 ) : (
                                     <>
                                         <Lightbulb className="w-5 h-5" />
-                                        Generate Angles
+                                        Generate Concept Cards
                                     </>
                                 )}
                             </button>
@@ -299,7 +371,7 @@ const CreativeAngleExplorer: React.FC = () => {
                                             onChange={(e) => setFilterFramework(e.target.value)}
                                             className="px-3 py-1.5 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500"
                                         >
-                                            {frameworks.map(fw => <option key={fw} value={fw}>{fw}</option>)}
+                                            {hookTypes.map(fw => <option key={fw} value={fw}>{fw}</option>)}
                                         </select>
 
                                         <select
