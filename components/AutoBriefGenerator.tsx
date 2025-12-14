@@ -358,21 +358,25 @@ const AutoBriefGenerator: React.FC = () => {
                         </div>
 
                         <div>
-                            <label className="block text-sm font-bold text-slate-700 mb-2">Ngân sách / Quy mô (Tùy chọn)</label>
+                            <label className="block text-sm font-bold text-slate-700 mb-2">
+                                💰 Ngân sách (RẤT QUAN TRỌNG)
+                            </label>
                             <select
                                 {...register('budget')}
                                 className="w-full px-4 py-3.5 bg-white border-2 border-slate-200 rounded-xl text-sm text-slate-800 font-medium focus:ring-2 focus:ring-[#545BE8]/30 focus:border-[#545BE8] outline-none transition-all appearance-none cursor-pointer"
                             >
                                 <option value="">💰 Chọn mức ngân sách...</option>
-                                <option value="< 10M">{'<'} 10 triệu (Startup/SME)</option>
-                                <option value="10-50M">10-50 triệu (SME/Mid-size)</option>
-                                <option value="50-100M">50-100 triệu (Enterprise)</option>
-                                <option value="> 100M">{'>'} 100 triệu (Premium)</option>
+                                <option value="20 triệu">{'<'} 50 triệu (Micro) - Chỉ Organic/Seeding</option>
+                                <option value="100 triệu">50-200 triệu (Nhỏ) - Paid + Micro-KOL</option>
+                                <option value="300 triệu">200-500 triệu (Trung) - KOC Army + Photoshoot</option>
+                                <option value="700 triệu">500tr-1 tỷ (Lớn) - Macro-KOL + Event</option>
+                                <option value="2 tỷ">{'>'} 1 tỷ (Enterprise) - TVC + Celebrity</option>
                             </select>
+                            <p className="text-xs text-amber-600 mt-1">⚠️ AI sẽ lọc bỏ chiến thuật viển vông nếu ngân sách không khớp</p>
                         </div>
 
                         <div>
-                            <label className="block text-sm font-bold text-slate-700 mb-2">Thời gian chiến dịch (Tùy chọn)</label>
+                            <label className="block text-sm font-bold text-slate-700 mb-2">⏱️ Thời gian chiến dịch</label>
                             <select
                                 {...register('duration')}
                                 className="w-full px-4 py-3.5 bg-white border-2 border-slate-200 rounded-xl text-sm text-slate-800 font-medium focus:ring-2 focus:ring-[#545BE8]/30 focus:border-[#545BE8] outline-none transition-all appearance-none cursor-pointer"
@@ -383,6 +387,16 @@ const AutoBriefGenerator: React.FC = () => {
                                 <option value="6 tháng">6 tháng (Half-year)</option>
                                 <option value="1 năm">1 năm (Annual)</option>
                             </select>
+                        </div>
+
+                        <div>
+                            <label className="block text-sm font-bold text-slate-700 mb-2">🚫 Mandatories / Cấm kỵ (Tùy chọn)</label>
+                            <textarea
+                                {...register('mandatories')}
+                                placeholder="VD: Không dùng hình ảnh người nổi tiếng, Phải có logo ở mọi ấn phẩm, Không nhắc đến đối thủ X..."
+                                rows={2}
+                                className="w-full px-4 py-3 bg-white border border-slate-200 rounded-xl text-sm text-slate-800 placeholder:text-slate-400 focus:ring-2 focus:ring-[#545BE8]/20 focus:border-[#545BE8] outline-none transition-all resize-none"
+                            />
                         </div>
 
                         <button

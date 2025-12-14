@@ -392,49 +392,137 @@ export const brainstormNodeDetails = async (nodeLabel: string): Promise<DeepDive
     }
 };
 
-// --- SCAMPER TOOL ---
+// --- SCAMPER TOOL V2 ---
 
-export const generateScamperIdeas = async (topic: string, context: string, method?: string): Promise<Record<string, string[]>> => {
-    const systemPrompt = `You are a creative innovation expert using the SCAMPER technique.
-
-    Analyze the user's topic/product and generate actionable, creative ideas for each SCAMPER category:
-        - Substitute: Replace parts / materials / rules ?
-            - Combine : Combine with other products / purposes ?
-                - Adapt : What else is like this ? Copy ideas ?
-                    - Modify : Change shape, form, size ?
-                        - Put to another use: New ways to use it ?
-                            - Eliminate : Remove non - essentials ?
-                                - Reverse / Rearrange : Change order or layout ?
-
-                                    ${method ? `FOCUS ONLY ON: ${method}` : 'Generate ideas for ALL 7 categories.'}
-    
-    Context provided: ${context}
-
-    ** CRITICAL:** All output MUST be in ** VIETNAMESE ** language.
-
-    OUTPUT FORMAT(JSON):
-{
-    "substitute": ["ý tưởng 1", "ý tưởng 2", ...],
-        "combine": ["ý tưởng 1", ...],
-            "adapt": [...],
-                "modify": [...],
-                    "putToAnotherUse": [...],
-                        "eliminate": [...],
-                            "reverse": [...]
+export interface ScamperInput {
+    topic: string;           // Chủ đề/Sản phẩm
+    problem: string;         // Vấn đề cần giải quyết (Pain Point)
+    targetAudience?: string; // Đối tượng khách hàng
+    constraints?: string;    // Ràng buộc (ngân sách, không gian, etc.)
 }
-    
-    Provide 3 - 4 concrete, actionable ideas per category. 
-    Do NOT explain the theory, just give the ideas.
-    Response must be valid JSON.No markdown wrapping.`;
+
+export interface ScamperIdea {
+    idea_name: string;
+    how_to: string;
+    example: string;
+}
+
+export interface ScamperResult {
+    substitute: ScamperIdea[];
+    combine: ScamperIdea[];
+    adapt: ScamperIdea[];
+    modify: ScamperIdea[];
+    putToAnotherUse: ScamperIdea[];
+    eliminate: ScamperIdea[];
+    reverse: ScamperIdea[];
+}
+
+export const generateScamperIdeas = async (
+    input: ScamperInput | string,
+    context?: string,
+    method?: string
+): Promise<ScamperResult | Record<string, string[]>> => {
+    // Support both old (string) and new (object) input format
+    const inputData: ScamperInput = typeof input === 'string'
+        ? { topic: input, problem: context || '' }
+        : input;
+
+    const systemPrompt = `### ROLE & CONTEXT:
+Bạn là Product Innovation Expert (Chuyên gia Đổi mới Sản phẩm) với tư duy "Design Thinking".
+Nhiệm vụ: Sử dụng kỹ thuật SCAMPER để tìm ra các giải pháp ĐỘT PHÁ nhưng KHẢ THI nhằm giải quyết vấn đề cụ thể của doanh nghiệp.
+Bạn KHÔNG đưa ra lý thuyết suông, bạn đưa ra "CHIẾN THUẬT" (tactics) có thể thực hiện được NGAY.
+
+### INPUT DATA:
+- **Chủ đề/Sản phẩm**: ${inputData.topic}
+- **Vấn đề cần giải quyết (Pain Point)**: ${inputData.problem || 'Chưa xác định'}
+- **Đối tượng khách hàng**: ${inputData.targetAudience || 'Chung'}
+- **Ràng buộc**: ${inputData.constraints || 'Không có ràng buộc cụ thể'}
+
+### SCAMPER RULES (BẮT BUỘC TUÂN THỦ):
+
+**1. PROBLEM-CENTRIC (Tập trung vấn đề):**
+- Ý tưởng BẮT BUỘC phải giải quyết được "${inputData.problem || 'vấn đề của sản phẩm'}"
+- Nếu ý tưởng hay nhưng KHÔNG giải quyết vấn đề → LOẠI BỎ
+
+**2. MICRO-INNOVATION (Đổi mới nhỏ):**
+- Ưu tiên thay đổi NHỎ về quy trình, dịch vụ, trải nghiệm (low cost)
+- Tránh đề xuất thay đổi toàn bộ mô hình kinh doanh (trừ khi được yêu cầu)
+${inputData.constraints ? `- Tuân thủ ràng buộc: ${inputData.constraints}` : ''}
+
+**3. CỤ THỂ HÓA (Be Specific):**
+- KHÔNG nói: "Tổ chức sự kiện"
+- PHẢI nói: "Tổ chức sự kiện đổi sách cũ lấy voucher mỗi Chủ nhật cuối tháng"
+
+${method ? `### FOCUS ONLY ON: ${method.toUpperCase()}` : '### Generate ideas for ALL 7 categories.'}
+
+### OUTPUT FORMAT (STRICT JSON - Idea Cards):
+{
+  "substitute": [
+    {
+      "idea_name": "Tên ý tưởng hấp dẫn, ngắn gọn",
+      "how_to": "Thay thế yếu tố X bằng Y để giải quyết vấn đề",
+      "example": "Ví dụ cụ thể có thể làm ngay"
+    }
+  ],
+  "combine": [
+    {
+      "idea_name": "string",
+      "how_to": "Kết hợp sản phẩm với hoạt động/yếu tố Z",
+      "example": "VD: Kết hợp cafe với Speed Networking 15 phút giữa giờ"
+    }
+  ],
+  "adapt": [
+    {
+      "idea_name": "string",
+      "how_to": "Học hỏi và áp dụng từ ngành/sản phẩm khác",
+      "example": "string"
+    }
+  ],
+  "modify": [
+    {
+      "idea_name": "string",
+      "how_to": "Thay đổi hình dạng/quy mô/tần suất/quy trình",
+      "example": "string"
+    }
+  ],
+  "putToAnotherUse": [
+    {
+      "idea_name": "string",
+      "how_to": "Sử dụng cho mục đích/đối tượng/thời điểm khác",
+      "example": "string"
+    }
+  ],
+  "eliminate": [
+    {
+      "idea_name": "Loại bỏ rào cản tương tác",
+      "how_to": "Loại bỏ yếu tố không cần thiết hoặc gây cản trở",
+      "example": "VD: Loại bỏ Wifi trong khung giờ Social Hour để ép mọi người nói chuyện"
+    }
+  ],
+  "reverse": [
+    {
+      "idea_name": "string",
+      "how_to": "Đảo ngược quy trình/thứ tự/vai trò",
+      "example": "string"
+    }
+  ]
+}
+
+### QUALITY CONTROL:
+- Mỗi category có 1-2 ý tưởng CHẤT LƯỢNG (không cần nhiều)
+- idea_name phải hấp dẫn, dễ nhớ
+- example phải CỤ THỂ, có thể thực hiện NGAY
+- Tất cả phải liên quan đến việc giải quyết "${inputData.problem || 'vấn đề chính'}"`;
 
     try {
         const response = await ai.models.generateContent({
             model: 'gemini-2.5-flash',
-            contents: `Topic: "${topic}"`,
+            contents: `Generate SCAMPER ideas for: "${inputData.topic}" to solve: "${inputData.problem}"`,
             config: {
                 systemInstruction: systemPrompt,
                 responseMimeType: "application/json",
                 safetySettings: SAFETY_SETTINGS,
+                temperature: 0.8
             },
         });
 
@@ -690,144 +778,179 @@ export interface AutoBriefInput {
     goal: string;
     targetAudience: string;
     usp?: string;
-    budget?: string;
+    budget?: string;      // Critical for Budget Reality Check
     duration?: string;
+    mandatories?: string; // V2: Must-haves and restrictions
 }
+
+// Parse budget string to number in millions VND
+const parseBudgetToMillions = (budgetStr?: string): number => {
+    if (!budgetStr) return 0;
+    const cleaned = budgetStr.toLowerCase().replace(/[^0-9.trămbmtỷty]/g, '');
+
+    if (budgetStr.includes('tỷ') || budgetStr.includes('ty')) {
+        const num = parseFloat(cleaned) || 0;
+        return num * 1000; // Convert to millions
+    }
+    if (budgetStr.includes('triệu') || budgetStr.includes('tr') || budgetStr.includes('m')) {
+        return parseFloat(cleaned) || 0;
+    }
+    // Assume raw number is in millions
+    const num = parseFloat(cleaned) || 0;
+    return num > 1000 ? num / 1000000 : num; // Handle if entered as actual VND
+};
 
 export const generateAutoBrief = async (
     input: AutoBriefInput,
     onProgress?: (step: string) => void
 ): Promise<BriefData | null> => {
-    // Senior Strategic Planner - Enhanced System Prompt
-    const systemPrompt = `### ROLE & OBJECTIVE
-Bạn là một Senior Strategic Planner (Chuyên gia Hoạch định Chiến lược) với 10 năm kinh nghiệm tại các Agency quảng cáo hàng đầu (Ogilvy, Dentsu). Nhiệm vụ của bạn là lập một bản kế hoạch Marketing tổng thể (Auto Brief) chi tiết, khả thi và sáng tạo.
+    // V2: Budget Reality Check
+    const budgetMillions = parseBudgetToMillions(input.budget);
 
-### CLIENT INPUT
-- Product/Brand: ${input.productBrand}
-- Industry: ${input.industry}
-- Campaign Goal: ${input.goal}
-- Target Audience: ${input.targetAudience}
-${input.usp ? `- USP (Điểm khác biệt): ${input.usp}` : ''}
-${input.budget ? `- Budget/Scale: ${input.budget}` : ''}
-${input.duration ? `- Duration: ${input.duration}` : ''}
+    let budgetTier: 'micro' | 'small' | 'medium' | 'large' = 'micro';
+    let budgetConstraints = '';
+    let goalAdjustment = '';
 
-### THINKING PROCESS (MANDATORY - Execute before output)
-Trước khi đưa ra kết quả, hãy tư duy theo luồng sau:
+    if (budgetMillions < 50) {
+        budgetTier = 'micro';
+        budgetConstraints = `
+⚠️ NGÂN SÁCH MICRO (< 50 triệu VNĐ):
+- CHỈ ĐƯỢC đề xuất: Content Fanpage, Seeding hội nhóm, Ads cơ bản
+- CẤM đề xuất: Quay TVC, Event offline, App/Game/AR Filter, KOL hạng A/Celebrity`;
 
-**1. Phân tích bối cảnh (Context Analysis):**
-- Với ngành hàng ${input.industry}${input.budget ? ` và ngân sách ${input.budget}` : ''}, đối thủ đang làm gì?
-- Đâu là cơ hội (gap) cho thương hiệu này?
-- Trend hiện tại trong ngành là gì?
+        if (input.goal.toLowerCase().includes('doanh thu') || input.goal.toLowerCase().includes('bán hàng')) {
+            goalAdjustment = `
+⚠️ ĐIỀU CHỈNH MỤC TIÊU: 
+Người dùng chọn "Tăng doanh thu" nhưng ngân sách ${input.budget} quá nhỏ.
+→ Tự động điều chỉnh thành "Tăng nhận diện" hoặc "Thúc đẩy dùng thử (Trial)"
+→ Giải thích trong Brief rằng ngân sách nhỏ cần focus vào awareness trước`;
+        }
+    } else if (budgetMillions >= 50 && budgetMillions < 500) {
+        budgetTier = 'small';
+        budgetConstraints = `
+✅ NGÂN SÁCH NHỎ-TRUNG (50-500 triệu VNĐ):
+- CÓ THỂ đề xuất: KOC/Micro-KOL, Photoshoot campaign, Video TikTok chất lượng cao
+- CHƯA NÊN đề xuất: TVC quay studio, Celebrity/KOL hạng A, Event lớn`;
+    } else if (budgetMillions >= 500 && budgetMillions < 1000) {
+        budgetTier = 'medium';
+        budgetConstraints = `
+✅ NGÂN SÁCH TRUNG-LỚN (500 triệu - 1 tỷ VNĐ):
+- CÓ THỂ đề xuất: Macro-KOL, Mini-event, Content production chất lượng cao
+- CẨN THẬN: Celebrity booking có thể hết ngân sách chỉ cho 1 post`;
+    } else {
+        budgetTier = 'large';
+        budgetConstraints = `
+🚀 NGÂN SÁCH LỚN (> 1 tỷ VNĐ):
+- ĐƯỢC đề xuất: TVC, Đại sứ thương hiệu, Chuỗi sự kiện, Integrated campaign
+- Focus vào impact và brand love dài hạn`;
+    }
 
-**2. Phân rã mục tiêu (Goal Breakdown):**
-Từ mục tiêu tổng quát "${input.goal}", hãy tách nhỏ thành:
-- Business Goal: Doanh số/Thị phần cụ thể với con số
-- Marketing Goal: Traffic/Leads/Engagement với metrics rõ ràng
-- Communication Goal: Nhận diện/Yêu thích thương hiệu (Brand Love, Top of Mind)
+    const systemPrompt = `### ROLE & CONTEXT:
+Bạn là Senior Strategic Planner (Chuyên gia Hoạch định Chiến lược) tại Agency quảng cáo hàng đầu.
+Bạn có tư duy sắc bén, hiểu rõ thị trường Việt Nam và đặc biệt NHẠY CẢM VỚI NGÂN SÁCH (Budget-conscious).
+Nhiệm vụ: Nhận thông tin sơ khởi từ khách hàng và viết lại thành Creative Brief chuẩn chỉnh, KHẢ THI để chuyển giao cho Creative Team và Media thực thi.
 
-**3. Thấu hiểu khách hàng (Deep Insight):**
-Dựa trên "${input.targetAudience}", hãy tìm ra:
-- Demographic: Nhân khẩu học cơ bản
-- Psychographic: Sở thích, hành vi, lối sống
-- **Core Insight**: Sự thật ngầm hiểu sâu sắc (nỗi đau hoặc khát khao thầm kín) - KHÔNG phải chỉ là đặc điểm nhân khẩu học
+### INPUT DATA:
+- **Thương hiệu**: ${input.productBrand}
+- **Ngành hàng**: ${input.industry}
+- **Mục tiêu sơ khởi**: ${input.goal}
+- **Đối tượng**: ${input.targetAudience}
+- **USP**: ${input.usp || 'Chưa xác định'}
+- **Ngân sách**: ${input.budget || 'Chưa xác định'} (≈ ${budgetMillions} triệu VNĐ - Tier: ${budgetTier.toUpperCase()})
+- **Thời gian**: ${input.duration || 'Chưa xác định'}
+- **Mandatories**: ${input.mandatories || 'Không có'}
 
-**4. Chiến lược tiếp cận (Strategic Approach):**
-${input.usp ? `- USP "${input.usp}" sẽ giải quyết Insight đó như thế nào?` : '- Tìm ra điểm khác biệt từ thông tin đã cho'}
-- Big Idea xuyên suốt là gì?
-- Key Hook để thu hút sự chú ý ngay lập tức?
+### QUY TẮC TƯ DUY (CRITICAL LOGIC):
 
-### BUDGET-AWARE CHANNEL STRATEGY
-${input.budget ? `
-Với ngân sách ${input.budget}, hãy đề xuất kênh phù hợp:
-- < 10M: Focus on Organic/Social/Viral (TikTok, Facebook Groups, UGC)
-- 10-50M: Mix of Organic + Paid Social (Facebook Ads, TikTok Ads, Influencer Micro)
-- 50-100M: Full Paid Media + KOLs (Google Ads, Meta Ads, Macro Influencer)
-- > 100M: Integrated campaign (TV, OOH, Digital, Celebrity)
-` : 'Đề xuất kênh phù hợp với ngành hàng và mục tiêu.'}
+**1. KIỂM TRA TÍNH KHẢ THI NGÂN SÁCH (Budget Reality Check):**
+${budgetConstraints}
+${goalAdjustment}
 
-### INDUSTRY-SPECIFIC CHANNELS
-Ưu tiên kênh theo ngành:
-- Fashion/Beauty → TikTok, Instagram, Pinterest
-- F&B → Facebook, Local SEO, Delivery Apps (Grab, Shopee Food)
-- B2B/SaaS → LinkedIn, Email Marketing, Webinars
-- Health/Wellness → YouTube, Blog SEO, Community Groups
-- E-commerce → Paid Ads, Retargeting, Email Automation
+**2. INSIGHT SÂU SẮC (Không chung chung):**
+- KHÔNG viết "Gen Z thích năng động" (quá chung)
+- PHẢI viết theo cấu trúc:
+  * "Tôi muốn... (Mong muốn)"
+  * "Nhưng... (Rào cản/Sự thật ngầm hiểu)"
+  * "Vì vậy... (Cơ hội cho thương hiệu)"
 
-### OUTPUT FORMAT (STRICT JSON)
+**3. CHIẾN THUẬT PHÙ HỢP NGÂN SÁCH:**
+- Ngân sách < 50tr: Focus Organic, UGC, Seeding
+- Ngân sách 50-200tr: Paid Social + Micro-KOL
+- Ngân sách 200-500tr: Full Paid + KOC Army + Photoshoot
+- Ngân sách 500tr-1tỷ: Macro-KOL + Event nhỏ + Video production
+- Ngân sách > 1tỷ: TVC + Celebrity + Omnichannel
+
+### OUTPUT FORMAT (STRICT JSON - FIELD NAMES PHẢI ĐÚNG):
 {
-  "project_name": "Tên Campaign sáng tạo, ngắn gọn, bắt tai (tiếng Việt)",
-  "context_analysis": "Phân tích bối cảnh thị trường, đối thủ và cơ hội cạnh tranh (2-3 câu)",
+  "project_name": "Tên Campaign sáng tạo, bắt tai (tiếng Việt)",
+  "context_analysis": "Bối cảnh & Thách thức: Tóm tắt tình hình thương hiệu và lý do chạy chiến dịch. [Budget Tier: ${budgetTier.toUpperCase()}]",
   "objectives": {
-    "business": "Mục tiêu kinh doanh cụ thể với con số (VD: Tăng doanh số 30% trong Q1)",
-    "marketing": "Các chỉ số về tiếp thị (VD: 500K reach, 50K engagement, 10K leads)",
-    "communication": "Mục tiêu về định vị thương hiệu (VD: Top 3 thương hiệu được nhắc đến nhiều nhất)"
+    "business": "Mục tiêu kinh doanh (đã điều chỉnh theo ngân sách ${budgetTier})",
+    "marketing": "Mục tiêu marketing với metrics thực tế theo ngân sách",
+    "communication": "Mục tiêu truyền thông phù hợp"
   },
   "target_persona": {
-    "demographic": "Nhân khẩu học: Tuổi, giới tính, thu nhập, vị trí",
-    "psychographic": "Sở thích, hành vi, lối sống cụ thể",
-    "insight": "Core Insight - Nỗi đau hoặc khát khao thầm kín (bắt đầu bằng 'Họ...')"
+    "demographic": "Chân dung: Họ là ai? (tuổi, nghề nghiệp, lifestyle)",
+    "psychographic": "Sở thích, hành vi, lối sống",
+    "insight": "Tôi muốn [mong muốn], nhưng [rào cản], vì vậy [cơ hội cho brand]"
   },
   "strategy": {
-    "core_message": "Thông điệp chính (Big Idea) - 1 câu mạnh mẽ",
-    "key_hook": "Câu dẫn/Góc tiếp cận thu hút sự chú ý ngay lập tức",
-    "tone_mood": "Tính cách và giọng văn của thương hiệu trong chiến dịch"
+    "core_message": "Thông điệp chủ đạo - 1 câu slogan ngắn gọn, đắt giá",
+    "key_hook": "Concept/Big Idea xuyên suốt chiến dịch",
+    "tone_mood": "Tính cách thương hiệu trong chiến dịch"
   },
   "execution_plan": [
     {
-      "phase": "Phase 1: Teasing (Tuần 1-2)",
-      "activity": "Hoạt động cụ thể để gây tò mò, thu hút sự chú ý",
-      "channel": "Kênh triển khai cụ thể (phù hợp với budget)"
+      "phase": "Giai đoạn 1: Teasing",
+      "activity": "Hoạt động PHÙ HỢP ngân sách ${budgetTier}",
+      "channel": "Kênh cụ thể"
     },
     {
-      "phase": "Phase 2: Launching (Tuần 3-4)",
-      "activity": "Hoạt động chính, đẩy mạnh thông điệp và bán hàng",
-      "channel": "Kênh triển khai cụ thể (phù hợp với budget)"
+      "phase": "Giai đoạn 2: Booming", 
+      "activity": "Hoạt động chính (đảm bảo KHẢ THI với ngân sách)",
+      "channel": "Kênh chính"
     },
     {
-      "phase": "Phase 3: Sustain (Tuần 5+)",
-      "activity": "Duy trì tương tác và giữ chân khách hàng",
-      "channel": "Kênh triển khai cụ thể (phù hợp với budget)"
+      "phase": "Giai đoạn 3: Sustain",
+      "activity": "Duy trì thảo luận",
+      "channel": "Kênh duy trì"
     }
   ],
   "kpis_deliverables": {
-    "success_metrics": "Các chỉ số đo lường thành công chính (VD: CTR > 2%, Conversion > 5%, ROAS > 3)",
-    "estimated_reach": "Ước tính lượt tiếp cận dựa trên ngân sách và ngành hàng"
+    "success_metrics": "KPIs THỰC TẾ với ngân sách này (không chém gió)",
+    "estimated_reach": "Lượt tiếp cận ước tính dựa trên ngân sách ${budgetMillions}tr"
   }
 }
 
-### QUALITY CONTROL
-- Nội dung phải mang tính chiến lược, KHÔNG chung chung
-- Campaign Name phải thực sự sáng tạo và "bắt trend"
-- Core Insight phải là sự thật ngầm hiểu, không phải mô tả demographic
-- Key Hook phải độc đáo, không sao chép công thức cũ
-- Execution Plan phải actionable với activities cụ thể
-- Kênh phải phù hợp với budget và industry
-- Output PHẢI là JSON valid, không có markdown`;
+### QUALITY CONTROL:
+- Insight PHẢI theo cấu trúc 3 phần (Desire-Barrier-Opportunity)
+- Execution Plan PHẢI realistc với budget tier "${budgetTier}"
+- KPIs KHÔNG được "chém gió" (VD: 50tr không thể cam kết 1 triệu reach)
+- Nếu ngân sách quá thấp so với mục tiêu, PHẢI giải thích trong budget_reality_check`;
 
     try {
-        // Enhanced progress indicators
         if (onProgress) {
-            onProgress('🔍 Đang phân tích bối cảnh thị trường...');
-            await new Promise(r => setTimeout(r, 1000));
-            onProgress('🎯 Đang phân rã mục tiêu SMART...');
-            await new Promise(r => setTimeout(r, 1000));
-            onProgress('🧠 Đang trích xuất Deep Insight...');
-            await new Promise(r => setTimeout(r, 1000));
-            onProgress('💡 Đang xây dựng Big Idea...');
-            await new Promise(r => setTimeout(r, 1000));
-            onProgress('📢 Đang chọn kênh phù hợp với budget...');
-            await new Promise(r => setTimeout(r, 1000));
-            onProgress('📋 Đang tạo kế hoạch 3 giai đoạn...');
+            onProgress('💰 Đang kiểm tra tính khả thi ngân sách...');
+            await new Promise(r => setTimeout(r, 600));
+            onProgress('🎯 Đang điều chỉnh mục tiêu theo budget...');
+            await new Promise(r => setTimeout(r, 600));
+            onProgress('🧠 Đang trích xuất Deep Insight (3 lớp)...');
+            await new Promise(r => setTimeout(r, 600));
+            onProgress('💡 Đang xây dựng Big Idea khả thi...');
+            await new Promise(r => setTimeout(r, 600));
+            onProgress('📋 Đang lập kế hoạch 3 giai đoạn...');
+            await new Promise(r => setTimeout(r, 600));
+            onProgress('📊 Đang ước tính KPIs thực tế...');
         }
 
         const response = await ai.models.generateContent({
-            model: 'gemini-2.0-flash-exp',
-            contents: `Generate comprehensive marketing brief with strategic thinking`,
+            model: 'gemini-2.5-flash',
+            contents: `Generate comprehensive Creative Brief with Budget Reality Check for: ${input.productBrand}`,
             config: {
                 systemInstruction: systemPrompt,
                 responseMimeType: "application/json",
                 safetySettings: SAFETY_SETTINGS,
-                temperature: 0.85
+                temperature: 0.75
             },
         });
 
@@ -847,7 +970,8 @@ export interface SOPInput {
     processName: string;
     primaryRole: string;
     frequency: string;
-    goalOutput?: string;
+    tools?: string;      // V2: Available tools
+    goalOutput?: string; // V2: Desired outcome
     scope?: string;
 }
 
@@ -855,122 +979,110 @@ export const generateSOP = async (
     input: SOPInput,
     onProgress?: (step: string) => void
 ): Promise<SOPData | null> => {
-    const systemPrompt = `### ROLE & OBJECTIVE
-Bạn là một Giám đốc Vận hành (Operations Director) và Chuyên gia Tối ưu hóa Quy trình (Process Optimization Expert) với 15 năm kinh nghiệm xây dựng SOP cho các tập đoàn đa quốc gia. Nhiệm vụ của bạn là chuyển đổi yêu cầu công việc thành một Quy trình Vận hành Tiêu chuẩn (SOP) chi tiết, logic, dễ hiểu và có tính ứng dụng cao.
+    // Determine if Routine (daily/weekly) or Project (one-time/monthly)
+    const isRoutine = ['daily', 'weekly'].includes(input.frequency);
+    const frequencyType = isRoutine ? 'Routine (Quy trình lặp lại)' : 'Project/Workflow (Quy trình theo giai đoạn)';
 
-### INPUT DATA
-- Process Name: ${input.processName}
-- Main Role: ${input.primaryRole}
-- Frequency: ${input.frequency}
-${input.goalOutput ? `- Goal/Output: ${input.goalOutput}` : ''}
-${input.scope ? `- Scope: ${input.scope}` : ''}
+    const systemPrompt = `### ROLE & CONTEXT:
+Bạn là Operations Director (Giám đốc Vận hành) & Process Architect với tư duy "Lean Management" (Quản trị tinh gọn).
+Nhiệm vụ: Chuyển hóa yêu cầu công việc mơ hồ thành bản hướng dẫn SOP chi tiết, dễ hiểu đến mức nhân viên thực tập mới vào nghề cũng có thể làm theo CHÍNH XÁC mà không cần hỏi lại.
+Bạn GHÉT sự chung chung, bạn YÊU THÍCH sự chính xác và các checklist cụ thể.
 
-### LOGIC & REASONING (CHAIN OF THOUGHT)
-Trước khi tạo nội dung, hãy phân tích logic sau:
+### INPUT DATA:
+- **Tên quy trình**: ${input.processName}
+- **Vai trò thực hiện**: ${input.primaryRole}
+- **Tần suất**: ${input.frequency} → Loại: ${frequencyType}
+- **Công cụ sẵn có**: ${input.tools || 'Chưa xác định (AI tự đề xuất)'}
+- **Kết quả mong muốn**: ${input.goalOutput || 'Chưa xác định'}
 
-**1. Xử lý mâu thuẫn tần suất:**
-- Nếu "${input.processName}" mang tính dự án dài hạn (VD: Campaign, Product Launch) nhưng "${input.frequency}" là "Hàng ngày", hãy ưu tiên cấu trúc theo Giai đoạn dự án (Phase) nhưng chia nhỏ task thành các việc cần check mỗi ngày.
-- Nếu "${input.frequency}" là "Hàng ngày", SOP phải ngắn gọn, dạng Checklist nhanh.
-- Nếu "${input.frequency}" là "Dự án/Một lần", SOP phải chi tiết, chia giai đoạn rõ ràng.
+### QUY TẮC XỬ LÝ LOGIC (CRITICAL RULES):
 
-**2. Phân bổ vai trò:**
-- Dựa vào "${input.primaryRole}", hãy đặt role này làm trọng tâm.
-- Nếu quy trình cần phối hợp, hãy chỉ định thêm các role hỗ trợ (Support Roles) hợp lý.
-- "${input.primaryRole}" vẫn phải chịu trách nhiệm chính ở các khâu quan trọng nhất.
+**1. PHÂN LOẠI QUY TRÌNH:**
+${isRoutine ? `
+- Đây là ROUTINE (Hàng ngày/Hàng tuần)
+- Các bước phải lặp lại, có KHUNG GIỜ cụ thể (VD: 9:00 AM check mail)
+- Steps ngắn gọn, dạng Checklist nhanh
+- Không chia giai đoạn dài dòng
+` : `
+- Đây là PROJECT/WORKFLOW (Một lần/Theo sự kiện)
+- Các bước phải theo trình tự thời gian (Giai đoạn 1 → Giai đoạn 2)
+- Chi tiết, chia giai đoạn rõ ràng
+- Có deadline từng phase
+`}
 
-**3. Lựa chọn công cụ:**
-- Đề xuất bộ công cụ (Tools) phù hợp với tính chất công việc hiện đại:
-  - Design: Figma, Canva, Adobe Creative Suite
-  - Project Management: Jira, Trello, Asana, Monday.com
-  - Communication: Slack, Teams, Email
-  - Analytics: Google Analytics, Mixpanel, Tableau
-  - Marketing: Meta Business Suite, Google Ads, Mailchimp
+**2. NGUYÊN TẮC "ACTIONABLE" (Hành động hóa):**
+- KHÔNG dùng động từ chung chung: "Nghiên cứu", "Quản lý", "Xử lý"
+- PHẢI dùng động từ chỉ hành động CỤ THỂ:
+  ✅ "Mở file Sheet tại đường link X"
+  ✅ "Liệt kê 5 đối thủ chính"
+  ✅ "Gửi email xác nhận cho Sếp A"
+  ✅ "Xuất file PDF và upload lên Drive"
+  ❌ "Nghiên cứu thị trường" (quá chung chung)
+  ❌ "Quản lý tiến độ" (không cụ thể)
 
-### STRUCTURE FRAMEWORK
-**3 Giai đoạn bắt buộc:**
-1. **Preparation (Chuẩn bị)**: Setup, Planning, Resource gathering
-2. **Execution (Thực hiện)**: Main activities, Core tasks
-3. **Review (Đánh giá)**: Quality check, Reporting, Optimization
+**3. DEFINITION OF DONE (Tiêu chuẩn hoàn thành):**
+- Mỗi bước PHẢI có tiêu chí để biết đã xong chưa
+- VD: "Có file báo cáo PDF", "Đã được Sếp A duyệt trên Trello", "Screenshot màn hình confirm"
 
-### OUTPUT FORMAT (STRICT JSON)
+**4. TÍCH HỢP CÔNG CỤ:**
+- BẮT BUỘC gắn tên công cụ vào từng bước
+- Nếu người dùng cung cấp: ${input.tools || 'không có'} → Ưu tiên dùng những công cụ này
+- Nếu không có, đề xuất: Google Sheet, Trello, Slack, Canva, Meta Business Suite...
+
+### OUTPUT FORMAT (STRICT JSON):
 {
-  "sop_title": "Quy trình Chuẩn hóa: ${input.processName}",
-  "estimated_time": "Thời gian ước tính dựa trên tính chất công việc (VD: 2 giờ, 1 tuần, 3 tháng)",
+  "sop_title": "Quy trình: ${input.processName}",
+  "estimated_time": "Thời gian ước tính phù hợp",
+  "summary": "Mục đích ngắn gọn và ai chịu trách nhiệm chính",
   "phases": [
     {
-      "phase_name": "Phase 1: Preparation (Chuẩn bị)",
+      "phase_name": "Giai đoạn 1: [Tên giai đoạn]",
       "steps": [
         {
           "id": 1,
-          "action": "Tên đầu việc cụ thể, bắt đầu bằng động từ hành động",
-          "role": "${input.primaryRole} hoặc role phù hợp",
-          "tools": ["Tool 1", "Tool 2"],
-          "critical_note": "Hướng dẫn chi tiết CỤ THỂ (VD: 'File xuất ra phải ở định dạng .PNG và nén dưới 1MB', 'Kiểm tra kỹ chính tả, màu sắc theo brand guideline')",
-          "completed": false
-        }
-      ],
-      "collapsed": false
-    },
-    {
-      "phase_name": "Phase 2: Execution (Thực hiện)",
-      "steps": [
-        {
-          "id": 2,
-          "action": "Tên đầu việc cụ thể",
+          "action": "Tên hành động CỤ THỂ, bắt đầu bằng động từ hành động",
           "role": "${input.primaryRole}",
-          "tools": ["Tool"],
-          "critical_note": "Hướng dẫn chi tiết CỤ THỂ",
-          "completed": false
-        }
-      ],
-      "collapsed": false
-    },
-    {
-      "phase_name": "Phase 3: Review (Đánh giá)",
-      "steps": [
-        {
-          "id": 3,
-          "action": "Tên đầu việc cụ thể",
-          "role": "${input.primaryRole}",
-          "tools": ["Tool"],
-          "critical_note": "Hướng dẫn chi tiết CỤ THỂ",
+          "tools": ["Tên công cụ cụ thể"],
+          "how_to": "Mô tả CHI TIẾT cách làm (VD: Truy cập đường link X, xuất dữ liệu 7 ngày qua)",
+          "definition_of_done": "Tiêu chí hoàn thành (VD: 01 file Excel đã lưu tại thư mục Y)",
+          "critical_note": "Lỗi thường gặp hoặc lưu ý quan trọng",
           "completed": false
         }
       ],
       "collapsed": false
     }
-  ]
+  ],
+  "risks_warnings": ["Lỗi thường gặp 1", "Lỗi thường gặp 2"]
 }
 
-### QUALITY CONTROL RULES
-- **Critical Note là quan trọng nhất**: Đừng viết chung chung như "Làm tốt nhé". Hãy viết như một chỉ dẫn kỹ thuật cụ thể.
-- Mỗi phase phải có ít nhất 2-3 steps.
-- Action phải bắt đầu bằng động từ hành động (Tạo, Kiểm tra, Phê duyệt, Xuất bản...).
-- Tools phải là tên công cụ cụ thể, không viết "Công cụ thiết kế" mà phải "Figma" hoặc "Canva".
-- Ngôn ngữ: Tiếng Việt chuyên nghiệp, gãy gọn, dùng thuật ngữ chuyên ngành đúng chỗ.
-- Output PHẢI là JSON valid, không có markdown.`;
+### QUALITY CONTROL:
+- **how_to phải như hướng dẫn step-by-step**: "Click vào nút Export → Chọn định dạng CSV → Lưu vào folder X"
+- **definition_of_done phải đo lường được**: không viết "Làm xong" mà phải "Có 1 file PDF dưới 5MB"
+- Mỗi phase ít nhất 2-3 steps
+- Tools phải là tên công cụ THẬT, không viết "Công cụ thiết kế"
+- Ngôn ngữ: Tiếng Việt chuyên nghiệp, gãy gọn`;
 
     try {
         if (onProgress) {
-            onProgress('🔍 Đang phân tích tính chất quy trình...');
-            await new Promise(r => setTimeout(r, 800));
-            onProgress('🎯 Đang xác định giai đoạn chính...');
-            await new Promise(r => setTimeout(r, 800));
-            onProgress('👥 Đang phân bổ vai trò...');
-            await new Promise(r => setTimeout(r, 800));
-            onProgress('🛠️ Đang chọn công cụ phù hợp...');
-            await new Promise(r => setTimeout(r, 800));
-            onProgress('📋 Đang tạo checklist chi tiết...');
+            onProgress('🔍 Đang phân loại quy trình (Routine vs Project)...');
+            await new Promise(r => setTimeout(r, 600));
+            onProgress('📋 Đang áp dụng Lean Management Framework...');
+            await new Promise(r => setTimeout(r, 600));
+            onProgress('🎯 Đang tạo Definition of Done cho từng bước...');
+            await new Promise(r => setTimeout(r, 600));
+            onProgress('🛠️ Đang tích hợp công cụ vào quy trình...');
+            await new Promise(r => setTimeout(r, 600));
+            onProgress('✅ Đang hoàn thiện SOP...');
         }
 
         const response = await ai.models.generateContent({
-            model: 'gemini-2.0-flash-exp',
-            contents: `Generate comprehensive SOP with operations framework`,
+            model: 'gemini-2.5-flash',
+            contents: `Generate comprehensive SOP with Lean Management framework for: ${input.processName}`,
             config: {
                 systemInstruction: systemPrompt,
                 responseMimeType: "application/json",
                 safetySettings: SAFETY_SETTINGS,
-                temperature: 0.7
+                temperature: 0.6
             },
         });
 

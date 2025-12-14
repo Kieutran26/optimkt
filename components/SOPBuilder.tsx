@@ -318,13 +318,26 @@ const SOPBuilder: React.FC = () => {
                         </div>
 
                         <div>
-                            <label className="block text-sm font-bold text-slate-700 mb-2">Kết quả mong muốn (Tùy chọn)</label>
+                            <label className="block text-sm font-bold text-slate-700 mb-2">
+                                🛠️ Công cụ sẵn có
+                            </label>
+                            <input
+                                {...register('tools')}
+                                placeholder="VD: Google Sheet, Trello, Canva, Slack, Meta Business Suite..."
+                                className="w-full px-4 py-3 bg-white border border-slate-200 rounded-xl text-sm text-slate-800 placeholder:text-slate-400 focus:ring-2 focus:ring-[#10b981]/20 focus:border-[#10b981] outline-none transition-all"
+                            />
+                            <p className="text-xs text-slate-400 mt-1">AI sẽ tích hợp các công cụ này vào từng bước</p>
+                        </div>
+
+                        <div>
+                            <label className="block text-sm font-bold text-slate-700 mb-2">🎯 Kết quả mong muốn</label>
                             <textarea
                                 {...register('goalOutput')}
-                                placeholder="VD: Tăng 30% conversion rate, Hoàn thành trong 2 tuần..."
+                                placeholder="VD: Có file báo cáo PDF, Đã được sếp duyệt, 100 leads mới..."
                                 rows={2}
                                 className="w-full px-4 py-3 bg-white border border-slate-200 rounded-xl text-sm text-slate-800 placeholder:text-slate-400 focus:ring-2 focus:ring-[#10b981]/20 focus:border-[#10b981] outline-none transition-all resize-none"
                             />
+                            <p className="text-xs text-slate-400 mt-1">AI sẽ tạo Definition of Done dựa trên kết quả này</p>
                         </div>
 
                         <div>
