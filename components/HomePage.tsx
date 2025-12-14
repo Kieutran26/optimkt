@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { ViewState } from '../types';
 import TranslationView from './TranslationView';
-import { TaskService, Task } from '../services/taskService';
+import { useTasks } from './TaskContext';
 import {
     Brain, Lightbulb, Image as ImageIcon, TrendingUp,
     Target, Users, Map, Heart, Zap, PenTool, CalendarDays,
@@ -26,10 +26,9 @@ interface ProgressItem {
 }
 
 const HomePage: React.FC<HomePageProps> = ({ setView }) => {
-    // To-Do List State
-    const [tasks, setTasks] = useState<Task[]>([]);
+    // Use shared TaskContext
+    const { tasks, addTask, toggleTask, deleteTask } = useTasks();
     const [newTaskText, setNewTaskText] = useState('');
-    const [isMigrated, setIsMigrated] = useState(false);
 
     // Progress Data
     const [progressData, setProgressData] = useState<Record<string, number>>({});
@@ -45,20 +44,6 @@ const HomePage: React.FC<HomePageProps> = ({ setView }) => {
         { id: 'insight', name: 'Insight Finder', icon: Sparkles, storageKey: 'insight_finder_history', viewId: 'INSIGHT_FINDER', color: '#06b6d4', bgColor: 'bg-cyan-50' },
         { id: 'brand_vault', name: 'Brand Vault', icon: Target, storageKey: 'brand_vault_brands', viewId: 'BRAND_VAULT', color: '#6366f1', bgColor: 'bg-indigo-50' },
     ];
-
-    // Load tasks from Supabase
-    useEffect(() => {
-        const loadTasks = async () => {
-            // Try to migrate from localStorage first
-            const migrated = await TaskService.migrateFromLocalStorage();
-            if (migrated > 0) setIsMigrated(true);
-
-            // Load from Supabase
-            const data = await TaskService.getTasks();
-            setTasks(data);
-        };
-        loadTasks();
-    }, []);
 
     // Load progress data
     useEffect(() => {
@@ -79,43 +64,18 @@ const HomePage: React.FC<HomePageProps> = ({ setView }) => {
         setProgressData(data);
     }, []);
 
-    const addTask = async () => {
+    // Handle add task with text input
+    const handleAddTask = () => {
         if (!newTaskText.trim()) return;
-        const newTask: Task = {
-            id: Date.now().toString(),
-            text: newTaskText.trim(),
-            completed: false,
-            createdAt: Date.now()
-        };
-
-        const success = await TaskService.addTask(newTask);
-        if (success) {
-            setTasks([newTask, ...tasks]);
-            setNewTaskText('');
-        }
-    };
-
-    const toggleTask = async (id: string) => {
-        const task = tasks.find(t => t.id === id);
-        if (!task) return;
-
-        const success = await TaskService.updateTask(id, !task.completed);
-        if (success) {
-            setTasks(tasks.map(t => t.id === id ? { ...t, completed: !t.completed } : t));
-        }
-    };
-
-    const deleteTask = async (id: string) => {
-        const success = await TaskService.deleteTask(id);
-        if (success) {
-            setTasks(tasks.filter(t => t.id !== id));
-        }
+        addTask(newTaskText);
+        setNewTaskText('');
     };
 
     // Calculate metrics
-    const totalItems = Object.values(progressData).reduce((a, b) => a + b, 0);
+    const totalItems = Object.values(progressData).reduce((a: number, b: number) => a + b, 0);
     const activeTools = trackedTools.filter(t => progressData[t.id] > 0);
     const completedTasks = tasks.filter(t => t.completed).length;
+    const pendingTasks = tasks.length - completedTasks;
     const taskCompletionRate = tasks.length > 0 ? Math.round((completedTasks / tasks.length) * 100) : 0;
 
     // Generate donut chart gradient
@@ -126,7 +86,8 @@ const HomePage: React.FC<HomePageProps> = ({ setView }) => {
         const segments: string[] = [];
 
         activeTools.forEach(tool => {
-            const percentage = (progressData[tool.id] / totalItems) * 360;
+            const itemCount = progressData[tool.id] as number || 0;
+            const percentage = (itemCount / totalItems) * 360;
             segments.push(`${tool.color} ${currentAngle}deg ${currentAngle + percentage}deg`);
             currentAngle += percentage;
         });
@@ -280,12 +241,12 @@ const HomePage: React.FC<HomePageProps> = ({ setView }) => {
                                     type="text"
                                     value={newTaskText}
                                     onChange={(e) => setNewTaskText(e.target.value)}
-                                    onKeyDown={(e) => e.key === 'Enter' && addTask()}
+                                    onKeyDown={(e) => e.key === 'Enter' && handleAddTask()}
                                     placeholder="Thêm công việc mới..."
                                     className="flex-1 px-4 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:border-indigo-500 transition-all"
                                 />
                                 <button
-                                    onClick={addTask}
+                                    onClick={handleAddTask}
                                     className="bg-indigo-600 text-white px-4 py-2 rounded-xl hover:bg-indigo-700 transition-all"
                                 >
                                     <Plus size={18} />
@@ -332,90 +293,163 @@ const HomePage: React.FC<HomePageProps> = ({ setView }) => {
                                 )}
                             </div>
 
-                            {/* Task Completion Bar */}
+                            {/* Task Stats & Chart */}
                             {tasks.length > 0 && (
                                 <div className="mt-4 pt-4 border-t border-slate-100">
-                                    <div className="flex justify-between text-xs text-slate-500 mb-2">
-                                        <span>Tiến độ hoàn thành</span>
-                                        <span className="font-bold text-emerald-600">{taskCompletionRate}%</span>
+                                    <div className="flex items-center gap-4">
+                                        {/* Mini Donut Chart */}
+                                        <div className="relative w-16 h-16 flex-shrink-0">
+                                            <div
+                                                className="w-full h-full rounded-full"
+                                                style={{
+                                                    background: `conic-gradient(#10b981 0deg ${taskCompletionRate * 3.6}deg, #fbbf24 ${taskCompletionRate * 3.6}deg 360deg)`
+                                                }}
+                                            />
+                                            <div className="absolute inset-1.5 bg-white rounded-full flex items-center justify-center">
+                                                <span className="text-sm font-bold text-slate-700">{taskCompletionRate}%</span>
+                                            </div>
+                                        </div>
+
+                                        {/* Stats Grid */}
+                                        <div className="flex-1 grid grid-cols-3 gap-2">
+                                            <div className="text-center p-2 bg-emerald-50 rounded-lg">
+                                                <div className="text-lg font-bold text-emerald-600">{completedTasks}</div>
+                                                <div className="text-xs text-emerald-500">Hoàn thành</div>
+                                            </div>
+                                            <div className="text-center p-2 bg-amber-50 rounded-lg">
+                                                <div className="text-lg font-bold text-amber-500">{pendingTasks}</div>
+                                                <div className="text-xs text-amber-400">Chờ xử lý</div>
+                                            </div>
+                                            <div className="text-center p-2 bg-slate-50 rounded-lg">
+                                                <div className="text-lg font-bold text-slate-600">{tasks.length}</div>
+                                                <div className="text-xs text-slate-400">Tổng cộng</div>
+                                            </div>
+                                        </div>
                                     </div>
-                                    <div className="h-2 bg-slate-100 rounded-full overflow-hidden">
-                                        <div
-                                            className="h-full bg-gradient-to-r from-emerald-400 to-emerald-500 rounded-full transition-all duration-500"
-                                            style={{ width: `${taskCompletionRate}%` }}
-                                        />
+
+                                    {/* Progress Bar */}
+                                    <div className="mt-3">
+                                        <div className="h-2 bg-slate-100 rounded-full overflow-hidden">
+                                            <div
+                                                className="h-full bg-gradient-to-r from-emerald-400 to-emerald-500 rounded-full transition-all duration-500"
+                                                style={{ width: `${taskCompletionRate}%` }}
+                                            />
+                                        </div>
                                     </div>
                                 </div>
                             )}
                         </div>
 
-                        {/* Progress Chart */}
+                        {/* Combined Progress Charts */}
                         <div className="bg-white rounded-2xl border border-soft-border p-6">
                             <div className="flex items-center justify-between mb-4">
                                 <h3 className="font-bold text-slate-800 flex items-center gap-2">
                                     <PieChart size={18} className="text-indigo-500" />
-                                    Thống kê sử dụng
+                                    Thống kê tổng quan
                                 </h3>
-                                <span className="text-xs bg-indigo-50 text-indigo-600 px-2 py-1 rounded-full font-medium">
-                                    {totalItems} mục đã lưu
-                                </span>
                             </div>
 
-                            <div className="flex items-center gap-6">
-                                {/* Donut Chart */}
-                                <div className="relative w-32 h-32 flex-shrink-0">
-                                    <div
-                                        className="w-full h-full rounded-full"
-                                        style={{ background: generateDonutGradient() }}
-                                    />
-                                    <div className="absolute inset-3 bg-white rounded-full flex items-center justify-center">
-                                        <div className="text-center">
-                                            <div className="text-2xl font-bold text-slate-800">{activeTools.length}</div>
-                                            <div className="text-xs text-slate-400">công cụ</div>
+                            {/* Two Charts Row */}
+                            <div className="grid grid-cols-2 gap-6 mb-4">
+                                {/* To-Do Progress Chart */}
+                                <div className="text-center">
+                                    <div className="relative w-24 h-24 mx-auto mb-3">
+                                        <div
+                                            className="w-full h-full rounded-full"
+                                            style={{
+                                                background: tasks.length > 0
+                                                    ? `conic-gradient(#10b981 0deg ${taskCompletionRate * 3.6}deg, #fbbf24 ${taskCompletionRate * 3.6}deg 360deg)`
+                                                    : 'conic-gradient(#e2e8f0 0deg 360deg)'
+                                            }}
+                                        />
+                                        <div className="absolute inset-2 bg-white rounded-full flex items-center justify-center">
+                                            <div className="text-center">
+                                                <div className="text-lg font-bold text-slate-800">{taskCompletionRate}%</div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div className="text-xs font-medium text-slate-600 mb-2">To-Do Progress</div>
+                                    <div className="flex justify-center gap-4 text-xs">
+                                        <div className="flex items-center gap-1">
+                                            <div className="w-2 h-2 rounded-full bg-emerald-500"></div>
+                                            <span className="text-slate-500">Xong ({completedTasks})</span>
+                                        </div>
+                                        <div className="flex items-center gap-1">
+                                            <div className="w-2 h-2 rounded-full bg-amber-400"></div>
+                                            <span className="text-slate-500">Chờ ({pendingTasks})</span>
                                         </div>
                                     </div>
                                 </div>
 
-                                {/* Legend */}
-                                <div className="flex-1 space-y-2 max-h-[140px] overflow-y-auto custom-scrollbar">
-                                    {activeTools.length === 0 ? (
-                                        <div className="text-center py-4 text-slate-400 text-sm">
-                                            Chưa có dữ liệu
+                                {/* Tool Usage Chart */}
+                                <div className="text-center">
+                                    <div className="relative w-24 h-24 mx-auto mb-3">
+                                        <div
+                                            className="w-full h-full rounded-full"
+                                            style={{ background: generateDonutGradient() }}
+                                        />
+                                        <div className="absolute inset-2 bg-white rounded-full flex items-center justify-center">
+                                            <div className="text-center">
+                                                <div className="text-lg font-bold text-slate-800">{totalItems}</div>
+                                            </div>
                                         </div>
+                                    </div>
+                                    <div className="text-xs font-medium text-slate-600 mb-2">Dữ liệu đã lưu</div>
+                                    <div className="flex justify-center gap-4 text-xs">
+                                        <div className="flex items-center gap-1">
+                                            <div className="w-2 h-2 rounded-full bg-indigo-500"></div>
+                                            <span className="text-slate-500">Tools ({activeTools.length})</span>
+                                        </div>
+                                        <div className="flex items-center gap-1">
+                                            <div className="w-2 h-2 rounded-full bg-slate-300"></div>
+                                            <span className="text-slate-500">Còn lại ({trackedTools.length - activeTools.length})</span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* Legend for tools */}
+                            <div className="pt-4 border-t border-slate-100">
+                                <div className="text-xs font-medium text-slate-500 mb-2">Công cụ đang dùng</div>
+                                <div className="flex flex-wrap gap-2">
+                                    {activeTools.length === 0 ? (
+                                        <div className="text-xs text-slate-400">Chưa có dữ liệu</div>
                                     ) : (
                                         activeTools.map(tool => (
-                                            <div
+                                            <button
                                                 key={tool.id}
-                                                className="flex items-center justify-between text-sm cursor-pointer hover:bg-slate-50 p-1.5 rounded-lg transition-all"
                                                 onClick={() => setView(tool.viewId)}
+                                                className="flex items-center gap-1.5 px-2 py-1 rounded-lg bg-slate-50 hover:bg-slate-100 transition-all text-xs"
                                             >
-                                                <div className="flex items-center gap-2">
-                                                    <div
-                                                        className="w-3 h-3 rounded-full"
-                                                        style={{ backgroundColor: tool.color }}
-                                                    />
-                                                    <span className="text-slate-600">{tool.name}</span>
-                                                </div>
+                                                <div
+                                                    className="w-2 h-2 rounded-full"
+                                                    style={{ backgroundColor: tool.color }}
+                                                />
+                                                <span className="text-slate-600">{tool.name}</span>
                                                 <span className="font-bold text-slate-800">{progressData[tool.id]}</span>
-                                            </div>
+                                            </button>
                                         ))
                                     )}
                                 </div>
                             </div>
 
-                            {/* Quick Stats */}
-                            <div className="mt-4 pt-4 border-t border-slate-100 grid grid-cols-3 gap-4">
+                            {/* Quick Stats Row */}
+                            <div className="mt-4 pt-4 border-t border-slate-100 grid grid-cols-4 gap-4">
+                                <div className="text-center">
+                                    <div className="text-xl font-bold text-emerald-600">{completedTasks}</div>
+                                    <div className="text-xs text-slate-400">Task xong</div>
+                                </div>
+                                <div className="text-center">
+                                    <div className="text-xl font-bold text-amber-500">{pendingTasks}</div>
+                                    <div className="text-xs text-slate-400">Task chờ</div>
+                                </div>
                                 <div className="text-center">
                                     <div className="text-xl font-bold text-indigo-600">{activeTools.length}</div>
-                                    <div className="text-xs text-slate-400">Công cụ đã dùng</div>
+                                    <div className="text-xs text-slate-400">Tools dùng</div>
                                 </div>
                                 <div className="text-center">
-                                    <div className="text-xl font-bold text-emerald-600">{totalItems}</div>
-                                    <div className="text-xs text-slate-400">Tổng mục lưu</div>
-                                </div>
-                                <div className="text-center">
-                                    <div className="text-xl font-bold text-amber-600">{trackedTools.length - activeTools.length}</div>
-                                    <div className="text-xs text-slate-400">Chưa khám phá</div>
+                                    <div className="text-xl font-bold text-slate-400">{totalItems}</div>
+                                    <div className="text-xs text-slate-400">Mục lưu</div>
                                 </div>
                             </div>
                         </div>

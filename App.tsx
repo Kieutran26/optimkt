@@ -8,7 +8,7 @@ import StarredView from './components/StarredView';
 import PlanList from './components/PlanList';
 import PlanCalendar from './components/PlanCalendar';
 import PromptManager from './components/PromptManager';
-import ToDoList from './components/ToDoList';
+import ToDoListPage from './components/ToDoListPage';
 import ContentGenerator from './components/ContentGenerator';
 import KeyVisuals from './components/KeyVisuals';
 import VisualEmailBuilder from './components/VisualEmailBuilder';
@@ -42,6 +42,7 @@ import HomePage from './components/HomePage';
 import FeaturesGuide from './components/FeaturesGuide';
 import { ViewState, StudyMode, Word, MastermindStrategy } from './types';
 import { BrandProvider } from './components/BrandContext';
+import { TaskProvider } from './components/TaskContext';
 
 function AppContent() {
   const [currentView, setCurrentView] = useState<ViewState>('HOME_DASHBOARD');
@@ -124,7 +125,7 @@ function AppContent() {
       case 'PROMPTS':
         return <PromptManager />;
       case 'TODO':
-        return <ToDoList />;
+        return <ToDoListPage />;
       case 'CONTENT_WRITER':
         return <ContentGenerator initialData={contentGenData} />;
       case 'VISUAL_EMAIL':
@@ -217,7 +218,9 @@ function AppContent() {
 function App() {
   return (
     <BrandProvider>
-      <AppContent />
+      <TaskProvider>
+        <AppContent />
+      </TaskProvider>
     </BrandProvider>
   );
 }
