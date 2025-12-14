@@ -312,33 +312,93 @@ export interface MindmapData {
     edges: { id: string; source: string; target: string }[];
 }
 
-export const generateMindmapData = async (keyword: string): Promise<MindmapData> => {
-    const systemPrompt = `You are a creative brainstorming expert.
-    Your task is to create a structured Mindmap for the keyword provided by the user.
-    
-    Structure Requirements:
-1. ** Root Node:** The central keyword.
-    2. ** Branches(Pillars):** Generate exactly 4 main conceptual pillars related to the keyword.
-    3. ** Leaves(Sub - ideas):** For each pillar, generate exactly 3 specific, actionable sub - ideas.
+// --- MINDMAP AI V2 ---
 
-    Output Format(JSON ONLY):
-    Return a single JSON object with two arrays: "nodes" and "edges".
-    - ** nodes **: Array of objects { "id": string, "label": string, "type": "root" | "branch" | "leaf" }.
-    - ** edges **: Array of objects { "id": string, "source": string, "target": string }.
+export interface MindmapInput {
+    topic: string;           // Chủ đề chính (Central Topic)
+    goal?: string;           // Mục tiêu (VD: Kinh doanh, Nghiên cứu, Học tập)
+    audience?: string;       // Đối tượng hướng tới
+    depth?: number;          // Độ sâu mong muốn (2-4 cấp)
+}
 
-    IDs should be unique(e.g., "root", "b1", "b2", "b1-l1", etc.).
-    Do not include layout positions(x, y), just the structure.
-    Do not wrap in markdown code blocks.
-    `;
+export const generateMindmapData = async (input: MindmapInput | string): Promise<MindmapData> => {
+    // Support both old (string) and new (object) input format
+    const inputData: MindmapInput = typeof input === 'string'
+        ? { topic: input, depth: 3 }
+        : input;
+
+    const depth = inputData.depth || 3;
+    const hasGoal = inputData.goal && inputData.goal.trim().length > 0;
+
+    const systemPrompt = `### ROLE & CONTEXT:
+Bạn là Knowledge Architect (Kiến trúc sư Thông tin) và Chuyên gia Tư duy Hệ thống (Systems Thinking).
+Nhiệm vụ: Phân rã chủ đề phức tạp thành Mindmap có cấu trúc CHẶT CHẼ, LOGIC và có CHIỀU SÂU.
+Bạn tuân thủ tuyệt đối nguyên tắc MECE (Mutually Exclusive, Collectively Exhaustive - Không trùng lặp, Không bỏ sót).
+
+### INPUT DATA:
+- **Chủ đề chính**: ${inputData.topic}
+- **Mục tiêu**: ${inputData.goal || 'Chưa xác định (tạo mindmap tổng quan)'}
+- **Đối tượng**: ${inputData.audience || 'Chung'}
+- **Độ sâu**: ${depth} cấp độ nhánh
+
+### LOGIC PHÂN TÍCH & XÂY DỰNG CÂY (CRITICAL RULES):
+
+**1. CONTEXTUAL BRANCHING (Phân nhánh theo ngữ cảnh):**
+${hasGoal ? `
+- Dựa vào mục tiêu "${inputData.goal}", chọn các nhánh chính (Level 1) PHÙ HỢP NHẤT
+- LOẠI BỎ những nhánh không liên quan đến mục tiêu
+- VD: Nếu mục tiêu "Kinh doanh" → Dùng: "Mô hình kinh doanh", "Phân khúc khách hàng", "Marketing & Sale"
+- VD: Nếu mục tiêu "Nghiên cứu" → Dùng: "Thành phần", "Tác động", "Đối tượng khuyên dùng"
+` : `
+- Tạo mindmap TỔNG QUAN với các nhánh phổ quát nhất cho chủ đề
+`}
+
+**2. SPECIFIC INSIGHT (Chi tiết đắt giá):**
+- Ở các nhánh con (Level 2, Level 3), TUYỆT ĐỐI không dùng từ đơn chung chung
+- PHẢI dùng cụm từ ngắn gọn nhưng CHỨA THÔNG TIN CỤ THỂ
+- SAI: "Marketing" -> "Facebook"
+- ĐÚNG: "Marketing" -> "Facebook Ads (Target Eat Clean)"
+
+**3. ANTI-HALLUCINATION (Chống bịa đặt):**
+- Chỉ đưa ra các nhánh dựa trên kiến thức phổ quát đã kiểm chứng
+- Không tự bịa thuật ngữ không tồn tại
+
+**4. MECE COMPLIANCE:**
+- Các nhánh cùng cấp KHÔNG được trùng lặp ý nghĩa
+- Các nhánh cùng cấp phải BAO QUÁT đủ các khía cạnh quan trọng
+
+### OUTPUT FORMAT (STRICT JSON):
+{
+  "nodes": [
+    { "id": "root", "label": "${inputData.topic}", "type": "root" },
+    { "id": "b1", "label": "Nhánh 1 (sát với mục tiêu)", "type": "branch" },
+    { "id": "b1-l1", "label": "Chi tiết cụ thể với insight", "type": "leaf" },
+    { "id": "b1-l2", "label": "Hành động hoặc thông tin chi tiết", "type": "leaf" },
+    { "id": "b2", "label": "Nhánh 2...", "type": "branch" },
+    ...
+  ],
+  "edges": [
+    { "id": "e-root-b1", "source": "root", "target": "b1" },
+    { "id": "e-b1-l1", "source": "b1", "target": "b1-l1" },
+    ...
+  ]
+}
+
+### QUALITY CONTROL:
+- Tạo đúng 4 nhánh chính (branches)
+- Mỗi nhánh chính có 2-4 nhánh con (leaves) TÙY THEO ĐỘ SÂU
+- Label phải bằng Tiếng Việt, ngắn gọn nhưng ĐẮT GIÁ (có thông tin cụ thể)
+- IDs phải unique (root, b1, b2, b1-l1, b1-l2, etc.)`;
 
     try {
         const response = await ai.models.generateContent({
             model: 'gemini-2.5-flash',
-            contents: `Keyword: "${keyword}"`,
+            contents: `Create mindmap for: "${inputData.topic}" ${hasGoal ? `with goal: "${inputData.goal}"` : ''}`,
             config: {
                 systemInstruction: systemPrompt,
                 responseMimeType: "application/json",
                 safetySettings: SAFETY_SETTINGS,
+                temperature: 0.7
             },
         });
 
