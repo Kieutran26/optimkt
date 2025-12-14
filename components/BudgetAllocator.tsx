@@ -6,6 +6,7 @@ import {
 } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, ResponsiveContainer, Legend, Tooltip, Cell } from 'recharts';
 import toast, { Toaster } from 'react-hot-toast';
+import { BudgetAllocatorService, SavedAllocation } from '../services/budgetAllocatorService';
 
 // ═══════════════════════════════════════════════════════════════
 // TYPES & INTERFACES
@@ -58,13 +59,8 @@ interface BudgetAllocatorInput {
     industry: string;
 }
 
-interface SavedAllocation {
-    id: string;
-    input: BudgetAllocatorInput;
-    assets: AssetChecklist;
-    result: BudgetDistributionResult;
-    timestamp: number;
-}
+// Note: SavedAllocation, AssetChecklist, BudgetDistributionResult, etc.
+// are now imported from '../services/budgetAllocatorService'
 
 // ═══════════════════════════════════════════════════════════════
 // BENCHMARKS & CONSTANTS (Senior Performance Marketing Director)
@@ -473,10 +469,23 @@ const BudgetAllocator: React.FC = () => {
     const watchedKpi = watch('kpi');
     const watchedBudget = watch('totalBudget');
 
-    // Load saved allocations
+    // Load saved allocations from Supabase
     useEffect(() => {
-        const saved = localStorage.getItem('budget_allocator_v2_history');
-        if (saved) setSavedAllocations(JSON.parse(saved));
+        const loadAllocations = async () => {
+            // Try to migrate from localStorage first (one-time)
+            const localData = localStorage.getItem('budget_allocator_v2_history');
+            if (localData) {
+                const migrated = await BudgetAllocatorService.migrateFromLocalStorage();
+                if (migrated > 0) {
+                    toast.success(`Đã migrate ${migrated} bản ghi lên cloud!`, { icon: '☁️' });
+                }
+            }
+
+            // Load from Supabase
+            const allocations = await BudgetAllocatorService.getAllocations();
+            setSavedAllocations(allocations);
+        };
+        loadAllocations();
     }, []);
 
     // Live preview of production ratio
@@ -515,7 +524,7 @@ const BudgetAllocator: React.FC = () => {
         });
     };
 
-    const handleSave = () => {
+    const handleSave = async () => {
         if (!result || !currentInput) return;
 
         const newAllocation: SavedAllocation = {
@@ -526,10 +535,14 @@ const BudgetAllocator: React.FC = () => {
             timestamp: Date.now()
         };
 
-        const updated = [newAllocation, ...savedAllocations];
-        setSavedAllocations(updated);
-        localStorage.setItem('budget_allocator_v2_history', JSON.stringify(updated));
-        toast.success('Đã lưu!', { icon: '💾' });
+        const success = await BudgetAllocatorService.saveAllocation(newAllocation);
+        if (success) {
+            const updated = [newAllocation, ...savedAllocations];
+            setSavedAllocations(updated);
+            toast.success('Đã lưu lên cloud!', { icon: '☁️' });
+        } else {
+            toast.error('Lưu thất bại!', { icon: '❌' });
+        }
     };
 
     const handleLoad = (item: SavedAllocation) => {
@@ -543,11 +556,15 @@ const BudgetAllocator: React.FC = () => {
         toast.success('Đã tải!', { icon: '📂' });
     };
 
-    const handleDelete = (id: string) => {
-        const updated = savedAllocations.filter(s => s.id !== id);
-        setSavedAllocations(updated);
-        localStorage.setItem('budget_allocator_v2_history', JSON.stringify(updated));
-        toast.success('Đã xóa!', { icon: '🗑️' });
+    const handleDelete = async (id: string) => {
+        const success = await BudgetAllocatorService.deleteAllocation(id);
+        if (success) {
+            const updated = savedAllocations.filter(s => s.id !== id);
+            setSavedAllocations(updated);
+            toast.success('Đã xóa!', { icon: '🗑️' });
+        } else {
+            toast.error('Xóa thất bại!', { icon: '❌' });
+        }
     };
 
     const handleNew = () => {
@@ -591,21 +608,24 @@ const BudgetAllocator: React.FC = () => {
                         <History size={16} /> Lịch sử ({savedAllocations.length})
                     </button>
                     {result && (
-                        <>
-                            <button
-                                onClick={handleNew}
-                                className="flex items-center gap-2 px-4 py-2 bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 font-bold rounded-xl transition-all text-sm"
-                            >
-                                <Plus size={16} /> Tạo mới
-                            </button>
-                            <button
-                                onClick={handleSave}
-                                className="flex items-center gap-2 px-4 py-2 bg-purple-500 hover:bg-purple-600 text-white font-bold rounded-xl transition-all text-sm"
-                            >
-                                <Save size={16} /> Lưu
-                            </button>
-                        </>
+                        <button
+                            onClick={handleNew}
+                            className="flex items-center gap-2 px-4 py-2 bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 font-bold rounded-xl transition-all text-sm"
+                        >
+                            <Plus size={16} /> Tạo mới
+                        </button>
                     )}
+                    {/* Save button - always visible */}
+                    <button
+                        onClick={handleSave}
+                        disabled={!result}
+                        className={`flex items-center gap-2 px-4 py-2 font-bold rounded-xl transition-all text-sm ${result
+                                ? 'bg-purple-500 hover:bg-purple-600 text-white'
+                                : 'bg-slate-100 text-slate-400 cursor-not-allowed'
+                            }`}
+                    >
+                        <Save size={16} /> Lưu
+                    </button>
                 </div>
             </div>
 

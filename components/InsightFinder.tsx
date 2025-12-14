@@ -214,10 +214,11 @@ const InsightFinder: React.FC = () => {
                             <span className="text-slate-700 text-lg">🧠</span>
                             <h2 className="text-base font-semibold text-slate-900">Phân tích Insight</h2>
                         </div>
-                        <p className="text-sm text-slate-400 pl-9">Khám phá tâm lý thầm kín của khách hàng</p>
+                        <p className="text-sm text-slate-400 pl-9">Tìm "Friction" – mâu thuẫn tâm lý thực sự</p>
                     </div>
 
-                    <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
+                    <form onSubmit={handleSubmit(onSubmit)} className="space-y-5">
+                        {/* Required Fields */}
                         <div>
                             <label className="block text-sm font-medium text-slate-700 mb-2">Ngành hàng / Sản phẩm *</label>
                             <input
@@ -233,19 +234,44 @@ const InsightFinder: React.FC = () => {
                             <textarea
                                 {...register('targetAudience', { required: 'Vui lòng nhập target audience' })}
                                 placeholder="VD: Nữ 25-35 tuổi, da dầu, hay trang điểm, sống tại thành thị..."
-                                rows={3}
+                                rows={2}
                                 className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-lg text-sm text-slate-800 placeholder:text-slate-400 focus:ring-2 focus:ring-slate-900/5 focus:border-slate-300 outline-none transition-all resize-none"
                             />
                             {errors.targetAudience && <p className="text-xs text-red-500 mt-1.5">{errors.targetAudience.message}</p>}
                         </div>
 
-                        <div>
-                            <label className="block text-sm font-medium text-slate-700 mb-2">Context / Segment (Tùy chọn)</label>
-                            <input
-                                {...register('context')}
-                                placeholder="VD: Mùa hè, Back to school, Tết..."
-                                className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-lg text-sm text-slate-800 placeholder:text-slate-400 focus:ring-2 focus:ring-slate-900/5 focus:border-slate-300 outline-none transition-all"
-                            />
+                        {/* NEW: Context Layer Fields */}
+                        <div className="pt-2 border-t border-slate-100">
+                            <p className="text-xs font-medium text-slate-500 uppercase tracking-wide mb-3">📍 Context Layer (Tùy chọn)</p>
+
+                            <div className="space-y-4">
+                                <div>
+                                    <label className="block text-sm font-medium text-slate-700 mb-2">Specific Segment</label>
+                                    <input
+                                        {...register('specificSegment')}
+                                        placeholder="VD: Gen Z Students, Office Workers, New Moms..."
+                                        className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-lg text-sm text-slate-800 placeholder:text-slate-400 focus:ring-2 focus:ring-slate-900/5 focus:border-slate-300 outline-none transition-all"
+                                    />
+                                </div>
+
+                                <div>
+                                    <label className="block text-sm font-medium text-slate-700 mb-2">Bối cảnh sử dụng (Usage Occasion)</label>
+                                    <input
+                                        {...register('usageOccasion')}
+                                        placeholder="VD: Khi đi chơi với bạn bè, Đêm khuya một mình..."
+                                        className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-lg text-sm text-slate-800 placeholder:text-slate-400 focus:ring-2 focus:ring-slate-900/5 focus:border-slate-300 outline-none transition-all"
+                                    />
+                                </div>
+
+                                <div>
+                                    <label className="block text-sm font-medium text-slate-700 mb-2">Thói quen / Đối thủ hiện tại</label>
+                                    <input
+                                        {...register('currentHabitCompetitor')}
+                                        placeholder="VD: Đang dùng The Ordinary, Highlands Coffee..."
+                                        className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-lg text-sm text-slate-800 placeholder:text-slate-400 focus:ring-2 focus:ring-slate-900/5 focus:border-slate-300 outline-none transition-all"
+                                    />
+                                </div>
+                            </div>
                         </div>
 
                         <button
@@ -261,20 +287,19 @@ const InsightFinder: React.FC = () => {
                             ) : (
                                 <>
                                     <Sparkles size={18} />
-                                    Phân tích Deep Insights
+                                    Tìm Friction & Insight
                                 </>
                             )}
                         </button>
                     </form>
 
-                    {/* Framework Info */}
-                    <div className="mt-8 p-4 bg-slate-50 rounded-lg border border-slate-100">
-                        <h3 className="text-sm font-medium text-slate-700 mb-2">🔬 Frameworks sử dụng:</h3>
-                        <ul className="text-xs text-slate-500 space-y-1">
-                            <li>• Iceberg Pain Points (Surface vs Deep)</li>
-                            <li>• Jobs-To-Be-Done (JTBD)</li>
-                            <li>• Barrier Analysis (Trust/Effort/Price)</li>
-                            <li>• Buying Behavior Mapping</li>
+                    {/* Framework Info - Updated */}
+                    <div className="mt-6 p-4 bg-gradient-to-br from-purple-50 to-indigo-50 rounded-lg border border-purple-100">
+                        <h3 className="text-sm font-medium text-purple-800 mb-2">🎯 3-Hit Combo Framework:</h3>
+                        <ul className="text-xs text-purple-700 space-y-1">
+                            <li>• <strong>The Truth:</strong> Họ nói gì & đang làm gì</li>
+                            <li>• <strong>The Tension:</strong> "Muốn X, NHƯNG sợ Y"</li>
+                            <li>• <strong>The Discovery:</strong> Động lực thầm kín</li>
                         </ul>
                     </div>
                 </div>
@@ -287,7 +312,7 @@ const InsightFinder: React.FC = () => {
                                 <Search size={28} strokeWidth={1.5} className="text-slate-300" />
                             </div>
                             <p className="text-base font-medium text-slate-600">Consumer Insight Research</p>
-                            <p className="text-sm text-slate-400 mt-1">Nhập ngành hàng để bắt đầu phân tích</p>
+                            <p className="text-sm text-slate-400 mt-1">Nhập ngành hàng để tìm "Friction"</p>
                         </div>
                     )}
 
@@ -298,14 +323,129 @@ const InsightFinder: React.FC = () => {
                                 <div className="absolute inset-0 rounded-full border-4 border-transparent border-t-slate-900 animate-spin"></div>
                             </div>
                             <p className="text-sm font-medium text-slate-700 mb-1">{thinkingStep}</p>
-                            <p className="text-xs text-slate-400">Đang đào sâu tâm lý khách hàng...</p>
+                            <p className="text-xs text-slate-400">Đang tìm "Friction" và mâu thuẫn tâm lý...</p>
                         </div>
                     )}
 
-                    {insightData && !isGenerating && (
+                    {/* VALIDATION ERROR / CLARIFICATION MESSAGE */}
+                    {insightData && insightData.validationStatus === 'NEEDS_CLARIFICATION' && (
+                        <div className="h-full flex flex-col items-center justify-center">
+                            <div className="max-w-md bg-amber-50 border border-amber-200 rounded-xl p-6 text-center">
+                                <div className="w-14 h-14 mx-auto mb-4 bg-amber-100 rounded-full flex items-center justify-center">
+                                    <AlertTriangle size={28} className="text-amber-600" />
+                                </div>
+                                <h3 className="text-lg font-semibold text-amber-800 mb-2">Cần thêm thông tin</h3>
+                                <p className="text-sm text-amber-700">{insightData.clarificationMessage}</p>
+                            </div>
+                        </div>
+                    )}
+
+                    {insightData && !isGenerating && insightData.validationStatus !== 'NEEDS_CLARIFICATION' && (
                         <div className="max-w-6xl mx-auto">
                             <h2 className="text-2xl font-semibold text-slate-900 mb-1">{insightData.industry}</h2>
-                            <p className="text-sm text-slate-400 mb-6">Deep Psychology Analysis</p>
+                            <p className="text-sm text-slate-400 mb-6">Consumer Psychology Analysis</p>
+
+                            {/* === NEW: 3-HIT COMBO SECTION === */}
+                            {insightData.threeHitCombo && (
+                                <div className="mb-8">
+                                    <h3 className="text-lg font-bold text-slate-900 mb-4 flex items-center gap-2">
+                                        🎯 3-Hit Combo Insight
+                                    </h3>
+                                    <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+                                        {/* Layer 1: The Truth */}
+                                        <div className="bg-white rounded-xl border border-slate-200 p-5 hover:shadow-md transition-shadow">
+                                            <div className="flex items-center gap-2 mb-3">
+                                                <span className="text-lg">🔍</span>
+                                                <h4 className="text-sm font-bold text-slate-800">THE TRUTH</h4>
+                                                <span className="text-xs px-2 py-0.5 bg-slate-100 text-slate-600 rounded">Sự thật hiển nhiên</span>
+                                            </div>
+                                            <div className="space-y-3">
+                                                <div>
+                                                    <p className="text-xs font-medium text-slate-500 uppercase mb-1">What They Say</p>
+                                                    <p className="text-sm text-slate-700 italic">"{insightData.threeHitCombo.truth.whatTheySay}"</p>
+                                                </div>
+                                                <div>
+                                                    <p className="text-xs font-medium text-slate-500 uppercase mb-1">Current Behavior</p>
+                                                    <p className="text-sm text-slate-700">{insightData.threeHitCombo.truth.currentBehavior}</p>
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        {/* Layer 2: The Tension - HIGHLIGHTED */}
+                                        <div className="bg-gradient-to-br from-purple-600 to-indigo-700 rounded-xl p-5 text-white shadow-lg hover:shadow-xl transition-shadow ring-2 ring-purple-400 ring-offset-2">
+                                            <div className="flex items-center gap-2 mb-3">
+                                                <span className="text-lg">⚡</span>
+                                                <h4 className="text-sm font-bold">THE TENSION</h4>
+                                                <span className="text-xs px-2 py-0.5 bg-white/20 rounded">Mâu thuẫn tâm lý</span>
+                                            </div>
+                                            <div className="space-y-3">
+                                                <div className="bg-white/10 rounded-lg p-3">
+                                                    <p className="text-sm font-medium text-green-200">"Tôi muốn {insightData.threeHitCombo.tension.wantX}"</p>
+                                                </div>
+                                                <div className="flex items-center justify-center">
+                                                    <span className="text-xs font-bold text-amber-300 uppercase">NHƯNG</span>
+                                                </div>
+                                                <div className="bg-white/10 rounded-lg p-3">
+                                                    <p className="text-sm font-medium text-red-200">"Tôi sợ {insightData.threeHitCombo.tension.butAfraid}"</p>
+                                                </div>
+                                            </div>
+                                            <div className="mt-4 pt-3 border-t border-white/20">
+                                                <p className="text-xs font-medium text-purple-200 uppercase mb-1">Full Insight</p>
+                                                <p className="text-sm font-medium">{insightData.threeHitCombo.tension.insight}</p>
+                                            </div>
+                                        </div>
+
+                                        {/* Layer 3: The Discovery */}
+                                        <div className="bg-white rounded-xl border border-slate-200 p-5 hover:shadow-md transition-shadow">
+                                            <div className="flex items-center gap-2 mb-3">
+                                                <span className="text-lg">💡</span>
+                                                <h4 className="text-sm font-bold text-slate-800">THE DISCOVERY</h4>
+                                                <span className="text-xs px-2 py-0.5 bg-slate-100 text-slate-600 rounded">Deep Insight</span>
+                                            </div>
+                                            <div className="space-y-3">
+                                                <div>
+                                                    <p className="text-xs font-medium text-slate-500 uppercase mb-1">Unspoken Motivation</p>
+                                                    <p className="text-sm text-slate-700">{insightData.threeHitCombo.discovery.unspokenMotivation}</p>
+                                                </div>
+                                                <div className="bg-slate-50 rounded-lg p-3 border-l-4 border-indigo-400">
+                                                    <p className="text-xs text-slate-500 line-through">{insightData.threeHitCombo.discovery.notAbout}</p>
+                                                    <p className="text-sm font-medium text-indigo-700 mt-1">→ {insightData.threeHitCombo.discovery.itsAbout}</p>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            )}
+
+                            {/* === NEW: CREATIVE IMPLICATIONS === */}
+                            {insightData.creativeImplications && (
+                                <div className="mb-8 bg-gradient-to-r from-amber-50 to-orange-50 rounded-xl border border-amber-200 p-6">
+                                    <h3 className="text-base font-bold text-amber-800 mb-4 flex items-center gap-2">
+                                        💡 Creative Implications
+                                        <span className="text-xs font-normal text-amber-600">"So What?" - Chiến lược sáng tạo</span>
+                                    </h3>
+                                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                        <div className="bg-white rounded-lg p-4 border border-amber-100">
+                                            <p className="text-xs font-medium text-amber-600 uppercase mb-2">Core Message</p>
+                                            <p className="text-sm font-semibold text-slate-800">{insightData.creativeImplications.coreMessage}</p>
+                                        </div>
+                                        <div className="bg-white rounded-lg p-4 border border-amber-100">
+                                            <p className="text-xs font-medium text-amber-600 uppercase mb-2">Visual Key</p>
+                                            <p className="text-sm text-slate-700 italic">"{insightData.creativeImplications.visualKey}"</p>
+                                        </div>
+                                        <div className="bg-white rounded-lg p-4 border border-amber-100">
+                                            <p className="text-xs font-medium text-amber-600 uppercase mb-2">Trigger Words</p>
+                                            <div className="flex flex-wrap gap-2">
+                                                {insightData.creativeImplications.triggerWords?.map((word, idx) => (
+                                                    <span key={idx} className="px-3 py-1 bg-gradient-to-r from-orange-500 to-amber-500 text-white text-xs font-bold rounded-full">
+                                                        {word}
+                                                    </span>
+                                                ))}
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            )}
 
                             {/* Emotional Intensity Scale */}
                             <div className="bg-white rounded-lg p-6 border border-slate-100 mb-6">

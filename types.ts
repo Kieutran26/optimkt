@@ -687,19 +687,59 @@ export interface DeepInsights {
   buying_behavior: BuyingBehavior;
 }
 
+// 3-Hit Combo Structure for Campaign-Ready Insights
+export interface InsightThreeHitCombo {
+  // Layer 1: The Truth
+  truth: {
+    whatTheySay: string;      // Surface-level desire: "I want [Product] to be cheaper/better"
+    currentBehavior: string;  // What they're currently doing to solve the problem
+  };
+  // Layer 2: The Tension (MOST IMPORTANT)
+  tension: {
+    wantX: string;            // "I want to X..."
+    butAfraid: string;        // "BUT I'm afraid of Y..."
+    insight: string;          // Full insight statement combining both
+  };
+  // Layer 3: The Discovery  
+  discovery: {
+    unspokenMotivation: string;  // The real motivation they won't say out loud
+    notAbout: string;            // "Actually, it's not about [Product Feature]"
+    itsAbout: string;            // "It's about [Emotional Reward]"
+  };
+}
+
+// Creative Implications for actionable strategy
+export interface CreativeImplications {
+  coreMessage: string;        // Single sentence brand promise
+  visualKey: string;          // Symbolic image description (e.g., "Person standing alone in crowd but glowing")
+  triggerWords: string[];     // Power words: "Dám" (Dare), "Chất" (Cool), "Riêng" (Unique)
+}
+
 export interface InsightFinderResult {
   industry: string;
+  // NEW: 3-Hit Combo structure
+  threeHitCombo: InsightThreeHitCombo;
+  // NEW: Creative Implications (The "So What?")
+  creativeImplications: CreativeImplications;
+  // Keep existing for backward compatibility
   deep_insights: DeepInsights;
   emotional_intensity: {
     level: number;
     description: string;
   };
+  // NEW: Validation status for anti-hallucination
+  validationStatus?: 'VALID' | 'NEEDS_CLARIFICATION';
+  clarificationMessage?: string;
 }
 
 export interface InsightFinderInput {
   productIndustry: string;
   targetAudience: string;
-  context?: string;
+  // NEW: Context Layer for specificity
+  specificSegment?: string;       // e.g., "Gen Z Students", "Office Workers", "New Moms"
+  usageOccasion?: string;         // e.g., "When hanging out with friends", "Late night alone"
+  currentHabitCompetitor?: string; // e.g., "Currently using Product X"
+  context?: string;               // Keep for backward compatibility
 }
 // --- CREATIVE ANGLE EXPLORER ---
 export interface CreativeAngleInput {

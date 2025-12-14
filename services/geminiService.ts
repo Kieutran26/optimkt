@@ -1585,158 +1585,218 @@ Rationale PHẢI cụ thể: "Với ngành ${input.industry} và mục tiêu ${k
 // --- INSIGHT FINDER ---
 import { InsightFinderResult, InsightFinderInput } from '../types';
 
+// Anti-Hallucination: Validate input before generating insights
+const validateInsightInput = (input: InsightFinderInput): { isValid: boolean; message?: string } => {
+    const minLength = 3;
+    const gibberishPattern = /^[a-zA-Z]{1,2}$/; // Single letters like "j", "h", "ab"
+    const numericOnlyPattern = /^[0-9\s]+$/;   // Only numbers
+
+    const productIndustry = input.productIndustry?.trim() || '';
+    const targetAudience = input.targetAudience?.trim() || '';
+
+    // Check if product/industry is too short or gibberish
+    if (!productIndustry || productIndustry.length < minLength) {
+        return {
+            isValid: false,
+            message: `Không thể phân tích tâm lý của "${productIndustry}". Xin cho tôi biết: Khách hàng là ai? Và họ sử dụng sản phẩm khi nào?`
+        };
+    }
+
+    if (gibberishPattern.test(productIndustry)) {
+        return {
+            isValid: false,
+            message: `Dữ liệu "${productIndustry}" không hợp lệ hoặc quá ngắn. Vui lòng nhập tên ngành hàng hoặc sản phẩm cụ thể (VD: "Skincare cho da dầu", "Cafe sữa đá").`
+        };
+    }
+
+    if (numericOnlyPattern.test(productIndustry)) {
+        return {
+            isValid: false,
+            message: `"${productIndustry}" chỉ có số, không phải ngành hàng. Vui lòng mô tả sản phẩm bằng chữ.`
+        };
+    }
+
+    // Check target audience
+    if (!targetAudience || targetAudience.length < minLength) {
+        return {
+            isValid: false,
+            message: `Vui lòng mô tả khách hàng mục tiêu chi tiết hơn. VD: "Nữ 25-35, da dầu, hay trang điểm, sống thành thị"`
+        };
+    }
+
+    return { isValid: true };
+};
+
 export const generateDeepInsights = async (
     input: InsightFinderInput,
     onProgress?: (step: string) => void
 ): Promise<InsightFinderResult | null> => {
-    const systemPrompt = `### ROLE & OBJECTIVE
-Bạn là chuyên gia Phân tích Tâm lý Người tiêu dùng (Consumer Psychology Expert) và Chiến lược gia Thương hiệu với 20+ năm kinh nghiệm. Nhiệm vụ của bạn là giải mã tâm lý khách hàng để tìm ra những insight sâu sắc nhất (Deep Insights) dựa trên dữ liệu đầu vào.
+    // === ANTI-HALLUCINATION: Validate input first ===
+    const validation = validateInsightInput(input);
+    if (!validation.isValid) {
+        return {
+            industry: input.productIndustry || 'Unknown',
+            threeHitCombo: {
+                truth: { whatTheySay: '', currentBehavior: '' },
+                tension: { wantX: '', butAfraid: '', insight: '' },
+                discovery: { unspokenMotivation: '', notAbout: '', itsAbout: '' }
+            },
+            creativeImplications: { coreMessage: '', visualKey: '', triggerWords: [] },
+            deep_insights: {
+                pain_points: [],
+                motivations_jtbd: { functional: '', emotional: '', social: '' },
+                barriers: [],
+                buying_behavior: { search_channel: '', decision_driver: '', deal_breaker: '' }
+            },
+            emotional_intensity: { level: 0, description: '' },
+            validationStatus: 'NEEDS_CLARIFICATION',
+            clarificationMessage: validation.message
+        };
+    }
 
-### THINKING PROCESS (CHAIN OF THOUGHT)
-Đừng vội đưa ra kết quả. Hãy đặt mình vào vị trí của Target Audience trong bối cảnh sử dụng Product/Industry. Hãy tự hỏi:
-- Tại sao họ thực sự cần sản phẩm này? (Không phải lý do bề mặt).
-- Điều gì khiến họ lo lắng thầm kín mà không dám nói ra?
-- Rào cản vô hình nào ngăn họ xuống tiền?
+    // === NEW PROMPT: Senior Consumer Psychologist Persona ===
+    const systemPrompt = `### ROLE & PERSONA
+Bạn là **Senior Consumer Psychologist** và **Creative Planner** tại agency hàng đầu thế giới (Ogilvy, Leo Burnett).
 
-### FRAMEWORK 1: EMOTIONAL INTENSITY SCALE
-Đánh giá mức độ cảm xúc của khách hàng với vấn đề hiện tại (1-10):
-- **1-3 (Mild)**: Khó chịu nhẹ, không gấp
-- **4-6 (Frustrated)**: Bực bội, muốn giải quyết
-- **7-8 (Distress)**: Đau khổ, ảnh hưởng đến cuộc sống
-- **9-10 (Desperate)**: Tuyệt vọng, sẵn sàng làm bất cứ điều gì
+**Tài năng của bạn:** Bạn không tìm "facts" - bạn tìm "FRICTIONS" – sự căng thẳng giữa điều người ta MUỐN và điều GIỚI HẠN họ.
 
-**Output:**
-- Level: Số từ 1-10
-- Description: Giải thích ngắn gọn tại sao nhóm khách này lại có mức độ cảm xúc đó với vấn đề hiện tại
+**Quy tắc vàng:** "An insight is NOT a stat. An insight is a realization that makes the consumer say: 'How did you know that about me?'"
 
-### FRAMEWORK 2: ICEBERG PAIN POINTS (Tảng băng trôi)
-Luôn có 2 layers - Surface (Bề mặt) và Deep (Thầm kín):
+### CRITICAL THINKING FRAMEWORK
+Trước khi trả lời, hãy tự hỏi:
+- Input này có đủ CỤ THỂ không? (Nếu quá chung chung như "Youth want to express themselves" → đó là TRUISM, không phải insight)
+- Friction thực sự là gì? Điều gì ngăn họ làm điều họ muốn?
+- Insight có khiến người đọc "giật mình" vì bị "bắt thóp" tâm lý không?
 
-**Layer 1 - SURFACE PAIN (Nỗi đau bề mặt):**
-- Những phàn nàn công khai, dễ thấy
-- Vấn đề FUNCTIONAL: Đắt, chờ lâu, phức tạp...
-- Khách hàng dễ dàng nói ra điều này công khai
-- VD: "Giá đắt", "Tốn thời gian", "Khó sử dụng"
+### OUTPUT FRAMEWORK: 3-HIT COMBO
 
-**Layer 2 - DEEP INSIGHT (Tâm lý thầm kín):**
-- Nỗi sợ hãi, sự tự ti, hoặc áp lực xã hội ẩn sâu bên dưới
-- Vấn đề EMOTIONAL/SOCIAL: Sợ bị đánh giá, mất kiểm soát, bị phán xét...
-- Khách hàng CHỈ thổ lộ điều này ẩn danh trên internet
-- VD Gym: Surface: "Đắt, đông người" | Deep: "Sợ bị người khác cười vì yếu (Gymtimidation)"
-- **LƯU Ý: Đây là phần quan trọng nhất, hãy viết thật "chạm"**
+**Layer 1: THE TRUTH (Sự thật hiển nhiên)**
+- What they say: Điều họ nói ra công khai ("Tôi muốn [Sản phẩm] rẻ/tốt hơn")
+- Current Behavior: Họ đang làm gì để giải quyết vấn đề hiện tại?
 
-**Output:** Tối thiểu 4 pain points (2 Surface + 2 Deep)
+**Layer 2: THE TENSION (Mâu thuẫn tâm lý) - ĐÂY LÀ PHẦN QUAN TRỌNG NHẤT**
+- Cấu trúc BẮT BUỘC: "Tôi muốn X, NHƯNG tôi sợ Y"
+- VD: "Tôi muốn thể hiện phong cách riêng (X), NHƯNG tôi sợ bị bạn bè nghĩ là 'quái dị' (Y)"
+- → ĐÂY là sweet spot để đánh vào tâm lý khách hàng
 
-### FRAMEWORK 3: JOBS-TO-BE-DONE (JTBD)
-Khách hàng không "mua sản phẩm". Họ "THUÊ" sản phẩm để làm một CÔNG VIỆC trong đời họ.
+**Layer 3: THE DISCOVERY (Deep Insight)**
+- Động lực thầm kín không nói ra
+- Format: "Thực ra, đây không phải về [Tính năng sản phẩm], mà là về [Phần thưởng cảm xúc]"
+- VD: "Không phải về cà phê, mà là về 15 phút duy nhất trong ngày được 'là chính mình'"
 
-Phân loại 3 loại Jobs:
-1. **Functional Job (Công năng)**: Nhiệm vụ cụ thể cần hoàn thành
-   - VD: "Giảm mụn trong 2 tuần"
+### CREATIVE IMPLICATIONS (The "So What?")
+Sau khi tìm ra insight, hãy chuyển thành chiến lược sáng tạo:
 
-2. **Emotional Job (Cảm xúc cá nhân)**: Cảm giác họ muốn có
-   - VD: "Cảm giác được 'chữa lành', lấy lại kiểm soát với làn da"
+**1. Core Message:** Lời hứa thương hiệu trong 1 câu dựa trên insight
+**2. Visual Key:** Hình ảnh biểu tượng cho insight (VD: "Người đứng một mình trong đám đông nhưng đang tỏa sáng")
+**3. Trigger Words:** 3-5 từ khóa kích hoạt cảm xúc (VD: "Dám", "Chất", "Riêng", "Thật", "Đủ")
 
-3. **Social Job (Xã hội)**: Cách họ muốn người khác nhìn nhận mình
-   - VD: "Tự tin để mặt mộc khi video call với người yêu"
-
-### FRAMEWORK 4: BARRIERS & FRICTIONS (Rào cản)
-Chia làm 3 loại:
-1. **Trust Barrier**: Lý do họ nghi ngờ thương hiệu/sản phẩm
-   - Sợ bị lừa, sợ tác dụng phụ, sợ làm tệ hơn
-
-2. **Effort Barrier**: Những phiền phức tốn công sức khiến họ ngại mua
-   - Quá rắc rối, quá nhiều bước, không có thời gian
-
-3. **Price Barrier**: Tâm lý so sánh giá trị nhận được so với số tiền bỏ ra
-   - Không chỉ là đắt hay rẻ, mà là "xứng đáng hay không"
-
-**Output:** Tối thiểu 3 barriers (1 mỗi loại)
-
-### FRAMEWORK 5: BUYING BEHAVIOR JOURNEY
-Map hành trình mua hàng:
-1. **Search Channel**: Nơi họ tìm kiếm thông tin đầu tiên
-   - Phải CỤ THỂ: "TikTok #skincarevietnam", "Group FB Đẹp Chanh Sả", "Google Maps", "Word of mouth"
-
-2. **Decision Driver**: Yếu tố chốt hạ khiến họ ra quyết định mua ngay lập tức
-   - VD: "Review từ người có da giống mình, KHÔNG tin KOL da đẹp sẵn"
-
-3. **Deal Breaker**: Yếu tố tối kỵ khiến họ quay lưng bỏ đi ngay lập tức
-   - VD: "Thành phần có Cồn/Paraben cho da nhạy cảm"
-
-### OUTPUT FORMAT (STRICT JSON)
+### ENHANCED OUTPUT FORMAT (STRICT JSON)
 {
   "industry": "[Tên ngành input]",
+  
+  "threeHitCombo": {
+    "truth": {
+      "whatTheySay": "Điều họ nói công khai về mong muốn",
+      "currentBehavior": "Cách họ đang giải quyết vấn đề hiện tại"
+    },
+    "tension": {
+      "wantX": "Tôi muốn [X cụ thể]...",
+      "butAfraid": "NHƯNG tôi sợ [Y cụ thể]...",
+      "insight": "Câu insight đầy đủ kết hợp X và Y"
+    },
+    "discovery": {
+      "unspokenMotivation": "Động lực thầm kín thực sự",
+      "notAbout": "Thực ra đây không phải về [Feature]",
+      "itsAbout": "Mà là về [Emotional Reward]"
+    }
+  },
+  
+  "creativeImplications": {
+    "coreMessage": "Lời hứa thương hiệu 1 câu",
+    "visualKey": "Mô tả hình ảnh biểu tượng",
+    "triggerWords": ["Từ1", "Từ2", "Từ3"]
+  },
+  
   "deep_insights": {
     "pain_points": [
-      { "level": "Surface", "content": "Phàn nàn công khai, dễ thấy..." },
+      { "level": "Surface", "content": "Phàn nàn công khai..." },
       { "level": "Surface", "content": "..." },
-      { "level": "Deep", "content": "Insight THẦM KÍN - sợ hãi/xấu hổ thực sự..." },
+      { "level": "Deep", "content": "Insight THẦM KÍN..." },
       { "level": "Deep", "content": "..." }
     ],
     "motivations_jtbd": {
-      "functional": "Nhiệm vụ cụ thể cần giải quyết",
-      "emotional": "Cảm giác cá nhân muốn đạt được",
-      "social": "Cách họ muốn người khác nhìn nhận mình"
+      "functional": "Nhiệm vụ cụ thể",
+      "emotional": "Cảm giác muốn đạt được",
+      "social": "Cách muốn người khác nhìn"
     },
     "barriers": [
-      { "type": "Trust Barrier", "content": "Lý do nghi ngờ cụ thể..." },
-      { "type": "Effort Barrier", "content": "Phiền phức cụ thể..." },
-      { "type": "Price Barrier", "content": "Tâm lý so sánh giá trị..." }
+      { "type": "Trust Barrier", "content": "..." },
+      { "type": "Effort Barrier", "content": "..." },
+      { "type": "Price Barrier", "content": "..." }
     ],
     "buying_behavior": {
-      "search_channel": "Kênh CỤ THỂ (TikTok, FB Group, Google...)",
-      "decision_driver": "Yếu tố chốt hạ CỤ THỂ",
-      "deal_breaker": "Điều tối kỵ CỤ THỂ"
+      "search_channel": "Kênh cụ thể",
+      "decision_driver": "Yếu tố chốt hạ",
+      "deal_breaker": "Điều tối kỵ"
     }
   },
+  
   "emotional_intensity": {
     "level": 7,
-    "description": "Giải thích tại sao có mức độ này..."
+    "description": "Giải thích mức độ cảm xúc"
   }
 }
 
-### IMPORTANT RULES
-- Tuyệt đối không đưa ra các nhận định chung chung (như "giá cả hợp lý", "chất lượng tốt"). Hãy cụ thể hóa theo Target Audience.
-- Deep Insight phải là thứ mà khách hàng "nghĩ nhưng ít khi nói ra".
-- Ngôn ngữ cần mang tính phân tích tâm lý, chuyên nghiệp nhưng dễ hiểu.
-- Phải áp dụng Chain of Thought - suy nghĩ sâu trước khi đưa ra kết luận.
-- Output PHẢI là JSON valid, không có markdown.`;
+### CRITICAL RULES
+1. TENSION phải có CẤU TRÚC "Tôi muốn X, NHƯNG tôi sợ Y" - không được viết chung chung
+2. Insight phải gây "ahaa moment" - khách hàng phải cảm thấy bị "bắt thóp"
+3. Trigger Words phải là từ TIẾNG VIỆT mạnh mẽ, gợi cảm xúc
+4. Visual Key phải là hình ảnh CỤ THỂ, có thể hình dung được
+5. Output PHẢI là JSON valid, không markdown`;
 
     try {
         onProgress?.('Đang phân tích tâm lý khách hàng...');
 
+        // Build context string from new input fields
+        const contextParts = [];
+        if (input.specificSegment) contextParts.push(`Specific Segment: ${input.specificSegment}`);
+        if (input.usageOccasion) contextParts.push(`Bối cảnh sử dụng: ${input.usageOccasion}`);
+        if (input.currentHabitCompetitor) contextParts.push(`Thói quen/Đối thủ hiện tại: ${input.currentHabitCompetitor}`);
+        if (input.context) contextParts.push(`Context: ${input.context}`);
+        const contextString = contextParts.length > 0 ? contextParts.join('\n') : '';
+
         const userPrompt = `PRODUCT/INDUSTRY: ${input.productIndustry}
 TARGET AUDIENCE: ${input.targetAudience}
-${input.context ? `CONTEXT/SEGMENT: ${input.context}` : ''}
+${contextString}
 
-Hãy áp dụng Chain of Thought để phân tích sâu:
-1. Đặt mình vào vị trí của Target Audience
-2. Tìm ra nỗi đau thầm kín (Deep Insight) - không phải lý do bề mặt
-3. Phân tích Emotional Intensity Scale
-4. Áp dụng Iceberg Pain Points (Surface + Deep)
-5. Xác định Jobs-To-Be-Done (Functional, Emotional, Social)
-6. Tìm ra Barriers & Buying Behavior
+=== NHIỆM VỤ ===
+Hãy áp dụng tư duy Consumer Psychologist để tìm ra "FRICTION" - mâu thuẫn tâm lý thực sự:
 
-Nhớ:
-- Deep Insight phải "chạm" vào tâm lý thầm kín
-- Mọi thứ phải CỤ THỂ, không chung chung
-- Emotional Intensity phải có lý do rõ ràng`;
+1. **Find The Truth:** Họ đang nói gì? Đang làm gì?
+2. **Find The Tension:** "Tôi muốn X, NHƯNG sợ Y" - ĐÂY LÀ INSIGHT THỰC SỰ
+3. **Find The Discovery:** Thực ra không phải về [Feature], mà về [Emotion]
+4. **Create Implications:** Core Message + Visual Key + Trigger Words
 
-        onProgress?.('Đang áp dụng Iceberg Pain Points...');
+QUY TẮC VÀNG:
+- Đừng cho tôi truism như "họ muốn sản phẩm tốt" - ai cũng vậy
+- Cho tôi FRICTION cụ thể cho ${input.targetAudience} trong bối cảnh ${input.specificSegment || input.productIndustry}
+- Tension phải khiến người đọc "giật mình" vì đúng quá`;
+
+        onProgress?.('Đang tìm Friction và Tension...');
 
         const response = await ai.models.generateContent({
-            model: 'gemini-2.0-flash-exp',
+            model: 'gemini-2.5-flash',
             contents: userPrompt,
             config: {
                 systemInstruction: systemPrompt,
-                temperature: 0.8,
+                temperature: 0.85,
                 safetySettings: SAFETY_SETTINGS,
                 responseMimeType: 'application/json'
             },
         });
 
-        onProgress?.('Đang hoàn thiện insights...');
+        onProgress?.('Đang xây dựng Creative Implications...');
 
         const text = response.text?.trim();
         if (!text) return null;
@@ -1744,12 +1804,15 @@ Nhớ:
         const jsonStr = text.replace(/```json|```/g, '').trim();
         const result = JSON.parse(jsonStr) as InsightFinderResult;
 
+        // Mark as valid
+        result.validationStatus = 'VALID';
+
         return result;
     } catch (error) {
         console.error('Insight Finder Error:', error);
         return null;
     }
-};
+}
 
 // --- CREATIVE ANGLE EXPLORER ---
 export const generateCreativeAngles = async (
