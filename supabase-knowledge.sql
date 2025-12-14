@@ -1,12 +1,16 @@
 -- Table: marketing_knowledge
 -- Stores marketing knowledge entries
 
+-- Comparison field format: title|||left|||right|||conclusion
+-- Example: "A/B Testing vs MVT|||Test 1 yếu tố|||Test nhiều yếu tố|||A/B đơn giản hơn"
+-- Old format (still supported): left|||right
+
 CREATE TABLE IF NOT EXISTS marketing_knowledge (
     id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
     term TEXT NOT NULL,
     definition TEXT NOT NULL,
     example TEXT DEFAULT '',
-    comparison TEXT DEFAULT '',
+    comparison TEXT DEFAULT '',  -- Format: title|||left|||right|||conclusion
     category TEXT DEFAULT 'Chung',
     created_at TIMESTAMPTZ DEFAULT NOW(),
     updated_at TIMESTAMPTZ DEFAULT NOW()

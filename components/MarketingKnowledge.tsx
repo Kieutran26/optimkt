@@ -107,14 +107,21 @@ const MarketingKnowledge: React.FC = () => {
     const [newTerm, setNewTerm] = useState('');
     const [newDefinition, setNewDefinition] = useState('');
     const [newExample, setNewExample] = useState('');
-    const [newComparison, setNewComparison] = useState('');
+    const [newComparisonTitle, setNewComparisonTitle] = useState('');
+    const [newComparisonLeft, setNewComparisonLeft] = useState('');
+    const [newComparisonRight, setNewComparisonRight] = useState('');
+    const [newComparisonConclusion, setNewComparisonConclusion] = useState('');
     const [newCategory, setNewCategory] = useState('');
     const [editingId, setEditingId] = useState<string | null>(null);
     const [editTerm, setEditTerm] = useState('');
     const [editDefinition, setEditDefinition] = useState('');
     const [editExample, setEditExample] = useState('');
-    const [editComparison, setEditComparison] = useState('');
+    const [editComparisonTitle, setEditComparisonTitle] = useState('');
+    const [editComparisonLeft, setEditComparisonLeft] = useState('');
+    const [editComparisonRight, setEditComparisonRight] = useState('');
+    const [editComparisonConclusion, setEditComparisonConclusion] = useState('');
     const [editCategory, setEditCategory] = useState('');
+    const [isEditingPopup, setIsEditingPopup] = useState(false);
 
     useEffect(() => { loadKnowledge(); }, []);
 
@@ -144,40 +151,89 @@ const MarketingKnowledge: React.FC = () => {
 
     const handleAdd = async () => {
         if (!newTerm.trim() || !newDefinition.trim()) return;
+        const comparison = newComparisonTitle.trim() || newComparisonLeft.trim() || newComparisonRight.trim() || newComparisonConclusion.trim()
+            ? `${newComparisonTitle.trim()}|||${newComparisonLeft.trim()}|||${newComparisonRight.trim()}|||${newComparisonConclusion.trim()}`
+            : '';
         const newItem = await KnowledgeService.add({
             term: newTerm.trim(),
             definition: newDefinition.trim(),
             example: newExample.trim(),
-            comparison: newComparison.trim(),
+            comparison,
             category: newCategory.trim() || 'Chung'
         });
         if (newItem) {
             setItems(prev => [...prev, newItem]);
-            setNewTerm(''); setNewDefinition(''); setNewExample(''); setNewComparison(''); setNewCategory('');
+            setNewTerm(''); setNewDefinition(''); setNewExample('');
+            setNewComparisonTitle(''); setNewComparisonLeft(''); setNewComparisonRight(''); setNewComparisonConclusion(''); setNewCategory('');
             setShowAddForm(false);
         }
     };
 
     const startEdit = (item: Knowledge) => {
+        const parts = (item.comparison || '').split('|||');
+        // Support both old format (left|||right) and new format (title|||left|||right|||conclusion)
+        let title = '', left = '', right = '', conclusion = '';
+        if (parts.length === 2) {
+            // Old format
+            left = parts[0] || '';
+            right = parts[1] || '';
+        } else if (parts.length >= 4) {
+            // New format
+            title = parts[0] || '';
+            left = parts[1] || '';
+            right = parts[2] || '';
+            conclusion = parts[3] || '';
+        }
         setEditingId(item.id);
         setEditTerm(item.term);
         setEditDefinition(item.definition);
         setEditExample(item.example || '');
-        setEditComparison(item.comparison || '');
+        setEditComparisonTitle(title);
+        setEditComparisonLeft(left);
+        setEditComparisonRight(right);
+        setEditComparisonConclusion(conclusion);
         setEditCategory(item.category);
-        setSelectedItem(null);
+        setIsEditingPopup(true);
     };
 
     const handleSaveEdit = async () => {
         if (!editingId || !editTerm.trim() || !editDefinition.trim()) return;
+        const comparison = editComparisonTitle.trim() || editComparisonLeft.trim() || editComparisonRight.trim() || editComparisonConclusion.trim()
+            ? `${editComparisonTitle.trim()}|||${editComparisonLeft.trim()}|||${editComparisonRight.trim()}|||${editComparisonConclusion.trim()}`
+            : '';
         const updated = await KnowledgeService.update(editingId, {
             term: editTerm.trim(),
             definition: editDefinition.trim(),
             example: editExample.trim(),
-            comparison: editComparison.trim(),
+            comparison,
             category: editCategory.trim() || 'Chung'
         });
-        if (updated) { setItems(prev => prev.map(item => item.id === editingId ? updated : item)); setEditingId(null); }
+        if (updated) {
+            setItems(prev => prev.map(item => item.id === editingId ? updated : item));
+            setEditingId(null);
+            setIsEditingPopup(false);
+            setSelectedItem(updated);
+        }
+    };
+
+    const cancelPopupEdit = () => {
+        setIsEditingPopup(false);
+        setEditingId(null);
+    };
+
+    const parseComparison = (comp: string | undefined) => {
+        if (!comp) return { title: '', left: '', right: '', conclusion: '' };
+        const parts = comp.split('|||');
+        if (parts.length === 2) {
+            // Old format - just left and right
+            return { title: '', left: parts[0] || '', right: parts[1] || '', conclusion: '' };
+        }
+        return {
+            title: parts[0] || '',
+            left: parts[1] || '',
+            right: parts[2] || '',
+            conclusion: parts[3] || ''
+        };
     };
 
     const handleDelete = async (id: string) => { if (await KnowledgeService.delete(id)) { setItems(prev => prev.filter(item => item.id !== id)); setSelectedItem(null); } };
@@ -272,7 +328,17 @@ const MarketingKnowledge: React.FC = () => {
                             </div>
                             <div>
                                 <label className="text-xs font-medium text-blue-600 mb-1 block">⚖️ So sánh</label>
-                                <textarea value={newComparison} onChange={(e) => setNewComparison(e.target.value)} placeholder="So sánh với khái niệm khác..." rows={4} className="w-full px-4 py-3 bg-blue-50 border border-blue-200 rounded-xl text-sm resize-none" />
+                                <div className="rounded-xl overflow-hidden border border-blue-200 bg-blue-50">
+                                    {/* Title Row */}
+                                    <input type="text" value={newComparisonTitle} onChange={(e) => setNewComparisonTitle(e.target.value)} placeholder="Tiêu đề so sánh (VD: A/B Testing vs Multivariate Testing)" className="w-full px-4 py-2 bg-blue-100 text-sm font-medium border-b border-blue-200 focus:outline-none placeholder:text-blue-400" />
+                                    {/* 2 Columns */}
+                                    <div className="grid grid-cols-2 gap-0">
+                                        <textarea value={newComparisonLeft} onChange={(e) => setNewComparisonLeft(e.target.value)} placeholder="Khái niệm A..." rows={3} className="px-4 py-3 bg-blue-50 text-sm resize-none border-r border-blue-200 focus:outline-none" />
+                                        <textarea value={newComparisonRight} onChange={(e) => setNewComparisonRight(e.target.value)} placeholder="Khái niệm B..." rows={3} className="px-4 py-3 bg-blue-50 text-sm resize-none focus:outline-none" />
+                                    </div>
+                                    {/* Conclusion Row */}
+                                    <input type="text" value={newComparisonConclusion} onChange={(e) => setNewComparisonConclusion(e.target.value)} placeholder="→ Kết luận..." className="w-full px-4 py-2 bg-blue-100 text-sm border-t border-blue-200 focus:outline-none placeholder:text-blue-400" />
+                                </div>
                             </div>
                         </div>
                         <div className="flex justify-end gap-3">
@@ -282,8 +348,8 @@ const MarketingKnowledge: React.FC = () => {
                     </div>
                 )}
 
-                {/* Edit Form */}
-                {editingId && (
+                {/* Edit Form - shown separately, not in popup */}
+                {editingId && !isEditingPopup && (
                     <div className="bg-amber-50 rounded-2xl border border-amber-200 p-6 mb-6 shadow-soft max-w-4xl">
                         <div className="flex items-center justify-between mb-4">
                             <h3 className="font-bold text-slate-800">Chỉnh sửa</h3>
@@ -304,7 +370,17 @@ const MarketingKnowledge: React.FC = () => {
                             </div>
                             <div>
                                 <label className="text-xs font-medium text-blue-600 mb-1 block">⚖️ So sánh</label>
-                                <textarea value={editComparison} onChange={(e) => setEditComparison(e.target.value)} rows={4} className="w-full px-4 py-3 bg-blue-50 border border-blue-200 rounded-xl text-sm resize-none" />
+                                <div className="rounded-xl overflow-hidden border border-blue-200 bg-blue-50">
+                                    {/* Title Row */}
+                                    <input type="text" value={editComparisonTitle} onChange={(e) => setEditComparisonTitle(e.target.value)} placeholder="Tiêu đề so sánh..." className="w-full px-4 py-2 bg-blue-100 text-sm font-medium border-b border-blue-200 focus:outline-none" />
+                                    {/* 2 Columns */}
+                                    <div className="grid grid-cols-2 gap-0">
+                                        <textarea value={editComparisonLeft} onChange={(e) => setEditComparisonLeft(e.target.value)} placeholder="Khái niệm A..." rows={3} className="px-4 py-3 bg-blue-50 text-sm resize-none border-r border-blue-200 focus:outline-none" />
+                                        <textarea value={editComparisonRight} onChange={(e) => setEditComparisonRight(e.target.value)} placeholder="Khái niệm B..." rows={3} className="px-4 py-3 bg-blue-50 text-sm resize-none focus:outline-none" />
+                                    </div>
+                                    {/* Conclusion Row */}
+                                    <input type="text" value={editComparisonConclusion} onChange={(e) => setEditComparisonConclusion(e.target.value)} placeholder="→ Kết luận..." className="w-full px-4 py-2 bg-blue-100 text-sm border-t border-blue-200 focus:outline-none" />
+                                </div>
                             </div>
                         </div>
                         <div className="flex justify-end gap-3">
@@ -353,20 +429,29 @@ const MarketingKnowledge: React.FC = () => {
                 )}
             </div>
 
-            {/* Detail Modal - Large 2-column layout */}
+            {/* Detail Modal - Large 2-column layout with inline edit */}
             {selectedItem && (
-                <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4" onClick={() => setSelectedItem(null)}>
+                <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4" onClick={() => { setSelectedItem(null); cancelPopupEdit(); }}>
                     <div className="bg-white rounded-2xl max-w-4xl w-full max-h-[85vh] overflow-hidden shadow-xl" onClick={(e) => e.stopPropagation()}>
                         {/* Modal Header */}
                         <div className={`${getColor(selectedItem.category).bg} px-6 py-4`}>
                             <div className="flex items-start justify-between">
                                 <div>
-                                    <span className={`text-xs font-bold px-2.5 py-1 rounded-full ${getColor(selectedItem.category).text} bg-white/80`}>
-                                        {selectedItem.category}
-                                    </span>
-                                    <h2 className="text-xl font-bold text-slate-800 mt-2">{selectedItem.term}</h2>
+                                    {isEditingPopup ? (
+                                        <div className="flex gap-3">
+                                            <input type="text" value={editCategory} onChange={(e) => setEditCategory(e.target.value)} className="text-xs font-bold px-2.5 py-1 rounded-full bg-white/80 border-0 focus:outline-none w-32" />
+                                            <input type="text" value={editTerm} onChange={(e) => setEditTerm(e.target.value)} className="text-xl font-bold text-slate-800 bg-transparent border-b-2 border-white/50 focus:border-slate-800 focus:outline-none mt-2" />
+                                        </div>
+                                    ) : (
+                                        <>
+                                            <span className={`text-xs font-bold px-2.5 py-1 rounded-full ${getColor(selectedItem.category).text} bg-white/80`}>
+                                                {selectedItem.category}
+                                            </span>
+                                            <h2 className="text-xl font-bold text-slate-800 mt-2">{selectedItem.term}</h2>
+                                        </>
+                                    )}
                                 </div>
-                                <button onClick={() => setSelectedItem(null)} className="p-2 text-slate-400 hover:text-slate-600 hover:bg-white/50 rounded-lg">
+                                <button onClick={() => { setSelectedItem(null); cancelPopupEdit(); }} className="p-2 text-slate-400 hover:text-slate-600 hover:bg-white/50 rounded-lg">
                                     <X size={20} />
                                 </button>
                             </div>
@@ -380,7 +465,11 @@ const MarketingKnowledge: React.FC = () => {
                                     <h4 className="text-xs font-semibold text-slate-500 uppercase mb-3 flex items-center gap-2">
                                         📖 Định nghĩa
                                     </h4>
-                                    <p className="text-slate-700 leading-relaxed text-sm whitespace-pre-wrap">{selectedItem.definition}</p>
+                                    {isEditingPopup ? (
+                                        <textarea value={editDefinition} onChange={(e) => setEditDefinition(e.target.value)} rows={6} className="w-full px-3 py-2 bg-white border border-slate-300 rounded-lg text-sm resize-none focus:outline-none focus:border-indigo-400" />
+                                    ) : (
+                                        <p className="text-slate-700 leading-relaxed text-sm whitespace-pre-wrap">{selectedItem.definition}</p>
+                                    )}
                                 </div>
 
                                 {/* Right Column - Example & Comparison */}
@@ -390,19 +479,65 @@ const MarketingKnowledge: React.FC = () => {
                                         <h4 className="text-xs font-semibold text-emerald-600 uppercase mb-3 flex items-center gap-2">
                                             💡 Ví dụ thực tế
                                         </h4>
-                                        <p className="text-emerald-800 text-sm leading-relaxed whitespace-pre-wrap">
-                                            {selectedItem.example || <span className="text-emerald-400 italic">Chưa có ví dụ</span>}
-                                        </p>
+                                        {isEditingPopup ? (
+                                            <textarea value={editExample} onChange={(e) => setEditExample(e.target.value)} rows={4} className="w-full px-3 py-2 bg-white border border-emerald-300 rounded-lg text-sm resize-none focus:outline-none focus:border-emerald-500" />
+                                        ) : (
+                                            <p className="text-emerald-800 text-sm leading-relaxed whitespace-pre-wrap">
+                                                {selectedItem.example || <span className="text-emerald-400 italic">Chưa có ví dụ</span>}
+                                            </p>
+                                        )}
                                     </div>
 
-                                    {/* Comparison - Bottom */}
+                                    {/* Comparison - Bottom with title, 2 columns, and conclusion */}
                                     <div className="bg-blue-50 rounded-xl p-5 border border-blue-200 flex-1">
                                         <h4 className="text-xs font-semibold text-blue-600 uppercase mb-3 flex items-center gap-2">
                                             ⚖️ So sánh
                                         </h4>
-                                        <p className="text-blue-800 text-sm leading-relaxed whitespace-pre-wrap">
-                                            {selectedItem.comparison || <span className="text-blue-400 italic">Chưa có so sánh</span>}
-                                        </p>
+                                        {isEditingPopup ? (
+                                            <div className="rounded-lg overflow-hidden border border-blue-200 bg-white">
+                                                {/* Title Row */}
+                                                <input type="text" value={editComparisonTitle} onChange={(e) => setEditComparisonTitle(e.target.value)} placeholder="Tiêu đề so sánh..." className="w-full px-3 py-2 bg-blue-100 text-sm font-medium border-b border-blue-200 focus:outline-none" />
+                                                {/* 2 Columns */}
+                                                <div className="grid grid-cols-2 gap-0">
+                                                    <textarea value={editComparisonLeft} onChange={(e) => setEditComparisonLeft(e.target.value)} placeholder="Khái niệm A..." rows={3} className="px-3 py-2 bg-white text-sm resize-none border-r border-blue-200 focus:outline-none" />
+                                                    <textarea value={editComparisonRight} onChange={(e) => setEditComparisonRight(e.target.value)} placeholder="Khái niệm B..." rows={3} className="px-3 py-2 bg-white text-sm resize-none focus:outline-none" />
+                                                </div>
+                                                {/* Conclusion Row */}
+                                                <input type="text" value={editComparisonConclusion} onChange={(e) => setEditComparisonConclusion(e.target.value)} placeholder="→ Kết luận..." className="w-full px-3 py-2 bg-blue-100 text-sm border-t border-blue-200 focus:outline-none" />
+                                            </div>
+                                        ) : (
+                                            (() => {
+                                                const comp = parseComparison(selectedItem.comparison);
+                                                return comp.title || comp.left || comp.right || comp.conclusion ? (
+                                                    <div className="bg-white rounded-lg overflow-hidden border border-blue-100">
+                                                        {/* Title */}
+                                                        {comp.title && (
+                                                            <div className="px-3 py-2 bg-blue-100 border-b border-blue-200">
+                                                                <p className="text-blue-900 text-sm font-semibold">{comp.title}</p>
+                                                            </div>
+                                                        )}
+                                                        {/* 2 Columns with divider */}
+                                                        <div className="flex items-stretch gap-0">
+                                                            <div className="flex-1 p-3">
+                                                                <p className="text-blue-800 text-sm leading-relaxed whitespace-pre-wrap">{comp.left || <span className="text-blue-300 italic">-</span>}</p>
+                                                            </div>
+                                                            <div className="w-px bg-gradient-to-b from-blue-200 via-blue-400 to-blue-200 self-stretch"></div>
+                                                            <div className="flex-1 p-3">
+                                                                <p className="text-blue-800 text-sm leading-relaxed whitespace-pre-wrap">{comp.right || <span className="text-blue-300 italic">-</span>}</p>
+                                                            </div>
+                                                        </div>
+                                                        {/* Conclusion */}
+                                                        {comp.conclusion && (
+                                                            <div className="px-3 py-2 bg-blue-100 border-t border-blue-200">
+                                                                <p className="text-blue-900 text-sm">→ {comp.conclusion}</p>
+                                                            </div>
+                                                        )}
+                                                    </div>
+                                                ) : (
+                                                    <span className="text-blue-400 italic text-sm">Chưa có so sánh</span>
+                                                );
+                                            })()
+                                        )}
                                     </div>
                                 </div>
                             </div>
@@ -410,12 +545,23 @@ const MarketingKnowledge: React.FC = () => {
 
                         {/* Modal Footer */}
                         <div className="px-6 py-4 border-t border-slate-100 flex justify-end gap-3">
-                            <button onClick={() => startEdit(selectedItem)} className="px-4 py-2 text-indigo-600 hover:bg-indigo-50 rounded-lg text-sm flex items-center gap-2">
-                                <Edit2 size={14} /> Sửa
-                            </button>
-                            <button onClick={() => handleDelete(selectedItem.id)} className="px-4 py-2 text-red-500 hover:bg-red-50 rounded-lg text-sm flex items-center gap-2">
-                                <Trash2 size={14} /> Xóa
-                            </button>
+                            {isEditingPopup ? (
+                                <>
+                                    <button onClick={cancelPopupEdit} className="px-4 py-2 text-slate-600 hover:bg-slate-100 rounded-lg text-sm">Hủy</button>
+                                    <button onClick={handleSaveEdit} className="px-4 py-2 bg-indigo-600 text-white hover:bg-indigo-700 rounded-lg text-sm flex items-center gap-2">
+                                        <Save size={14} /> Lưu thay đổi
+                                    </button>
+                                </>
+                            ) : (
+                                <>
+                                    <button onClick={() => startEdit(selectedItem)} className="px-4 py-2 text-indigo-600 hover:bg-indigo-50 rounded-lg text-sm flex items-center gap-2">
+                                        <Edit2 size={14} /> Sửa
+                                    </button>
+                                    <button onClick={() => handleDelete(selectedItem.id)} className="px-4 py-2 text-red-500 hover:bg-red-50 rounded-lg text-sm flex items-center gap-2">
+                                        <Trash2 size={14} /> Xóa
+                                    </button>
+                                </>
+                            )}
                         </div>
                     </div>
                 </div>
