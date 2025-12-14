@@ -264,15 +264,15 @@ const MarketingKnowledge: React.FC = () => {
                         <div className="space-y-4 mb-4">
                             <div>
                                 <label className="text-xs font-medium text-slate-500 mb-1 block">Định nghĩa *</label>
-                                <textarea value={newDefinition} onChange={(e) => setNewDefinition(e.target.value)} placeholder="Giải thích khái niệm..." rows={2} className="w-full px-4 py-3 bg-slate-50 border border-soft-border rounded-xl text-sm resize-none" />
+                                <textarea value={newDefinition} onChange={(e) => setNewDefinition(e.target.value)} placeholder="Giải thích khái niệm..." rows={4} className="w-full px-4 py-3 bg-slate-50 border border-soft-border rounded-xl text-sm resize-none" />
                             </div>
                             <div>
                                 <label className="text-xs font-medium text-emerald-600 mb-1 block">💡 Ví dụ thực tế</label>
-                                <textarea value={newExample} onChange={(e) => setNewExample(e.target.value)} placeholder="VD: Shopee gửi voucher sinh nhật..." rows={2} className="w-full px-4 py-3 bg-emerald-50 border border-emerald-200 rounded-xl text-sm resize-none" />
+                                <textarea value={newExample} onChange={(e) => setNewExample(e.target.value)} placeholder="VD: Shopee gửi voucher sinh nhật..." rows={4} className="w-full px-4 py-3 bg-emerald-50 border border-emerald-200 rounded-xl text-sm resize-none" />
                             </div>
                             <div>
                                 <label className="text-xs font-medium text-blue-600 mb-1 block">⚖️ So sánh</label>
-                                <textarea value={newComparison} onChange={(e) => setNewComparison(e.target.value)} placeholder="So sánh với khái niệm khác..." rows={2} className="w-full px-4 py-3 bg-blue-50 border border-blue-200 rounded-xl text-sm resize-none" />
+                                <textarea value={newComparison} onChange={(e) => setNewComparison(e.target.value)} placeholder="So sánh với khái niệm khác..." rows={4} className="w-full px-4 py-3 bg-blue-50 border border-blue-200 rounded-xl text-sm resize-none" />
                             </div>
                         </div>
                         <div className="flex justify-end gap-3">
@@ -296,15 +296,15 @@ const MarketingKnowledge: React.FC = () => {
                         <div className="space-y-4 mb-4">
                             <div>
                                 <label className="text-xs font-medium text-slate-500 mb-1 block">Định nghĩa</label>
-                                <textarea value={editDefinition} onChange={(e) => setEditDefinition(e.target.value)} rows={2} className="w-full px-4 py-3 bg-white border border-soft-border rounded-xl text-sm resize-none" />
+                                <textarea value={editDefinition} onChange={(e) => setEditDefinition(e.target.value)} rows={4} className="w-full px-4 py-3 bg-white border border-soft-border rounded-xl text-sm resize-none" />
                             </div>
                             <div>
                                 <label className="text-xs font-medium text-emerald-600 mb-1 block">💡 Ví dụ thực tế</label>
-                                <textarea value={editExample} onChange={(e) => setEditExample(e.target.value)} rows={2} className="w-full px-4 py-3 bg-emerald-50 border border-emerald-200 rounded-xl text-sm resize-none" />
+                                <textarea value={editExample} onChange={(e) => setEditExample(e.target.value)} rows={4} className="w-full px-4 py-3 bg-emerald-50 border border-emerald-200 rounded-xl text-sm resize-none" />
                             </div>
                             <div>
                                 <label className="text-xs font-medium text-blue-600 mb-1 block">⚖️ So sánh</label>
-                                <textarea value={editComparison} onChange={(e) => setEditComparison(e.target.value)} rows={2} className="w-full px-4 py-3 bg-blue-50 border border-blue-200 rounded-xl text-sm resize-none" />
+                                <textarea value={editComparison} onChange={(e) => setEditComparison(e.target.value)} rows={4} className="w-full px-4 py-3 bg-blue-50 border border-blue-200 rounded-xl text-sm resize-none" />
                             </div>
                         </div>
                         <div className="flex justify-end gap-3">
