@@ -1,8 +1,33 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { StudyMode, Word } from '../types';
 import { VocabService } from '../services/vocabService';
-import { Star, ArrowLeft, ArrowRight } from 'lucide-react';
+import { Star, ArrowLeft, ArrowRight, Volume2 } from 'lucide-react';
+
+// Text-to-Speech function for pronunciation
+const speakWord = (word: string) => {
+  if ('speechSynthesis' in window) {
+    // Cancel any ongoing speech
+    window.speechSynthesis.cancel();
+
+    const utterance = new SpeechSynthesisUtterance(word);
+    utterance.lang = 'en-US';
+    utterance.rate = 0.9;
+    utterance.pitch = 1;
+
+    // Try to find an English voice
+    const voices = window.speechSynthesis.getVoices();
+    const englishVoice = voices.find(voice =>
+      voice.lang.startsWith('en') && voice.name.includes('English')
+    ) || voices.find(voice => voice.lang.startsWith('en'));
+
+    if (englishVoice) {
+      utterance.voice = englishVoice;
+    }
+
+    window.speechSynthesis.speak(utterance);
+  }
+};
 
 interface StudySessionProps {
   mode: StudyMode;
@@ -118,7 +143,16 @@ const StudySession: React.FC<StudySessionProps> = ({ mode, setIds, initialWords,
           {/* Front */}
           <div className="absolute w-full h-full [backface-visibility:hidden] bg-white rounded-3xl flex flex-col items-center justify-center p-8 border border-white">
             <span className="text-sm text-slate-400 font-medium uppercase tracking-wider absolute top-8">Tiếng Anh</span>
-            <h2 className="text-4xl font-bold text-center text-slate-800">{word.term}</h2>
+            <div className="flex items-center gap-3">
+              <h2 className="text-4xl font-bold text-center text-slate-800">{word.term}</h2>
+              <button
+                onClick={(e) => { e.stopPropagation(); speakWord(word.term); }}
+                className="p-2.5 rounded-full bg-indigo-50 text-indigo-600 hover:bg-indigo-100 hover:scale-110 transition-all"
+                title="Phát âm"
+              >
+                <Volume2 size={22} strokeWidth={1.5} />
+              </button>
+            </div>
             <p className="text-slate-300 text-sm mt-4 italic">Click để lật</p>
           </div>
           {/* Back */}
@@ -143,7 +177,16 @@ const StudySession: React.FC<StudySessionProps> = ({ mode, setIds, initialWords,
       <div className="max-w-2xl mx-auto w-full">
         <div className="bg-white p-10 rounded-3xl shadow-soft border border-slate-100 mb-8 text-center">
           <span className="text-sm text-slate-400 font-medium uppercase tracking-wider">Thuật ngữ</span>
-          <h2 className="text-4xl font-bold mt-2 text-slate-800">{word.term}</h2>
+          <div className="flex items-center justify-center gap-3 mt-2">
+            <h2 className="text-4xl font-bold text-slate-800">{word.term}</h2>
+            <button
+              onClick={() => speakWord(word.term)}
+              className="p-2.5 rounded-full bg-indigo-50 text-indigo-600 hover:bg-indigo-100 hover:scale-110 transition-all"
+              title="Phát âm"
+            >
+              <Volume2 size={22} strokeWidth={1.5} />
+            </button>
+          </div>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -218,6 +261,17 @@ const StudySession: React.FC<StudySessionProps> = ({ mode, setIds, initialWords,
             </button>
           ) : (
             <div className="animate-fade-in">
+              {/* Pronunciation button after checking */}
+              <div className="mb-4 flex justify-center">
+                <button
+                  onClick={() => speakWord(word.term)}
+                  className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-indigo-50 text-indigo-600 hover:bg-indigo-100 transition-all font-medium"
+                  title="Phát âm"
+                >
+                  <Volume2 size={18} strokeWidth={1.5} />
+                  Nghe phát âm
+                </button>
+              </div>
               {checkResult === 'incorrect' && (
                 <div className="mb-4 text-center">
                   <p className="text-red-600 font-medium mb-1">Sai rồi!</p>

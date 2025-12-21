@@ -1,8 +1,33 @@
 
 import React, { useState, useEffect } from 'react';
-import { Plus, Trash2, Edit2, Upload, FileText, FolderPlus, Save, X, Loader2 } from 'lucide-react';
+import { Plus, Trash2, Edit2, Upload, FileText, FolderPlus, Save, X, Loader2, Volume2 } from 'lucide-react';
 import { VocabService, SavedVocabSet, SavedWord } from '../services/vocabService';
 import { VocabSet, Word } from '../types';
+
+// Text-to-Speech function for pronunciation
+const speakWord = (word: string) => {
+  if ('speechSynthesis' in window) {
+    // Cancel any ongoing speech
+    window.speechSynthesis.cancel();
+
+    const utterance = new SpeechSynthesisUtterance(word);
+    utterance.lang = 'en-US';
+    utterance.rate = 0.9;
+    utterance.pitch = 1;
+
+    // Try to find an English voice
+    const voices = window.speechSynthesis.getVoices();
+    const englishVoice = voices.find(voice =>
+      voice.lang.startsWith('en') && voice.name.includes('English')
+    ) || voices.find(voice => voice.lang.startsWith('en'));
+
+    if (englishVoice) {
+      utterance.voice = englishVoice;
+    }
+
+    window.speechSynthesis.speak(utterance);
+  }
+};
 
 const VocabManager: React.FC = () => {
   const [sets, setSets] = useState<VocabSet[]>([]);
@@ -398,7 +423,18 @@ const VocabManager: React.FC = () => {
                             </>
                           ) : (
                             <>
-                              <td className="p-3 font-medium text-slate-800">{word.term}</td>
+                              <td className="p-3 font-medium text-slate-800">
+                                <div className="flex items-center gap-2">
+                                  {word.term}
+                                  <button
+                                    onClick={() => speakWord(word.term)}
+                                    className="p-1.5 rounded-lg text-indigo-400 hover:text-indigo-600 hover:bg-indigo-50 transition-all"
+                                    title="Phát âm"
+                                  >
+                                    <Volume2 size={16} strokeWidth={1.5} />
+                                  </button>
+                                </div>
+                              </td>
                               <td className="p-3 text-slate-600">{word.definition}</td>
                               <td className="p-3 flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
                                 <button onClick={() => setEditingWord(word)} className="p-1.5 hover:bg-white hover:shadow-sm rounded-lg text-slate-400 hover:text-indigo-600 border border-transparent hover:border-slate-100 transition-all"><Edit2 size={16} strokeWidth={1.5} /></button>
