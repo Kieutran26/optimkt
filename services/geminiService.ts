@@ -2867,7 +2867,233 @@ OUTPUT JSON FORMAT (STRICT JSON, NO MARKDOWN):
 
 
 
+// --- PESTEL BUILDER ---
+import { PESTELBuilderInput, PESTELBuilderResult } from '../types';
 
+export const generatePESTELAnalysis = async (
+    input: PESTELBuilderInput,
+    onProgress?: (step: string) => void
+): Promise<PESTELBuilderResult | null> => {
+    // Business Scale-specific focus areas
+    const scaleConfig = {
+        'Startup': {
+            focus: 'LUẬT VI MÔ (Micro-regulations)',
+            legalFocus: [
+                'Thuế khoán, thuế môn bài cho hộ kinh doanh cá thể',
+                'Giấy phép kinh doanh tại địa phương',
+                'PCCC cho cơ sở kinh doanh nhỏ',
+                'Vệ sinh an toàn thực phẩm (nếu F&B)',
+                'Quy định sử dụng vỉa hè, lòng lề đường',
+                'Thuế TNCN cho founder'
+            ],
+            economicFocus: 'Chi phí vận hành hàng tháng, dòng tiền ngắn hạn, chi phí thuê mặt bằng'
+        },
+        'SME': {
+            focus: 'LUẬT VI MÔ + MỘT PHẦN VĨ MÔ',
+            legalFocus: [
+                'Thuế GTGT, Thuế TNDN cho SME',
+                'Quy định BHXH, BHYT cho nhân viên',
+                'Giấy phép con theo ngành nghề',
+                'PCCC cho cơ sở trên 300m2',
+                'Quy chuẩn môi trường (nếu sản xuất)'
+            ],
+            economicFocus: 'Lãi suất vay vốn SME, chính sách hỗ trợ lãi suất, tỷ lệ nợ xấu ngành'
+        },
+        'Enterprise': {
+            focus: 'LUẬT VĨ MÔ (Macro-regulations)',
+            legalFocus: [
+                'Thuế TNDN 20%, quy định chuyển giá',
+                'Luật Cạnh tranh 2018',
+                'Quy định M&A, sáp nhập doanh nghiệp',
+                'Luật Lao động về sa thải hàng loạt',
+                'Quy định ESG, báo cáo phát triển bền vững'
+            ],
+            economicFocus: 'Tỷ giá hối đoái, CPI, GDP growth, spread lãi suất liên ngân hàng'
+        },
+        'Multinational': {
+            focus: 'LUẬT QUỐC TẾ + VĨ MÔ',
+            legalFocus: [
+                'Hiệp định tránh đánh thuế hai lần (DTAs)',
+                'Quy định chuyển giá (Transfer Pricing) theo OECD',
+                'Luật đầu tư nước ngoài, tỷ lệ sở hữu',
+                'Quy định hồi hương lợi nhuận',
+                'Thuế nhà thầu (FCT)'
+            ],
+            economicFocus: 'Biến động USD/VND, rủi ro địa chính trị, dự trữ ngoại hối quốc gia'
+        }
+    };
+
+    const currentScale = scaleConfig[input.businessScale] || scaleConfig['SME'];
+
+    const systemPrompt = `### VAI TRÒ (ROLE)
+Bạn là **Senior Macroeconomist** + **Strategic Risk Analyst** với MINDSET: "NO FLUFF, ONLY ACTIONABLE FACTS".
+Bạn GHÉT những câu như "Chính phủ quan tâm", "Kinh tế phát triển", "Chính trị ổn định" - đây là THÔNG TIN RÁC.
+
+### MISSION CRITICAL: WHAT MAKES THIS ANALYSIS VALUABLE?
+Giá trị của báo cáo PESTEL nằm ở việc chỉ ra CÁC LUẬT/QUY ĐỊNH CỤ THỂ ảnh hưởng TRỰC TIẾP đến MÔ HÌNH KINH DOANH của doanh nghiệp.
+Không ai cần biết "Chính phủ hỗ trợ doanh nghiệp" - họ cần biết "Nghị định 44/2023/NĐ-CP giảm thuế GTGT xuống 8% đến hết 2024".
+
+### DỮ LIỆU ĐẦU VÀO
+- **Ngành hàng**: ${input.industry}
+- **Địa phương**: ${input.location}
+- **Quy mô**: ${input.businessScale}
+
+### BUSINESS SCALE: ${input.businessScale.toUpperCase()} - TRỌNG TÂM PHÂN TÍCH
+**Focus chính**: ${currentScale.focus}
+**Các văn bản pháp lý cần ưu tiên tra cứu**:
+${currentScale.legalFocus.map(item => `  - ${item}`).join('\n')}
+**Chỉ số kinh tế quan trọng**: ${currentScale.economicFocus}
+
+### QUY TẮC NỘI DUNG NGHIÊM NGẶT (STRICT CONTENT RULES)
+
+**RULE 1: NO FLUFF (KHÔNG VĂN VỞ)**
+❌ BAD: "Chính phủ quan tâm hỗ trợ doanh nghiệp", "Kinh tế đang phát triển tích cực", "Chính trị ổn định"
+✅ GOOD: "Nghị định 44/2023/NĐ-CP giảm thuế GTGT từ 10% xuống 8% đến hết 31/12/2024"
+✅ GOOD: "Thông tư 78/2021/TT-BTC quy định thuế TNDN ưu đãi 10% cho startup công nghệ cao"
+
+Nếu bạn KHÔNG THỂ trích dẫn văn bản cụ thể → KHÔNG ĐƯA VÀO. Đừng bịa!
+
+**RULE 2: HYPER-LOCAL FOCUS (TÍNH ĐỊA PHƯƠNG)**
+Địa phương đang phân tích: **${input.location}**
+- Nếu là thành phố lớn (HCM, Hà Nội, Đà Nẵng): ƯU TIÊN trích dẫn văn bản của UBND/HĐND địa phương
+- Ví dụ HCM: Quyết định số 32/2023/QĐ-UBND về phí sử dụng tạm thời lòng đường, hè phố
+- Ví dụ Hà Nội: Quyết định số 06/2020/QĐ-UBND về quản lý kinh doanh ẩm thực đường phố
+- BÊN CẠNH luật Trung ương, PHẢI tìm văn bản ĐỊA PHƯƠNG tương ứng
+
+**RULE 3: CITATION FORMAT (ĐỊNH DẠNG TRÍCH DẪN)**
+Format bắt buộc cho source: "[Loại văn bản] [Số hiệu] + [Năm] + [Điều khoản nếu có]"
+Ví dụ:
+- "Nghị định 08/2023/NĐ-CP, Điều 3 Khoản 2"
+- "Luật Đất đai 2024, Điều 158 về định giá đất"
+- "Quyết định 32/2023/QĐ-UBND TP.HCM về phí lòng lề đường"
+- "Thống kê GSO Q3/2024: CPI tăng 4.08%"
+
+**RULE 4: PRIORITY FLAGGING (ĐÁNH DẤU ƯU TIÊN CAO)**
+Đặt is_priority = true nếu yếu tố:
+- Ảnh hưởng SỐNG CÒN đến mô hình kinh doanh (VD: Giấy phép con bị siết)
+- impact_score >= 8
+- Có deadline sắp hết hạn (VD: Ưu đãi thuế hết 31/12/2024)
+- Là rủi ro PHÁP LÝ có thể bị phạt/đình chỉ
+
+### NGÀNH "${input.industry}" - GỢI Ý RỦI RO PHỔ BIẾN
+Nếu ngành chung chung, hãy tự suy luận các rủi ro PESTEL phổ biến nhất của ngành tại ${input.location}:
+- F&B: ATTP, PCCC, thuế GTGT thực phẩm, nhân sự thời vụ, phí mặt bằng
+- Real Estate: Luật Đất đai, tín dụng BĐS, quy hoạch đô thị, thuế chuyển nhượng
+- Fintech: Nghị định sandbox, bảo mật dữ liệu, quy định AML/KYC
+- E-commerce: Thuế TMĐT, luật bảo vệ người tiêu dùng, logistics, COD
+- Manufacturing: Thuế NK nguyên liệu, quy chuẩn môi trường, chi phí điện CN
+
+### OUTPUT FORMAT (STRICT JSON)
+{
+  "context": "${input.industry} tại ${input.location} (${input.businessScale})",
+  "pestel_factors": [
+    {
+      "category": "Political",
+      "category_vi": "Chính trị (Political)",
+      "items": [
+        {
+          "factor": "Tên yếu tố CỤ THỂ (VD: Chính sách giảm thuế GTGT 2024)",
+          "detail": "Mô tả chi tiết TÁC ĐỘNG đến mô hình kinh doanh, KHÔNG mô tả chung chung",
+          "impact_direction": "Positive" | "Negative" | "Neutral",
+          "impact_score": 1-10,
+          "actionable_insight": "Hành động CỤ THỂ doanh nghiệp cần làm (VD: Cập nhật hóa đơn điện tử trước 30/06)",
+          "verification_status": "Verified" | "Estimated" | "Unverified",
+          "source": "[Tên văn bản] + [Số hiệu/Năm] + [Điều khoản]",
+          "is_priority": true | false
+        }
+      ]
+    }
+  ],
+  "generated_at": "${new Date().toISOString()}",
+  "data_freshness": "Dữ liệu cập nhật đến Q4/2024"
+}
+
+### QUALITY CONTROL CHECKLIST
+- [ ] Mỗi item Political/Legal PHẢI có source = tên văn bản cụ thể
+- [ ] Mỗi item Economic PHẢI có số liệu % hoặc tỷ lệ
+- [ ] KHÔNG có câu nào chứa "Chính phủ hỗ trợ", "Kinh tế phát triển", "Chính trị ổn định"
+- [ ] Có ít nhất 1-2 văn bản ĐỊA PHƯƠNG (UBND/HĐND) nếu là thành phố lớn
+- [ ] Các item impact_score >= 8 PHẢI có is_priority = true
+- [ ] actionable_insight là câu MỆNH LỆNH (bắt đầu bằng động từ: Cập nhật, Rà soát, Đăng ký...)`;
+
+    try {
+        onProgress?.('🔍 Đang xác định rủi ro ngành ' + input.industry + '...');
+        await new Promise(r => setTimeout(r, 500));
+
+        onProgress?.('📜 Đang tra cứu văn bản pháp lý Trung ương...');
+        await new Promise(r => setTimeout(r, 600));
+
+        onProgress?.('🏛️ Đang tra cứu văn bản UBND/HĐND ' + input.location + '...');
+        await new Promise(r => setTimeout(r, 600));
+
+        onProgress?.('📊 Đang lấy số liệu GSO, NHNN, Bộ Tài chính...');
+        await new Promise(r => setTimeout(r, 500));
+
+        onProgress?.('🎯 Đang đánh dấu yếu tố ưu tiên cao...');
+        await new Promise(r => setTimeout(r, 500));
+
+        onProgress?.('⚖️ Đang kiểm chứng tính chính xác...');
+
+        const response = await ai.models.generateContent({
+            model: 'gemini-2.5-flash',
+            contents: `Phân tích PESTEL cho ngành "${input.industry}" tại "${input.location}", quy mô "${input.businessScale}".
+
+ÁP DỤNG NGHIÊM NGẶT:
+1. NO FLUFF: Không "Chính phủ hỗ trợ", "Kinh tế phát triển" - CHỈ trích dẫn văn bản cụ thể
+2. HYPER-LOCAL: Ưu tiên văn bản UBND/HĐND ${input.location} bên cạnh luật Trung ương
+3. CITATION FORMAT: [Tên văn bản] + [Số hiệu/Năm] + [Điều khoản]
+4. BUSINESS SCALE ${input.businessScale}: Focus vào ${currentScale.focus}
+5. Đánh dấu is_priority = true cho yếu tố sống còn (impact_score >= 8)`,
+            config: {
+                systemInstruction: systemPrompt,
+                responseMimeType: "application/json",
+                safetySettings: SAFETY_SETTINGS,
+                temperature: 0.4 // Even lower for more factual responses
+            },
+        });
+
+        const text = response.text || "{}";
+        const jsonStr = text.replace(/```json|```/g, '').trim();
+        const result = JSON.parse(jsonStr) as PESTELBuilderResult;
+
+        // Ensure all 6 categories exist
+        const requiredCategories = ['Political', 'Economic', 'Social', 'Technological', 'Environmental', 'Legal'];
+        const existingCategories = result.pestel_factors?.map(f => f.category) || [];
+
+        requiredCategories.forEach(cat => {
+            if (!existingCategories.includes(cat as any)) {
+                result.pestel_factors = result.pestel_factors || [];
+                result.pestel_factors.push({
+                    category: cat as any,
+                    category_vi: `${cat} (Chưa có dữ liệu)`,
+                    items: [{
+                        factor: 'Chưa có dữ liệu',
+                        detail: 'Hệ thống không tìm thấy thông tin đáng tin cậy cho yếu tố này.',
+                        impact_direction: 'Neutral',
+                        impact_score: 0,
+                        actionable_insight: 'Cần nghiên cứu thêm từ nguồn chuyên gia ngành.',
+                        verification_status: 'Unverified',
+                        is_priority: false
+                    }]
+                });
+            }
+        });
+
+        // Auto-flag high priority items
+        result.pestel_factors?.forEach(factor => {
+            factor.items?.forEach(item => {
+                if ((item as any).impact_score >= 8 && !(item as any).is_priority) {
+                    (item as any).is_priority = true;
+                }
+            });
+        });
+
+        return result;
+    } catch (error) {
+        console.error("PESTEL Analysis Error:", error);
+        return null;
+    }
+};
 
 
 

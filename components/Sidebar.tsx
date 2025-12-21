@@ -5,7 +5,7 @@ import {
   Terminal, CheckSquare, Megaphone, PenTool, Image as ImageIcon, PlusSquare, Briefcase, Mail, Film, Link2,
   MonitorPlay, Calculator, TrendingUp, ShieldCheck, Radar, Users, BrainCircuit, Lightbulb, Target,
   CalendarDays, Brain, Banknote, FileText, FileCheck, Zap, Map, PieChart, Activity, Compass, DollarSign, Heart,
-  HelpCircle
+  HelpCircle, Globe
 } from 'lucide-react';
 
 interface SidebarProps {
@@ -87,6 +87,7 @@ const Sidebar: React.FC<SidebarProps> = ({ currentView, setView }) => {
   const strategyItems = [
     { id: 'MASTERMIND_STRATEGY', label: 'Mastermind Strategy', icon: Brain, color: 'text-indigo-600' },
     { id: 'IMC_PLANNER', label: 'IMC Planner', icon: Target, color: 'text-purple-600' },
+    { id: 'PESTEL_BUILDER', label: 'PESTEL Builder', icon: Globe, color: 'text-teal-600' },
     { id: 'STRATEGIC_MODELS', label: 'Strategic Models', icon: Target, color: 'text-blue-600' },
     { id: 'INSIGHT_FINDER', label: 'Insight Finder', icon: BrainCircuit, color: 'text-cyan-600' },
     { id: 'CUSTOMER_JOURNEY_MAPPER', label: 'Customer Journey', icon: Map, color: 'text-indigo-500' },

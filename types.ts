@@ -467,7 +467,7 @@ export interface MastermindStrategy {
   createdAt: number;
 }
 
-export type ViewState = 'HOME' | 'HOME_DASHBOARD' | 'FEATURES_GUIDE' | 'LEARN_SELECT' | 'LEARN_SESSION' | 'VOCAB_MANAGER' | 'STARRED' | 'PLAN_CALENDAR' | 'PLAN_LIST' | 'PROMPTS' | 'TODO' | 'CONTENT_WRITER' | 'VISUAL_EMAIL' | 'KEY_VISUALS_LIST' | 'KEY_VISUALS_CREATE' | 'FRAME_VISUAL' | 'UTM_BUILDER' | 'MOCKUP_GENERATOR' | 'AB_TESTING' | 'ROAS_FORECASTER' | 'BRAND_VAULT' | 'RIVAL_RADAR' | 'PERSONA_BUILDER' | 'MINDMAP_GENERATOR' | 'SCAMPER_TOOL' | 'STRATEGIC_MODELS' | 'SMART_CALENDAR' | 'MASTERMIND_STRATEGY' | 'SMART_SALARY' | 'AUTO_BRIEF' | 'SOP_BUILDER' | 'HOOK_GENERATOR' | 'CUSTOMER_JOURNEY_MAPPER' | 'BUDGET_ALLOCATOR' | 'INSIGHT_FINDER' | 'CREATIVE_ANGLE_EXPLORER' | 'ADS_HEALTH_CHECKER' | 'BRAND_POSITIONING_BUILDER' | 'PRICING_ANALYZER' | 'AUDIENCE_EMOTION_MAP' | 'IMC_PLANNER' | 'MARKETING_KNOWLEDGE';
+export type ViewState = 'HOME' | 'HOME_DASHBOARD' | 'FEATURES_GUIDE' | 'LEARN_SELECT' | 'LEARN_SESSION' | 'VOCAB_MANAGER' | 'STARRED' | 'PLAN_CALENDAR' | 'PLAN_LIST' | 'PROMPTS' | 'TODO' | 'CONTENT_WRITER' | 'VISUAL_EMAIL' | 'KEY_VISUALS_LIST' | 'KEY_VISUALS_CREATE' | 'FRAME_VISUAL' | 'UTM_BUILDER' | 'MOCKUP_GENERATOR' | 'AB_TESTING' | 'ROAS_FORECASTER' | 'BRAND_VAULT' | 'RIVAL_RADAR' | 'PERSONA_BUILDER' | 'MINDMAP_GENERATOR' | 'SCAMPER_TOOL' | 'STRATEGIC_MODELS' | 'SMART_CALENDAR' | 'MASTERMIND_STRATEGY' | 'SMART_SALARY' | 'AUTO_BRIEF' | 'SOP_BUILDER' | 'HOOK_GENERATOR' | 'CUSTOMER_JOURNEY_MAPPER' | 'BUDGET_ALLOCATOR' | 'INSIGHT_FINDER' | 'CREATIVE_ANGLE_EXPLORER' | 'ADS_HEALTH_CHECKER' | 'BRAND_POSITIONING_BUILDER' | 'PRICING_ANALYZER' | 'AUDIENCE_EMOTION_MAP' | 'IMC_PLANNER' | 'MARKETING_KNOWLEDGE' | 'PESTEL_BUILDER';
 
 
 // --- AUTO BRIEF GENERATOR ---
@@ -923,4 +923,37 @@ export interface AudienceEmotionMapResult {
   emotion_journey: EmotionStage[];
 }
 
+// --- PESTEL BUILDER ---
+export type PESTELCategory = 'Political' | 'Economic' | 'Social' | 'Technological' | 'Environmental' | 'Legal';
+export type VerificationStatus = 'Verified' | 'Estimated' | 'Unverified';
+export type ImpactDirection = 'Positive' | 'Negative' | 'Neutral';
 
+export interface PESTELItem {
+  factor: string;
+  detail: string;
+  impact_direction: ImpactDirection;
+  impact_score: number; // 1-10
+  actionable_insight: string;
+  verification_status: VerificationStatus;
+  source?: string; // Citation for P/L factors
+  is_priority?: boolean; // High Priority flag for critical items
+}
+
+export interface PESTELFactorGroup {
+  category: PESTELCategory;
+  category_vi: string;
+  items: PESTELItem[];
+}
+
+export interface PESTELBuilderInput {
+  industry: string;
+  location: string;
+  businessScale: 'SME' | 'Startup' | 'Enterprise' | 'Multinational';
+}
+
+export interface PESTELBuilderResult {
+  context: string;
+  pestel_factors: PESTELFactorGroup[];
+  generated_at: string;
+  data_freshness: string;
+}
