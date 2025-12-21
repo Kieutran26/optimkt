@@ -49,7 +49,7 @@ export const StorageService = {
     const sets = StorageService.getSets();
     const newSets = sets.filter(s => s.id !== setId);
     localStorage.setItem(KEYS.SETS, JSON.stringify(newSets));
-    
+
     // Also delete words in this set
     const words = StorageService.getWords();
     const newWords = words.filter(w => w.setId !== setId);
@@ -101,6 +101,15 @@ export const StorageService = {
     const newHistory = [record, ...history].slice(0, 50);
     localStorage.setItem(KEYS.HISTORY, JSON.stringify(newHistory));
   },
+  deleteHistory: (id: string) => {
+    const history = StorageService.getHistory();
+    const newHistory = history.filter(h => h.id !== id);
+    localStorage.setItem(KEYS.HISTORY, JSON.stringify(newHistory));
+  },
+  clearAllHistory: () => {
+    localStorage.setItem(KEYS.HISTORY, JSON.stringify([]));
+  },
+
   getPlans: (): Plan[] => {
     const data = localStorage.getItem(KEYS.PLANS);
     return data ? JSON.parse(data) : [];
@@ -198,9 +207,9 @@ export const StorageService = {
       newProjects = [project, ...projects];
     }
     try {
-        localStorage.setItem(KEYS.KV_PROJECTS, JSON.stringify(newProjects));
+      localStorage.setItem(KEYS.KV_PROJECTS, JSON.stringify(newProjects));
     } catch (e) {
-        alert("Bộ nhớ trình duyệt đã đầy. Không thể lưu thêm hình ảnh vào dự án.");
+      alert("Bộ nhớ trình duyệt đã đầy. Không thể lưu thêm hình ảnh vào dự án.");
     }
   },
   deleteKVProject: (id: string) => {
@@ -292,11 +301,11 @@ export const StorageService = {
   getUtmPresets: (): UtmPreset[] => {
     const data = localStorage.getItem(KEYS.UTM_PRESETS);
     return data ? JSON.parse(data) : [
-        { id: 'def1', name: 'Facebook Ads (Traffic)', source: 'facebook', medium: 'cpc' },
-        { id: 'def2', name: 'Google Ads (Search)', source: 'google', medium: 'cpc' },
-        { id: 'def3', name: 'Email Newsletter', source: 'newsletter', medium: 'email' },
-        { id: 'def4', name: 'Organic Facebook', source: 'facebook', medium: 'social' },
-        { id: 'def5', name: 'Zalo Message', source: 'zalo', medium: 'chat' },
+      { id: 'def1', name: 'Facebook Ads (Traffic)', source: 'facebook', medium: 'cpc' },
+      { id: 'def2', name: 'Google Ads (Search)', source: 'google', medium: 'cpc' },
+      { id: 'def3', name: 'Email Newsletter', source: 'newsletter', medium: 'email' },
+      { id: 'def4', name: 'Organic Facebook', source: 'facebook', medium: 'social' },
+      { id: 'def5', name: 'Zalo Message', source: 'zalo', medium: 'chat' },
     ];
   },
   saveUtmPreset: (preset: UtmPreset) => {
@@ -304,9 +313,9 @@ export const StorageService = {
     localStorage.setItem(KEYS.UTM_PRESETS, JSON.stringify([...presets, preset]));
   },
   deleteUtmPreset: (id: string) => {
-      const presets = StorageService.getUtmPresets();
-      const newPresets = presets.filter(p => p.id !== id);
-      localStorage.setItem(KEYS.UTM_PRESETS, JSON.stringify(newPresets));
+    const presets = StorageService.getUtmPresets();
+    const newPresets = presets.filter(p => p.id !== id);
+    localStorage.setItem(KEYS.UTM_PRESETS, JSON.stringify(newPresets));
   },
   getRoasHistory: (): RoasScenario[] => {
     const data = localStorage.getItem(KEYS.ROAS_SCENARIOS);
@@ -339,7 +348,7 @@ export const StorageService = {
     try {
       localStorage.setItem(KEYS.BRANDS, JSON.stringify(newBrands));
       if (newBrands.length === 1) {
-          StorageService.setActiveBrandId(brand.id);
+        StorageService.setActiveBrandId(brand.id);
       }
       return true;
     } catch (e) {
@@ -352,187 +361,187 @@ export const StorageService = {
     const newBrands = brands.filter(b => b.id !== id);
     localStorage.setItem(KEYS.BRANDS, JSON.stringify(newBrands));
     if (StorageService.getActiveBrandId() === id) {
-        if (newBrands.length > 0) {
-            StorageService.setActiveBrandId(newBrands[0].id);
-        } else {
-            localStorage.removeItem(KEYS.ACTIVE_BRAND_ID);
-        }
+      if (newBrands.length > 0) {
+        StorageService.setActiveBrandId(newBrands[0].id);
+      } else {
+        localStorage.removeItem(KEYS.ACTIVE_BRAND_ID);
+      }
     }
   },
   getActiveBrandId: (): string | null => {
-      return localStorage.getItem(KEYS.ACTIVE_BRAND_ID);
+    return localStorage.getItem(KEYS.ACTIVE_BRAND_ID);
   },
   setActiveBrandId: (id: string) => {
-      localStorage.setItem(KEYS.ACTIVE_BRAND_ID, id);
+    localStorage.setItem(KEYS.ACTIVE_BRAND_ID, id);
   },
   getCompetitors: (): Competitor[] => {
-      const data = localStorage.getItem(KEYS.COMPETITORS);
-      return data ? JSON.parse(data) : [];
+    const data = localStorage.getItem(KEYS.COMPETITORS);
+    return data ? JSON.parse(data) : [];
   },
   saveCompetitor: (competitor: Competitor) => {
-      const competitors = StorageService.getCompetitors();
-      const index = competitors.findIndex(c => c.id === competitor.id);
-      let newCompetitors;
-      if (index !== -1) {
-          competitors[index] = competitor;
-          newCompetitors = competitors;
-      } else {
-          newCompetitors = [competitor, ...competitors];
-      }
-      try {
-          localStorage.setItem(KEYS.COMPETITORS, JSON.stringify(newCompetitors));
-          return true;
-      } catch (e) {
-          alert("Storage quota exceeded.");
-          return false;
-      }
+    const competitors = StorageService.getCompetitors();
+    const index = competitors.findIndex(c => c.id === competitor.id);
+    let newCompetitors;
+    if (index !== -1) {
+      competitors[index] = competitor;
+      newCompetitors = competitors;
+    } else {
+      newCompetitors = [competitor, ...competitors];
+    }
+    try {
+      localStorage.setItem(KEYS.COMPETITORS, JSON.stringify(newCompetitors));
+      return true;
+    } catch (e) {
+      alert("Storage quota exceeded.");
+      return false;
+    }
   },
   deleteCompetitor: (id: string) => {
-      const competitors = StorageService.getCompetitors();
-      const newCompetitors = competitors.filter(c => c.id !== id);
-      localStorage.setItem(KEYS.COMPETITORS, JSON.stringify(newCompetitors));
+    const competitors = StorageService.getCompetitors();
+    const newCompetitors = competitors.filter(c => c.id !== id);
+    localStorage.setItem(KEYS.COMPETITORS, JSON.stringify(newCompetitors));
   },
   getPersonas: (): Persona[] => {
-      const data = localStorage.getItem(KEYS.PERSONAS);
-      return data ? JSON.parse(data) : [];
+    const data = localStorage.getItem(KEYS.PERSONAS);
+    return data ? JSON.parse(data) : [];
   },
   savePersona: (persona: Persona) => {
-      const personas = StorageService.getPersonas();
-      const index = personas.findIndex(p => p.id === persona.id);
-      let newPersonas;
-      if (index !== -1) {
-          personas[index] = persona;
-          newPersonas = personas;
-      } else {
-          newPersonas = [persona, ...personas];
-      }
-      try {
-          localStorage.setItem(KEYS.PERSONAS, JSON.stringify(newPersonas));
-          return true;
-      } catch (e) {
-          alert("Storage quota exceeded.");
-          return false;
-      }
+    const personas = StorageService.getPersonas();
+    const index = personas.findIndex(p => p.id === persona.id);
+    let newPersonas;
+    if (index !== -1) {
+      personas[index] = persona;
+      newPersonas = personas;
+    } else {
+      newPersonas = [persona, ...personas];
+    }
+    try {
+      localStorage.setItem(KEYS.PERSONAS, JSON.stringify(newPersonas));
+      return true;
+    } catch (e) {
+      alert("Storage quota exceeded.");
+      return false;
+    }
   },
   deletePersona: (id: string) => {
-      const personas = StorageService.getPersonas();
-      const newPersonas = personas.filter(p => p.id !== id);
-      localStorage.setItem(KEYS.PERSONAS, JSON.stringify(newPersonas));
+    const personas = StorageService.getPersonas();
+    const newPersonas = personas.filter(p => p.id !== id);
+    localStorage.setItem(KEYS.PERSONAS, JSON.stringify(newPersonas));
   },
   getPersonasByBrand: (brandId: string): Persona[] => {
-      const personas = StorageService.getPersonas();
-      return personas.filter(p => p.brandId === brandId);
+    const personas = StorageService.getPersonas();
+    return personas.filter(p => p.brandId === brandId);
   },
   getMindmaps: (): MindmapProject[] => {
-      const data = localStorage.getItem(KEYS.MINDMAPS);
-      return data ? JSON.parse(data) : [];
+    const data = localStorage.getItem(KEYS.MINDMAPS);
+    return data ? JSON.parse(data) : [];
   },
   saveMindmap: (project: MindmapProject) => {
-      const projects = StorageService.getMindmaps();
-      const index = projects.findIndex(p => p.id === project.id);
-      let newProjects;
-      if (index !== -1) {
-          projects[index] = project;
-          newProjects = projects;
-      } else {
-          newProjects = [project, ...projects];
-      }
-      try {
-          localStorage.setItem(KEYS.MINDMAPS, JSON.stringify(newProjects));
-          return true;
-      } catch (e) {
-          alert("Storage quota exceeded.");
-          return false;
-      }
+    const projects = StorageService.getMindmaps();
+    const index = projects.findIndex(p => p.id === project.id);
+    let newProjects;
+    if (index !== -1) {
+      projects[index] = project;
+      newProjects = projects;
+    } else {
+      newProjects = [project, ...projects];
+    }
+    try {
+      localStorage.setItem(KEYS.MINDMAPS, JSON.stringify(newProjects));
+      return true;
+    } catch (e) {
+      alert("Storage quota exceeded.");
+      return false;
+    }
   },
   deleteMindmap: (id: string) => {
-      const projects = StorageService.getMindmaps();
-      const newProjects = projects.filter(p => p.id !== id);
-      localStorage.setItem(KEYS.MINDMAPS, JSON.stringify(newProjects));
+    const projects = StorageService.getMindmaps();
+    const newProjects = projects.filter(p => p.id !== id);
+    localStorage.setItem(KEYS.MINDMAPS, JSON.stringify(newProjects));
   },
   getScamperSessions: (): ScamperSession[] => {
-      const data = localStorage.getItem(KEYS.SCAMPER_SESSIONS);
-      return data ? JSON.parse(data) : [];
+    const data = localStorage.getItem(KEYS.SCAMPER_SESSIONS);
+    return data ? JSON.parse(data) : [];
   },
   saveScamperSession: (session: ScamperSession) => {
-      const sessions = StorageService.getScamperSessions();
-      const index = sessions.findIndex(s => s.id === session.id);
-      let newSessions;
-      if (index !== -1) {
-          sessions[index] = session;
-          newSessions = sessions;
-      } else {
-          newSessions = [session, ...sessions];
-      }
-      if (newSessions.length > 50) newSessions.pop();
-      try {
-          localStorage.setItem(KEYS.SCAMPER_SESSIONS, JSON.stringify(newSessions));
-          return true;
-      } catch (e) {
-          alert("Storage full.");
-          return false;
-      }
+    const sessions = StorageService.getScamperSessions();
+    const index = sessions.findIndex(s => s.id === session.id);
+    let newSessions;
+    if (index !== -1) {
+      sessions[index] = session;
+      newSessions = sessions;
+    } else {
+      newSessions = [session, ...sessions];
+    }
+    if (newSessions.length > 50) newSessions.pop();
+    try {
+      localStorage.setItem(KEYS.SCAMPER_SESSIONS, JSON.stringify(newSessions));
+      return true;
+    } catch (e) {
+      alert("Storage full.");
+      return false;
+    }
   },
   deleteScamperSession: (id: string) => {
-      const sessions = StorageService.getScamperSessions();
-      const newSessions = sessions.filter(s => s.id !== id);
-      localStorage.setItem(KEYS.SCAMPER_SESSIONS, JSON.stringify(newSessions));
+    const sessions = StorageService.getScamperSessions();
+    const newSessions = sessions.filter(s => s.id !== id);
+    localStorage.setItem(KEYS.SCAMPER_SESSIONS, JSON.stringify(newSessions));
   },
   getCalendarProjects: (): CalendarProject[] => {
-      const data = localStorage.getItem(KEYS.CALENDAR_PROJECTS);
-      return data ? JSON.parse(data) : [];
+    const data = localStorage.getItem(KEYS.CALENDAR_PROJECTS);
+    return data ? JSON.parse(data) : [];
   },
   saveCalendarProject: (project: CalendarProject) => {
-      const projects = StorageService.getCalendarProjects();
-      const index = projects.findIndex(p => p.id === project.id);
-      let newProjects;
-      if (index !== -1) {
-          projects[index] = project;
-          newProjects = projects;
-      } else {
-          newProjects = [project, ...projects];
-      }
-      try {
-          localStorage.setItem(KEYS.CALENDAR_PROJECTS, JSON.stringify(newProjects));
-          return true;
-      } catch (e) {
-          alert("Storage quota exceeded.");
-          return false;
-      }
+    const projects = StorageService.getCalendarProjects();
+    const index = projects.findIndex(p => p.id === project.id);
+    let newProjects;
+    if (index !== -1) {
+      projects[index] = project;
+      newProjects = projects;
+    } else {
+      newProjects = [project, ...projects];
+    }
+    try {
+      localStorage.setItem(KEYS.CALENDAR_PROJECTS, JSON.stringify(newProjects));
+      return true;
+    } catch (e) {
+      alert("Storage quota exceeded.");
+      return false;
+    }
   },
   deleteCalendarProject: (id: string) => {
-      const projects = StorageService.getCalendarProjects();
-      const newProjects = projects.filter(p => p.id !== id);
-      localStorage.setItem(KEYS.CALENDAR_PROJECTS, JSON.stringify(newProjects));
+    const projects = StorageService.getCalendarProjects();
+    const newProjects = projects.filter(p => p.id !== id);
+    localStorage.setItem(KEYS.CALENDAR_PROJECTS, JSON.stringify(newProjects));
   },
-  
+
   // --- MASTERMIND STRATEGY ---
   getMastermindStrategies: (): MastermindStrategy[] => {
-      const data = localStorage.getItem(KEYS.MASTERMIND_STRATEGIES);
-      return data ? JSON.parse(data) : [];
+    const data = localStorage.getItem(KEYS.MASTERMIND_STRATEGIES);
+    return data ? JSON.parse(data) : [];
   },
   saveMastermindStrategy: (strategy: MastermindStrategy) => {
-      const list = StorageService.getMastermindStrategies();
-      const index = list.findIndex(s => s.id === strategy.id);
-      let newList;
-      if (index !== -1) {
-          list[index] = strategy;
-          newList = list;
-      } else {
-          newList = [strategy, ...list];
-      }
-      
-      try {
-          localStorage.setItem(KEYS.MASTERMIND_STRATEGIES, JSON.stringify(newList));
-          return true;
-      } catch (e) {
-          alert("Storage full.");
-          return false;
-      }
+    const list = StorageService.getMastermindStrategies();
+    const index = list.findIndex(s => s.id === strategy.id);
+    let newList;
+    if (index !== -1) {
+      list[index] = strategy;
+      newList = list;
+    } else {
+      newList = [strategy, ...list];
+    }
+
+    try {
+      localStorage.setItem(KEYS.MASTERMIND_STRATEGIES, JSON.stringify(newList));
+      return true;
+    } catch (e) {
+      alert("Storage full.");
+      return false;
+    }
   },
   deleteMastermindStrategy: (id: string) => {
-      const list = StorageService.getMastermindStrategies();
-      const newList = list.filter(s => s.id !== id);
-      localStorage.setItem(KEYS.MASTERMIND_STRATEGIES, JSON.stringify(newList));
+    const list = StorageService.getMastermindStrategies();
+    const newList = list.filter(s => s.id !== id);
+    localStorage.setItem(KEYS.MASTERMIND_STRATEGIES, JSON.stringify(newList));
   }
 };
