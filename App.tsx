@@ -40,6 +40,7 @@ import AudienceEmotionMap from './components/AudienceEmotionMap';
 import IMCPlanner from './components/IMCPlanner';
 import MarketingKnowledge from './components/MarketingKnowledge';
 import PESTELBuilder from './components/PESTELBuilder';
+import PorterAnalyzer from './components/PorterAnalyzer';
 import HomePage from './components/HomePage';
 import FeaturesGuide from './components/FeaturesGuide';
 import { ViewState, StudyMode, Word, MastermindStrategy } from './types';
@@ -195,6 +196,8 @@ function AppContent() {
         return <MarketingKnowledge />;
       case 'PESTEL_BUILDER':
         return <PESTELBuilder />;
+      case 'PORTER_ANALYZER':
+        return <PorterAnalyzer />;
       default:
         return <TranslationView />;
     }

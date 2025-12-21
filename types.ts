@@ -467,7 +467,7 @@ export interface MastermindStrategy {
   createdAt: number;
 }
 
-export type ViewState = 'HOME' | 'HOME_DASHBOARD' | 'FEATURES_GUIDE' | 'LEARN_SELECT' | 'LEARN_SESSION' | 'VOCAB_MANAGER' | 'STARRED' | 'PLAN_CALENDAR' | 'PLAN_LIST' | 'PROMPTS' | 'TODO' | 'CONTENT_WRITER' | 'VISUAL_EMAIL' | 'KEY_VISUALS_LIST' | 'KEY_VISUALS_CREATE' | 'FRAME_VISUAL' | 'UTM_BUILDER' | 'MOCKUP_GENERATOR' | 'AB_TESTING' | 'ROAS_FORECASTER' | 'BRAND_VAULT' | 'RIVAL_RADAR' | 'PERSONA_BUILDER' | 'MINDMAP_GENERATOR' | 'SCAMPER_TOOL' | 'STRATEGIC_MODELS' | 'SMART_CALENDAR' | 'MASTERMIND_STRATEGY' | 'SMART_SALARY' | 'AUTO_BRIEF' | 'SOP_BUILDER' | 'HOOK_GENERATOR' | 'CUSTOMER_JOURNEY_MAPPER' | 'BUDGET_ALLOCATOR' | 'INSIGHT_FINDER' | 'CREATIVE_ANGLE_EXPLORER' | 'ADS_HEALTH_CHECKER' | 'BRAND_POSITIONING_BUILDER' | 'PRICING_ANALYZER' | 'AUDIENCE_EMOTION_MAP' | 'IMC_PLANNER' | 'MARKETING_KNOWLEDGE' | 'PESTEL_BUILDER';
+export type ViewState = 'HOME' | 'HOME_DASHBOARD' | 'FEATURES_GUIDE' | 'LEARN_SELECT' | 'LEARN_SESSION' | 'VOCAB_MANAGER' | 'STARRED' | 'PLAN_CALENDAR' | 'PLAN_LIST' | 'PROMPTS' | 'TODO' | 'CONTENT_WRITER' | 'VISUAL_EMAIL' | 'KEY_VISUALS_LIST' | 'KEY_VISUALS_CREATE' | 'FRAME_VISUAL' | 'UTM_BUILDER' | 'MOCKUP_GENERATOR' | 'AB_TESTING' | 'ROAS_FORECASTER' | 'BRAND_VAULT' | 'RIVAL_RADAR' | 'PERSONA_BUILDER' | 'MINDMAP_GENERATOR' | 'SCAMPER_TOOL' | 'STRATEGIC_MODELS' | 'SMART_CALENDAR' | 'MASTERMIND_STRATEGY' | 'SMART_SALARY' | 'AUTO_BRIEF' | 'SOP_BUILDER' | 'HOOK_GENERATOR' | 'CUSTOMER_JOURNEY_MAPPER' | 'BUDGET_ALLOCATOR' | 'INSIGHT_FINDER' | 'CREATIVE_ANGLE_EXPLORER' | 'ADS_HEALTH_CHECKER' | 'BRAND_POSITIONING_BUILDER' | 'PRICING_ANALYZER' | 'AUDIENCE_EMOTION_MAP' | 'IMC_PLANNER' | 'MARKETING_KNOWLEDGE' | 'PESTEL_BUILDER' | 'PORTER_ANALYZER';
 
 
 // --- AUTO BRIEF GENERATOR ---
@@ -957,3 +957,40 @@ export interface PESTELBuilderResult {
   generated_at: string;
   data_freshness: string;
 }
+
+// --- PORTER'S FIVE FORCES ---
+export type ForceStatus = 'Low' | 'Medium' | 'High' | 'Extreme';
+export type IndustryVerdict = 'Blue Ocean' | 'Attractive' | 'Moderate' | 'Unattractive' | 'Red Ocean';
+export type UserPosition = 'New Entrant' | 'Market Leader' | 'Challenger' | 'Niche Player';
+export type TrendDirection = 'Increasing' | 'Stable' | 'Decreasing';
+
+export interface PorterForce {
+  name: string;
+  name_vi: string;
+  score: number; // 1-10
+  status: ForceStatus;
+  determinants: string[];
+  strategic_action: string;
+  data_source?: string;
+  trend: TrendDirection; // Xu hướng 1-3 năm tới
+  trend_reason?: string; // Lý do dự báo xu hướng
+}
+
+export interface PorterAnalysisInput {
+  industry: string;
+  niche?: string;
+  location: string;
+  businessModel: 'B2B' | 'B2C' | 'B2B2C';
+  userPosition: UserPosition; // Vị thế của người dùng
+  competitors?: string[];
+}
+
+export interface PorterAnalysisResult {
+  industry_context: string;
+  overall_verdict: IndustryVerdict;
+  verdict_description: string;
+  total_threat_score: number; // Tổng điểm / 50
+  forces: PorterForce[];
+  generated_at: string;
+}
+

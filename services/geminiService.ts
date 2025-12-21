@@ -3097,4 +3097,154 @@ Nếu ngành chung chung, hãy tự suy luận các rủi ro PESTEL phổ biến
 
 
 
+// --- PORTER'S FIVE FORCES ANALYZER ---
+import { PorterAnalysisInput, PorterAnalysisResult, IndustryVerdict } from '../types';
+
+export const generatePorterAnalysis = async (
+    input: PorterAnalysisInput,
+    onProgress?: (step: string) => void
+): Promise<PorterAnalysisResult | null> => {
+    // User Position Strategy Config
+    const positionConfig: Record<string, { strategy: string; focus: string; actionStyle: string }> = {
+        'New Entrant': {
+            strategy: 'GUERILLA (Du kích)',
+            focus: 'Đánh vào ngách hẹp (Niche) để né đối thủ lớn',
+            actionStyle: 'Tấn công điểm yếu của đối thủ lớn, tận dụng sự nhanh nhẹn'
+        },
+        'Market Leader': {
+            strategy: 'DEFENSIVE (Phòng thủ)',
+            focus: 'Tăng chi phí chuyển đổi (Switching Cost) để giữ khách',
+            actionStyle: 'Bảo vệ thị phần, tăng loyalty, xây dựng ecosystem'
+        },
+        'Challenger': {
+            strategy: 'FLANKING (Tấn công sườn)',
+            focus: 'Tấn công vào phân khúc mà leader bỏ ngỏ',
+            actionStyle: 'Tìm điểm yếu của leader, đầu tư R&D sáng tạo'
+        },
+        'Niche Player': {
+            strategy: 'FOCUS (Tập trung)',
+            focus: 'Chuyên sâu vào một phân khúc nhỏ',
+            actionStyle: 'Tối ưu hóa trải nghiệm cho niche, xây dựng community'
+        }
+    };
+
+    const currentPosition = positionConfig[input.userPosition] || positionConfig['New Entrant'];
+
+    const systemPrompt = `### VAI TRÒ
+Bạn là **Senior Strategy Consultant** chuyên về **Porter's Five Forces Framework**.
+
+### VỊ THẾ NGƯỜI DÙNG: ${input.userPosition}
+**Chiến lược**: ${currentPosition.strategy}
+**Focus**: ${currentPosition.focus}
+→ TẤT CẢ Strategic Action PHẢI phù hợp với vị thế này!
+
+### DỮ LIỆU ĐẦU VÀO
+- **Ngành**: ${input.industry}${input.niche ? ` - ${input.niche}` : ''}
+- **Địa điểm**: ${input.location}
+- **Mô hình**: ${input.businessModel}
+${input.competitors && input.competitors.length > 0 ? `- **Đối thủ**: ${input.competitors.join(', ')}` : ''}
+
+### RULE: SPECIFIC EVIDENCE (Bằng chứng CỤ THỂ)
+❌ BAD: "Nhiều đối thủ cạnh tranh"
+✅ GOOD: "Cạnh tranh gay gắt từ Traveloka, Agoda và Vietravel tại ${input.location}"
+
+❌ BAD: "Nhà cung cấp có quyền lực"
+✅ GOOD: "Phụ thuộc vào khách sạn 5 sao hạn chế tại ${input.location} và vé Vietnam Airlines giờ vàng"
+
+→ Mỗi determinant PHẢI nêu TÊN công ty, sản phẩm, số liệu CỤ THỂ!
+
+### SCORING (1-10, cao = ngành khó làm)
+- Low (1-3), Medium (4-6), High (7-8), Extreme (9-10)
+
+### TREND PREDICTION (1-3 năm)
+- **Increasing**: Lực lượng TĂNG (tệ hơn)
+- **Stable**: Giữ nguyên
+- **Decreasing**: Lực lượng GIẢM (tốt hơn)
+
+Phân tích PESTEL để dự đoán trend. VD: AI phát triển → Substitutes Increasing
+
+### OUTPUT JSON
+{
+  "industry_context": "${input.industry} tại ${input.location}",
+  "overall_verdict": "Blue Ocean | Attractive | Moderate | Unattractive | Red Ocean",
+  "verdict_description": "Mô tả ngắn",
+  "total_threat_score": 1-50,
+  "forces": [
+    {
+      "name": "Competitive Rivalry",
+      "name_vi": "Cạnh tranh đối thủ hiện tại",
+      "score": 1-10,
+      "status": "Low | Medium | High | Extreme",
+      "determinants": ["TÊN CỤ THỂ: công ty, sản phẩm tại ${input.location}"],
+      "strategic_action": "Hành động PHÙ HỢP vị thế ${input.userPosition}",
+      "trend": "Increasing | Stable | Decreasing",
+      "trend_reason": "Lý do dự báo từ PESTEL",
+      "data_source": "Based on Market Data"
+    }
+  ],
+  "generated_at": "${new Date().toISOString()}"
+}
+
+### STRATEGIC ACTION BY POSITION
+- New Entrant: Guerilla - Đánh ngách hẹp, né leader
+- Market Leader: Defensive - Tăng switching cost, membership
+- Challenger: Flanking - Tấn công điểm yếu leader
+- Niche Player: Focus - Chuyên sâu 1 phân khúc`;
+
+    try {
+        onProgress?.('🎯 Đang phân tích ngành ' + input.industry + '...');
+        await new Promise(r => setTimeout(r, 500));
+
+        onProgress?.('👤 Áp dụng chiến lược ' + currentPosition.strategy + '...');
+        await new Promise(r => setTimeout(r, 500));
+
+        onProgress?.('⚔️ Đang đánh giá 5 lực lượng cạnh tranh...');
+        await new Promise(r => setTimeout(r, 500));
+
+        onProgress?.('🔮 Đang dự báo xu hướng 1-3 năm...');
+        await new Promise(r => setTimeout(r, 500));
+
+        onProgress?.('📊 Đang tính toán verdict...');
+
+        const response = await ai.models.generateContent({
+            model: 'gemini-2.5-flash',
+            contents: `Phân tích Porter's Five Forces cho "${input.industry}" tại "${input.location}".
+Vị thế: ${input.userPosition} → Chiến lược ${currentPosition.strategy}.
+${input.competitors?.length ? `Đối thủ: ${input.competitors.join(', ')}.` : ''}
+
+YÊU CẦU:
+1. Determinants: TÊN CỤ THỂ công ty, sản phẩm, số liệu tại ${input.location}
+2. Strategic Action: Phù hợp vị thế "${input.userPosition}"
+3. Trend + trend_reason cho mỗi force`,
+            config: {
+                systemInstruction: systemPrompt,
+                responseMimeType: "application/json",
+                safetySettings: SAFETY_SETTINGS,
+                temperature: 0.5
+            },
+        });
+
+        const text = response.text || "{}";
+        const jsonStr = text.replace(/```json|```/g, '').trim();
+        const result = JSON.parse(jsonStr) as PorterAnalysisResult;
+
+        if (result.forces && result.forces.length === 5) {
+            const totalScore = result.forces.reduce((sum, f) => sum + f.score, 0);
+            result.total_threat_score = totalScore;
+
+            if (totalScore <= 20) result.overall_verdict = 'Blue Ocean';
+            else if (totalScore <= 28) result.overall_verdict = 'Attractive';
+            else if (totalScore <= 35) result.overall_verdict = 'Moderate';
+            else if (totalScore <= 42) result.overall_verdict = 'Unattractive';
+            else result.overall_verdict = 'Red Ocean';
+
+            result.forces.forEach(f => { if (!f.trend) f.trend = 'Stable'; });
+        }
+
+        return result;
+    } catch (error) {
+        console.error("Porter Analysis Error:", error);
+        return null;
+    }
+};
 
