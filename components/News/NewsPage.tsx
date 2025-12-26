@@ -19,7 +19,7 @@ const NewsPage: React.FC = () => {
                 .from('news_articles')
                 .select('*')
                 .order('pub_date', { ascending: false })
-                .limit(200);
+                .limit(500);
 
             if (data) {
                 setArticles(data);
