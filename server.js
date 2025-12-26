@@ -179,6 +179,71 @@ app.get('/api/track/click/:campaignId/:subscriberId', async (req, res) => {
     res.redirect(decodeURIComponent(url));
 });
 
+// Unsubscribe endpoint
+app.get('/api/unsubscribe/:campaignId/:subscriberId', async (req, res) => {
+    const { campaignId, subscriberId } = req.params;
+
+    try {
+        // Record unsubscribe event
+        await supabase.from('email_events').insert({
+            campaign_id: campaignId,
+            subscriber_id: subscriberId,
+            event_type: 'unsubscribed'
+        });
+
+        // Update subscriber status
+        await supabase
+            .from('subscribers')
+            .update({ status: 'unsubscribed' })
+            .eq('id', subscriberId);
+
+        // Update analytics (simple increment)
+        const { data: analytics } = await supabase
+            .from('campaign_analytics')
+            .select('*')
+            .eq('campaign_id', campaignId)
+            .single();
+
+        if (analytics) {
+            await supabase
+                .from('campaign_analytics')
+                .update({
+                    total_unsubscribed: (analytics.total_unsubscribed || 0) + 1,
+                    updated_at: new Date().toISOString()
+                })
+                .eq('campaign_id', campaignId);
+        }
+
+        console.log(`🚫 Unsubscribed: campaign=${campaignId}, subscriber=${subscriberId}`);
+    } catch (err) {
+        console.error('Error handling unsubscribe:', err);
+    }
+
+    // Return simple HTML confirmation
+    res.send(`
+        <!DOCTYPE html>
+        <html>
+        <head>
+            <meta charset="UTF-8">
+            <meta name="viewport" content="width=device-width, initial-scale=1.0">
+            <title>Đã hủy đăng ký</title>
+            <style>
+                body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; display: flex; align-items: center; justify-content: center; height: 100vh; margin: 0; background-color: #f9fafb; color: #111827; }
+                .card { background: white; padding: 2rem; border-radius: 0.5rem; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1); max-width: 400px; text-align: center; }
+                h1 { margin-bottom: 1rem; font-size: 1.5rem; }
+                p { color: #6b7280; }
+            </style>
+        </head>
+        <body>
+            <div class="card">
+                <h1>Đã hủy đăng ký</h1>
+                <p>Bạn đã hủy đăng ký nhận email thành công. Chúng tôi rất tiếc khi phải chia tay bạn.</p>
+            </div>
+        </body>
+        </html>
+    `);
+});
+
 // ================== EMAIL ENDPOINTS ==================
 
 // Send single email
@@ -251,10 +316,15 @@ app.post('/api/email/campaign', async (req, res) => {
                     personalizedHtml = personalizedHtml.replace(
                         /href="(https?:\/\/[^"]+)"/g,
                         (match, url) => {
+                            if (url.includes('unsubscribe')) return match; // Don't track unsubscribe clicks as regular clicks (optional)
                             const trackedUrl = `${BASE_URL}/api/track/click/${campaignId}/${sub.id}?url=${encodeURIComponent(url)}`;
                             return `href="${trackedUrl}"`;
                         }
                     );
+
+                    // Replace Unsubscribe URL
+                    const unsubscribeUrl = `${BASE_URL}/api/unsubscribe/${campaignId}/${sub.id}`;
+                    personalizedHtml = personalizedHtml.replace(/\{\{UNSUBSCRIBE_URL\}\}/g, unsubscribeUrl);
                 }
 
                 const { data, error } = await resend.emails.send({

@@ -80,6 +80,8 @@ const CampaignManager: React.FC<CampaignManagerProps> = ({ isOpen, onClose, onCr
             return;
         }
 
+        console.log('[DEBUG] Creating Campaign with formData:', formData);
+
         const campaign = await campaignService.createCampaign({
             name: formData.name,
             subject: formData.subject,
@@ -153,7 +155,17 @@ const CampaignManager: React.FC<CampaignManagerProps> = ({ isOpen, onClose, onCr
             // Fetch template first if ID exists
             let template = null;
             if (campaign.template_id) {
+                console.log(`[DEBUG] Fetching template ID: ${campaign.template_id}`);
                 template = await emailDesignService.getById(campaign.template_id);
+                console.log(`[DEBUG] Fetched template result:`, template ? 'FOUND' : 'NULL');
+                if (template) {
+                    console.log(`[DEBUG] Template Doc Blocks:`, template.doc?.blocks?.length || 0);
+                    // Check if it looks like default content
+                    const firstBlock = template.doc?.blocks?.[0];
+                    if (firstBlock && firstBlock.content && firstBlock.content.includes('Chào mừng')) {
+                        console.warn('[DEBUG] WARNING: Template seems to contain default "Chào mừng" content!');
+                    }
+                }
             }
 
             if (template && template.doc) {
@@ -166,6 +178,7 @@ const CampaignManager: React.FC<CampaignManagerProps> = ({ isOpen, onClose, onCr
 
                 // Generate HTML from template blocks
                 const blocks = template.doc.blocks || [];
+                console.log(`[DEBUG] Generating HTML with ${blocks.length} blocks`);
                 const contentHtml = blocks.map(block => {
                     const align = block.alignment || 'left';
                     const color = block.color || '#1f2937';
@@ -228,6 +241,21 @@ const CampaignManager: React.FC<CampaignManagerProps> = ({ isOpen, onClose, onCr
                                     </td>
                                 </tr>`;
                     }
+                    // Header/Footer/Unsubscribe Blocks (custom)
+                    else if (block.type === 'footer' || block.type === 'unsubscribe') {
+                        // If user explicitly added a footer/unsubscribe block
+                        blockHtml = `
+                                <tr>
+                                    <td align="center" style="padding: 20px 0; font-family: ${settings.fontFamily}; font-size: 12px; color: ${block.colors?.text || '#6b7280'};">
+                                        ${block.text ? `<p>${block.text}</p>` : ''}
+                                        <p style="margin-top: 10px;">
+                                            <a href="{{UNSUBSCRIBE_URL}}" style="color: ${block.colors?.link || settings.primaryColor}; text-decoration: underline;">
+                                                ${block.linkText || 'Hủy đăng ký'}
+                                            </a>
+                                        </p>
+                                    </td>
+                                </tr>`;
+                    }
 
                     return blockHtml;
                 }).join('');
@@ -276,12 +304,6 @@ const CampaignManager: React.FC<CampaignManagerProps> = ({ isOpen, onClose, onCr
                             <table role="presentation" border="0" cellpadding="0" cellspacing="0" width="100%">
                                 ${contentHtml}
                             </table>
-                        </td>
-                    </tr>
-                    <tr>
-                         <td style="background-color: #f9fafb; padding: 20px 40px; text-align: center; color: #6b7280; font-size: 12px; font-family: ${settings.fontFamily};" class="mobile-padding">
-                            <p style="margin: 0;">Email này được gửi từ <strong>${campaign.sender_name}</strong></p>
-                            <p style="margin: 5px 0 0;">Bạn có thể <a href="#" style="color: #6b7280; text-decoration: underline;">hủy đăng ký</a> bất cứ lúc nào.</p>
                         </td>
                     </tr>
                 </table>

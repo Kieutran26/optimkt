@@ -2615,6 +2615,11 @@ const VisualEmailBuilder: React.FC = () => {
             updatedAt: now,
             doc: doc
         };
+
+        console.log('[DEBUG] Saving Design:', designId);
+        console.log('[DEBUG] Doc Blocks count:', doc.blocks.length);
+        console.log('[DEBUG] First Block Content:', doc.blocks[0]?.content);
+
         showToast('Đang lưu...', 'info');
         const success = await emailDesignService.save(design);
         if (success) {

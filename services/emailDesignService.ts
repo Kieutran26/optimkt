@@ -85,7 +85,18 @@ export const emailDesignService = {
             .from(TABLE_NAME)
             .select('*')
             .eq('id', id)
+            .eq('id', id)
             .single();
+
+        if (data) {
+            console.log(`[DEBUG] Service getById(${id}) found:`, data.name);
+            // Ensure doc is valid
+            if (!data.doc || !data.doc.blocks) {
+                console.warn('[DEBUG] WARNING: Service returned design with empty/invalid doc!');
+            }
+        } else {
+            console.log(`[DEBUG] Service getById(${id}) NOT FOUND`);
+        }
 
         if (error) {
             console.error('Error fetching email design:', error);
