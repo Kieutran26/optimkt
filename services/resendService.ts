@@ -15,7 +15,8 @@ export interface SendEmailResult {
     email?: string;
 }
 
-const API_BASE = 'http://localhost:3001';
+// Use relative path - Vite proxy (local) or Netlify redirects (prod) will handle routing
+const API_BASE = '';
 
 export const resendService = {
     /**

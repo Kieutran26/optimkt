@@ -249,9 +249,19 @@ app.post('/api/email/campaign', async (req, res) => {
     }
 });
 
-app.listen(PORT, () => {
-    console.log(`📧 Email API server running on http://localhost:${PORT}`);
-    console.log(`   Resend API Key: ${process.env.VITE_RESEND_API_KEY ? '✓ Configured' : '✗ Missing'}`);
-    console.log(`   Supabase: ${process.env.VITE_SUPABASE_URL ? '✓ Configured' : '✗ Missing'}`);
-    console.log(`   Tracking Base URL: ${BASE_URL}`);
-});
+import serverless from 'serverless-http';
+
+// ... (keep existing code)
+
+// Export for Netlify Functions
+export const handler = serverless(app);
+
+// Only listen if running locally (not in Netlify)
+if (process.env.NODE_ENV !== 'production' && !process.env.NETLIFY) {
+    app.listen(PORT, () => {
+        console.log(`📧 Email API server running on http://localhost:${PORT}`);
+        console.log(`   Resend API Key: ${process.env.VITE_RESEND_API_KEY ? '✓ Configured' : '✗ Missing'}`);
+        console.log(`   Supabase: ${process.env.VITE_SUPABASE_URL ? '✓ Configured' : '✗ Missing'}`);
+        console.log(`   Tracking Base URL: ${BASE_URL}`);
+    });
+}
