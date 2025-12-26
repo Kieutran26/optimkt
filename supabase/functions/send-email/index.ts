@@ -1,6 +1,4 @@
 
-import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-
 const RESEND_API_KEY = "re_SE8iu9qw_DiAn6BJU2mGiYUPMGpbiSsR9"; // User provided key
 
 const corsHeaders = {
@@ -8,7 +6,8 @@ const corsHeaders = {
     'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
-serve(async (req) => {
+Deno.serve(async (req) => {
+    // Handle CORS preflight request
     if (req.method === 'OPTIONS') {
         return new Response('ok', { headers: corsHeaders });
     }
@@ -23,7 +22,7 @@ serve(async (req) => {
                 'Authorization': `Bearer ${RESEND_API_KEY}`,
             },
             body: JSON.stringify({
-                from: 'onboarding@resend.dev', // Default Resend setup
+                from: 'onboarding@resend.dev',
                 to: to,
                 subject: subject,
                 html: html,
@@ -32,14 +31,21 @@ serve(async (req) => {
 
         const data = await res.json();
 
+        if (!res.ok) {
+            return new Response(JSON.stringify(data), {
+                status: 400,
+                headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+            });
+        }
+
         return new Response(JSON.stringify(data), {
+            status: 200,
             headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-            status: res.ok ? 200 : 400,
         });
     } catch (error) {
         return new Response(JSON.stringify({ error: error.message }), {
+            status: 500,
             headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-            status: 400,
         });
     }
 });
