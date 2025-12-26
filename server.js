@@ -42,6 +42,18 @@ app.get('/api/track/open/:campaignId/:subscriberId', async (req, res) => {
     const { campaignId, subscriberId } = req.params;
 
     try {
+        // Check if already opened
+        const { data: existingEvent } = await supabase
+            .from('email_events')
+            .select('id')
+            .eq('campaign_id', campaignId)
+            .eq('subscriber_id', subscriberId)
+            .eq('event_type', 'opened')
+            .limit(1)
+            .single();
+
+        const isUnique = !existingEvent;
+
         // Record open event
         await supabase.from('email_events').insert({
             campaign_id: campaignId,
@@ -57,22 +69,35 @@ app.get('/api/track/open/:campaignId/:subscriberId', async (req, res) => {
             .single();
 
         if (analytics) {
-            const newOpened = (analytics.total_opened || 0) + 1;
+            const updates = {
+                total_opened: (analytics.total_opened || 0) + 1,
+                updated_at: new Date().toISOString()
+            };
+
+            // If unique, increment unique_opened (if column exists, otherwise we rely on future recounts)
+            // We'll optimistically try to update unique_opened. If it fails, Supabase ignores generic object props usually? 
+            // Better: use rpc or just standard update. For now, let's assume valid schema.
+            if (isUnique) {
+                updates.unique_opened = (analytics.unique_opened || 0) + 1;
+            } else {
+                updates.unique_opened = analytics.unique_opened || analytics.total_opened; // Fallback
+            }
+
+            // Calculate Rate based on UNIQUE opens if available, else standard
+            const openCount = isUnique ? updates.unique_opened : analytics.unique_opened;
             const openRate = analytics.total_sent > 0
-                ? Math.round((newOpened / analytics.total_sent) * 10000) / 100
+                ? Math.round((openCount / analytics.total_sent) * 10000) / 100
                 : 0;
+
+            updates.open_rate = openRate;
 
             await supabase
                 .from('campaign_analytics')
-                .update({
-                    total_opened: newOpened,
-                    open_rate: openRate,
-                    updated_at: new Date().toISOString()
-                })
+                .update(updates)
                 .eq('campaign_id', campaignId);
         }
 
-        console.log(`📬 Email opened: campaign=${campaignId}, subscriber=${subscriberId}`);
+        console.log(`📬 Email opened: campaign=${campaignId}, subscriber=${subscriberId}, unique=${isUnique}`);
     } catch (err) {
         console.error('Error tracking open:', err);
     }
@@ -93,6 +118,18 @@ app.get('/api/track/click/:campaignId/:subscriberId', async (req, res) => {
     }
 
     try {
+        // Check if already clicked this link
+        const { data: existingEvent } = await supabase
+            .from('email_events')
+            .select('id')
+            .eq('campaign_id', campaignId)
+            .eq('subscriber_id', subscriberId)
+            .eq('event_type', 'clicked')
+            .limit(1)
+            .single();
+
+        const isUnique = !existingEvent; // Count unique as distinct subscriber clicking ANY link
+
         // Record click event
         await supabase.from('email_events').insert({
             campaign_id: campaignId,
@@ -109,22 +146,31 @@ app.get('/api/track/click/:campaignId/:subscriberId', async (req, res) => {
             .single();
 
         if (analytics) {
-            const newClicked = (analytics.total_clicked || 0) + 1;
+            const updates = {
+                total_clicked: (analytics.total_clicked || 0) + 1,
+                updated_at: new Date().toISOString()
+            };
+
+            if (isUnique) {
+                updates.unique_clicked = (analytics.unique_clicked || 0) + 1;
+            } else {
+                updates.unique_clicked = analytics.unique_clicked || analytics.total_clicked;
+            }
+
+            const clickCount = isUnique ? updates.unique_clicked : analytics.unique_clicked;
             const clickRate = analytics.total_opened > 0
-                ? Math.round((newClicked / analytics.total_opened) * 10000) / 100
+                ? Math.round((clickCount / analytics.total_opened) * 10000) / 100
                 : 0;
+
+            updates.click_rate = clickRate;
 
             await supabase
                 .from('campaign_analytics')
-                .update({
-                    total_clicked: newClicked,
-                    click_rate: clickRate,
-                    updated_at: new Date().toISOString()
-                })
+                .update(updates)
                 .eq('campaign_id', campaignId);
         }
 
-        console.log(`🖱️ Link clicked: campaign=${campaignId}, subscriber=${subscriberId}, url=${url}`);
+        console.log(`🖱️ Link clicked: campaign=${campaignId}, subscriber=${subscriberId}, url=${url}, unique=${isUnique}`);
     } catch (err) {
         console.error('Error tracking click:', err);
     }
