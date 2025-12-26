@@ -200,11 +200,11 @@ export const ScheduledCampaignsModal: React.FC<ScheduledCampaignsModalProps> = (
                                                         'bg-gray-100 text-gray-700'}`}>
                                                 {c.status === 'scheduled' ? 'Đã lên lịch' : c.status === 'sent' ? 'Đã gửi' : 'Bản nháp'}
                                             </div>
-                                            {c.status === 'draft' && (
+                                            {(c.status === 'scheduled' || c.status === 'draft') && (
                                                 <button
                                                     onClick={(e) => { e.stopPropagation(); handleSendNow(c.id); }}
                                                     className="text-gray-400 hover:text-green-600 transition-colors"
-                                                    title="Gửi ngay (Vào Quản lý để thực hiện)"
+                                                    title={c.status === 'scheduled' ? "Gửi ngay (Ghi đè)" : "Kích hoạt"}
                                                 >
                                                     <Play size={16} />
                                                 </button>

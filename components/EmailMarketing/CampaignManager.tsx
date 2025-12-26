@@ -129,20 +129,37 @@ const CampaignManager: React.FC<CampaignManagerProps> = ({ isOpen, onClose, onCr
 
         // Check if campaign is scheduled for future
         const isFutureScheduled = campaign.scheduled_at && new Date(campaign.scheduled_at) > new Date();
+        const isAlreadyScheduled = campaign.status === 'scheduled';
+
+        let confirmMessage = 'Gửi chiến dịch này ngay bây giờ?';
+        let confirmTitle = 'Gửi chiến dịch';
+        let confirmBtn = 'Gửi ngay';
+
+        if (isFutureScheduled) {
+            if (isAlreadyScheduled) {
+                // Force Send Mode
+                confirmTitle = 'Gửi ngay (Ghi đè lịch)';
+                confirmMessage = `Chiến dịch đang được lên lịch gửi vào ${new Date(campaign.scheduled_at!).toLocaleString('vi-VN')}. Bạn có chắc muốn GỬI NGAY bây giờ không?`;
+                confirmBtn = 'Gửi ngay';
+            } else {
+                // Activate Mode
+                confirmTitle = 'Kích hoạt lịch gửi';
+                confirmMessage = `Chiến dịch này sẽ được gửi tự động vào ${new Date(campaign.scheduled_at!).toLocaleString('vi-VN')}. Kích hoạt?`;
+                confirmBtn = 'Kích hoạt';
+            }
+        }
 
         const confirmed = await confirm({
-            title: isFutureScheduled ? 'Kích hoạt lịch gửi' : 'Gửi chiến dịch',
-            message: isFutureScheduled
-                ? `Chiến dịch này được lên lịch gửi vào ${new Date(campaign.scheduled_at!).toLocaleString('vi-VN')}. Bạn có muốn kích hoạt để tự động gửi vào lúc đó không?`
-                : 'Gửi chiến dịch này ngay bây giờ?',
+            title: confirmTitle,
+            message: confirmMessage,
             type: 'send',
-            confirmText: isFutureScheduled ? 'Kích hoạt' : 'Gửi ngay',
+            confirmText: confirmBtn,
             cancelText: 'Huỷ'
         });
         if (!confirmed) return;
 
-        // If future scheduled, just ensure status is 'scheduled' and notify user
-        if (isFutureScheduled) {
+        // If trying to Activate (Draft -> Scheduled)
+        if (isFutureScheduled && !isAlreadyScheduled) {
             await campaignService.updateCampaign(id, { status: 'scheduled' });
             await loadData();
             toast.success('Đã kích hoạt lịch gửi', `Email sẽ được gửi tự động vào ${new Date(campaign.scheduled_at!).toLocaleString('vi-VN')}`);
@@ -432,11 +449,11 @@ const CampaignManager: React.FC<CampaignManagerProps> = ({ isOpen, onClose, onCr
                                         )}
 
                                         <div className="flex items-center gap-2 ml-4">
-                                            {campaign.status === 'draft' && (
+                                            {(campaign.status === 'draft' || campaign.status === 'scheduled') && (
                                                 <button
                                                     onClick={() => handleSendCampaign(campaign.id)}
-                                                    className="p-2 text-green-600 hover:bg-green-50 rounded-lg"
-                                                    title="Gửi ngay"
+                                                    className={`p-2 rounded-lg ${campaign.status === 'scheduled' ? 'text-blue-600 hover:bg-blue-50' : 'text-green-600 hover:bg-green-50'}`}
+                                                    title={campaign.status === 'scheduled' ? "Gửi ngay (Ghi đè lịch)" : "Kích hoạt gửi"}
                                                 >
                                                     <Play size={16} />
                                                 </button>
