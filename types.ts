@@ -350,16 +350,36 @@ export interface VideoBlock extends EmailBlockBase {
 export interface HeaderBlock extends EmailBlockBase {
   type: 'header';
   logoSrc: string;
+  companyName: string;
+  tagline: string;
+  showMenu: boolean;
+  layout: 'inline' | 'stacked';
+  colors: {
+    background: string;
+    companyName: string;
+    tagline: string;
+    menu: string;
+  };
   navLinks: { text: string; url: string }[];
-  backgroundColor: string;
   alignment: 'left' | 'center' | 'right';
 }
 
 export interface FooterBlock extends EmailBlockBase {
   type: 'footer';
-  content: string;
+  content: string; // Keeping for backward compatibility or generic text
+  logoUrl?: string;
+  companyName?: string;
+  companyEmail?: string;
+  phone?: string;
   address: string;
   socialLinks: SocialPlatform[];
+  socialIconStyle?: 'circle' | 'rounded' | 'square';
+  socialIconSize?: 'small' | 'medium' | 'large';
+  copyrightText?: string;
+  privacyUrl?: string;
+  termsUrl?: string;
+  unsubscribeText?: string;
+  unsubscribeUrl?: string;
   backgroundColor: string;
   alignment: 'left' | 'center' | 'right';
 }
@@ -374,88 +394,119 @@ export interface ProductBlock extends EmailBlockBase {
   buttonText: string;
   buttonColor: string;
   backgroundColor: string;
+  originalPrice?: string;
+  currency?: string;
+  // New fields
+  rating?: number;
+  reviewCount?: number;
+  badge?: string;
+  discount?: string;
+  inStock?: boolean;
+  titleFontSize?: number;
+  colors?: {
+    text?: string;
+    price?: string;
+    buttonText?: string;
+    badge?: string;
+  };
 }
 
 export interface UnsubscribeBlock extends EmailBlockBase {
   type: 'unsubscribe';
-  text: string;
+  text: string; // Description
+  linkText: string;
+  url: string;
   alignment: 'left' | 'center' | 'right';
+  fontSize?: number;
+  colors?: {
+    text?: string;
+    link?: string;
+    background?: string;
+  };
 }
 
 // E-commerce
 export interface ProductGridBlock extends EmailBlockBase {
   type: 'product-grid';
-  products: { id: string; image: string; title: string; price: string; url: string }[];
+  products: { id: string; image: string; title: string; price: string; originalPrice?: string; url: string }[];
   backgroundColor: string;
+
+  // Title Settings
+  title?: string;
+  columns?: 2 | 3;
+  titleAlignment?: 'left' | 'center' | 'right';
+  titleFontSize?: number;
+  titleFontWeight?: 'normal' | 'medium' | 'semibold' | 'bold';
+  titleFontStyle?: 'normal' | 'italic';
+  fontFamily?: string;
+  titleColors?: {
+    text: string;
+    background: string;
+  };
+  titleIcon?: string;
+
+  // Card Settings
+  cardBackgroundColor?: string;
+  cardBorderColor?: string;
+  cardBorderWidth?: number;
+  cardBorderRadius?: number;
+  cardPadding?: number;
+
+  // Text Colors
+  productNameColor?: string;
+  priceColor?: string;
+  oldPriceColor?: string;
+
+  // Image Settings
+  imageShape?: 'rectangle' | 'circle'; // "Chữ nhật" vs "Tròn" (though circle usually implies aspect ratio, here it might just be high border radius or mask)
+  imageHeight?: number;
+  imageBorderRadius?: number;
 }
 
 export interface CouponBlock extends EmailBlockBase {
   type: 'coupon';
   code: string;
-  discount: string;
+  discount: string; // Act as Badge text
   description: string;
   backgroundColor: string;
   borderColor: string;
-  alignment: 'center';
+  alignment: 'left' | 'center' | 'right';
+  expirationDate?: string;
+  codeColor?: string;
+  badgeColor?: string;
+  iconUrl?: string;
 }
 
-export interface CartReminderBlock extends EmailBlockBase {
-  type: 'cart-reminder';
-  itemsCount: number;
-  totalPrice: string;
-  itemImages: string[];
-  checkoutUrl: string;
-}
+
 
 export interface OrderSummaryBlock extends EmailBlockBase {
   type: 'order-summary';
+  title: string;
   orderId: string;
   items: { name: string; qty: number; price: string }[];
+  subtotal: string;
+  shippingFee: string;
   total: string;
-  shippingAddress: string;
+  // Styling
+  backgroundColor: string;
+  borderColor: string;
+  fontFamily: string;
+  titleAlignment: 'left' | 'center' | 'right';
+  titleFontSize: number;
+  titleFontWeight: string;
+  titleFontStyle: string;
+  titleColor: string;
+  totalColor: string;
+  iconUrl?: string;
+  iconColor?: string; // Icon Text/Foreground Color
+  iconBackgroundColor?: string;
+  shippingAddress?: string; // Keeping for backward compatibility or optional use
+  shippingLabel?: string;
 }
 
-// Real Estate
-export interface PropertyCardBlock extends EmailBlockBase {
-  type: 'property-card';
-  image: string;
-  title: string;
-  price: string;
-  address: string;
-  specs: { beds: number; baths: number; area: string };
-  url: string;
-}
 
-export interface FeaturesBlock extends EmailBlockBase {
-  type: 'features';
-  features: { icon: string; text: string }[]; // icon name or url
-  columns: 2 | 3;
-}
 
-export interface LocationBlock extends EmailBlockBase {
-  type: 'location';
-  mapImage: string;
-  address: string;
-  url: string;
-}
-
-// Recruitment
-export interface JobListingBlock extends EmailBlockBase {
-  type: 'job-listing';
-  title: string;
-  department: string;
-  location: string;
-  salary: string;
-  url: string;
-  tags: string[];
-}
-
-export interface BenefitsBlock extends EmailBlockBase {
-  type: 'benefits';
-  benefits: { title: string; description: string }[];
-}
-
-export type EmailBlock = HeadingBlock | TextBlock | ImageBlock | ButtonBlock | SpacerBlock | DividerBlock | SocialBlock | LinkBlock | Row2Block | Row3Block | Column2Block | Column3Block | HtmlBlock | VideoBlock | HeaderBlock | FooterBlock | ProductBlock | UnsubscribeBlock | ProductGridBlock | CouponBlock | CartReminderBlock | OrderSummaryBlock | PropertyCardBlock | FeaturesBlock | LocationBlock | JobListingBlock | BenefitsBlock;
+export type EmailBlock = HeadingBlock | TextBlock | ImageBlock | ButtonBlock | SpacerBlock | DividerBlock | SocialBlock | LinkBlock | Row2Block | Row3Block | Column2Block | Column3Block | HtmlBlock | VideoBlock | HeaderBlock | FooterBlock | ProductBlock | UnsubscribeBlock | ProductGridBlock | CouponBlock | OrderSummaryBlock;
 
 export interface EmailDocumentSettings {
   backgroundColor: string;
@@ -467,6 +518,15 @@ export interface EmailDocumentSettings {
 export interface EmailDocument {
   blocks: EmailBlock[];
   settings: EmailDocumentSettings;
+}
+
+// Saved Email Design (for Visual Email Builder templates)
+export interface SavedEmailDesign {
+  id: string;
+  name: string;
+  createdAt: number;
+  updatedAt: number;
+  doc: EmailDocument;
 }
 
 // --- UTM Builder Types ---

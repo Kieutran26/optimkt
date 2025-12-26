@@ -9,18 +9,32 @@ import {
 } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import {
-    Send, Monitor, Smartphone, LayoutGrid, Type, Image as ImageIcon, CheckSquare, Maximize2, X, Plus, Trash2, Eye, Download, Upload, Save, History, Code, FileJson, Copy, Briefcase, Gift, ShoppingBag, MapPin, Heart, Sparkles, User, Users,
-    Mail, MousePointerClick, Link2, Minus, Rows, Columns, PlayCircle, PanelTop, CreditCard, PanelBottom, UserMinus, Grid, Ticket, ShoppingCart, Receipt, Home, List, FileText, ExternalLink, Palette, Circle, Tablet, Check, GripVertical, ChevronUp, ChevronDown, Settings, AlignLeft, AlignCenter, AlignRight, Layers, Square
+    Send, Monitor, Smartphone, LayoutGrid, Type, Image as ImageIcon, CheckSquare, Maximize2, X, Plus, Trash2, Eye, Download, Upload, Save, History, Code, FileJson, Copy, Briefcase, Gift, ShoppingBag, MapPin, Heart, Sparkles, User, Users, Network, Maximize, BarChart2,
+    Mail, MousePointerClick, Link2, Minus, Rows, Columns, PlayCircle, PanelTop, CreditCard, PanelBottom, UserMinus, Grid, Ticket, ShoppingCart, Receipt, Home, List, FileText, ExternalLink, Palette, Circle, Tablet, Check, GripVertical, ChevronUp, ChevronDown, Settings, AlignLeft, AlignCenter, AlignRight, Layers, Square, Bold, Italic, Share2, LayoutTemplate
 } from 'lucide-react';
+
+
+const SOCIAL_ICONS: Record<string, string> = {
+    Facebook: '<path d="M18 2h-3a5 5 0 00-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 011-1h3z"></path>',
+    Twitter: '<path d="M23 3a10.9 10.9 0 01-3.14 1.53 4.48 4.48 0 00-7.86 3v1A10.66 10.66 0 013 4s-4 9 5 13a11.64 11.64 0 01-7 2c9 5 20 0 20-11.5a4.5 4.5 0 00-.08-.83A7.72 7.72 0 0023 3z"></path>',
+    Instagram: '<rect x="2" y="2" width="20" height="20" rx="5" ry="5"></rect><path d="M16 11.37A4 4 0 1112.63 8 4 4 0 0116 11.37z"></path><line x1="17.5" y1="6.5" x2="17.51" y2="6.5"></line>',
+    LinkedIn: '<path d="M16 8a6 6 0 016 6v7h-4v-7a2 2 0 00-2-2 2 2 0 00-2 2v7h-4v-7a6 6 0 016-6z"></path><rect x="2" y="9" width="4" height="12"></rect><circle cx="4" cy="4" r="2"></circle>',
+    YouTube: '<path d="M22.54 6.42a2.78 2.78 0 00-1.94-2C18.88 4 12 4 12 4s-6.88 0-8.6.46a2.78 2.78 0 00-1.94 2A29 29 0 001 11.75a29 29 0 00.46 5.33A2.78 2.78 0 003.4 19c1.72.46 8.6.46 8.6.46s6.88 0 8.6-.46a2.78 2.78 0 001.94-2 29 29 0 00.46-5.33 29 29 0 00-.46-5.33z"></path><polygon points="9.75 15.02 15.5 11.75 9.75 8.48 9.75 15.02"></polygon>',
+    TikTok: '<path d="M9 12a4 4 0 1 0 4 4V4a5 5 0 0 0 5 5v4a9 9 0 0 1-9-9v17"></path>',
+    Website: '<circle cx="12" cy="12" r="10"></circle><line x1="2" y1="12" x2="22" y2="12"></line><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"></path>'
+};
 import { EmailService } from '../services/emailService';
 import { StorageService } from '../services/storageService';
 import {
     EmailTemplate, EmailHistoryRecord, EmailBlock, EmailDocument,
     HeadingBlock, TextBlock, ImageBlock, ButtonBlock, SpacerBlock,
-    DividerBlock, SocialBlock, EmailBlockType,
+    DividerBlock, SocialBlock, EmailBlockType, SavedEmailDesign,
 } from '../types';
 import { Toast, ToastType } from './Toast';
 import { ConfirmDialog } from './ConfirmDialog';
+import { emailDesignService } from '../services/emailDesignService';
+import EmailReport from './EmailReport';
+import CampaignManager from './EmailMarketing/CampaignManager';
 
 // =============================================
 // CONSTANTS
@@ -66,27 +80,11 @@ const CUSTOM_ELEMENTS: { type: EmailBlockType; label: string; icon: React.ReactN
 const ECOMMERCE_ELEMENTS: { type: EmailBlockType; label: string; icon: React.ReactNode }[] = [
     { type: 'product-grid', label: 'Product Grid', icon: <Grid size={20} /> },
     { type: 'coupon', label: 'Coupon Code', icon: <Ticket size={20} /> },
-    { type: 'cart-reminder', label: 'Cart Reminder', icon: <ShoppingCart size={20} /> },
     { type: 'order-summary', label: 'Order Summary', icon: <Receipt size={20} /> },
 ];
 
-const REAL_ESTATE_ELEMENTS: { type: EmailBlockType; label: string; icon: React.ReactNode }[] = [
-    { type: 'property-card', label: 'Property Card', icon: <Home size={20} /> },
-    { type: 'features', label: 'Features', icon: <List size={20} /> },
-    { type: 'location', label: 'Location Map', icon: <MapPin size={20} /> },
-];
 
-const RECRUITMENT_ELEMENTS: { type: EmailBlockType; label: string; icon: React.ReactNode }[] = [
-    { type: 'job-listing', label: 'Job Listing', icon: <Briefcase size={20} /> },
-    { type: 'benefits', label: 'Benefits List', icon: <Gift size={20} /> },
-];
 
-const TEMPLATE_LIBRARY = [
-    { id: 't1', name: 'Welcome Modern', category: 'Welcome', icon: <Sparkles size={18} />, color: 'bg-purple-100 text-purple-600' },
-    { id: 't2', name: 'Product Launch', category: 'Product', icon: <ShoppingBag size={18} />, color: 'bg-blue-100 text-blue-600' },
-    { id: 't3', name: 'Newsletter Clean', category: 'Newsletter', icon: <FileText size={18} />, color: 'bg-green-100 text-green-600' },
-    { id: 't4', name: 'Thank You Card', category: 'Thanks', icon: <Heart size={18} />, color: 'bg-pink-100 text-pink-600' },
-];
 
 
 const generateId = () => `block_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
@@ -135,16 +133,19 @@ const insertBlockIntoParent = (blocks: EmailBlock[], parentId: string, cellIndex
     });
 };
 
-const createDefaultBlock = (type: EmailBlockType, level?: 'h1' | 'h2' | 'h3'): EmailBlock => {
 
-    const id = generateId();
+
+
+const createDefaultBlock = (type: EmailBlockType, level?: 'h1' | 'h2' | 'h3'): EmailBlock => {
+    const id = crypto.randomUUID();
     switch (type) {
-        case 'heading': return { id, type: 'heading', content: level === 'h1' ? 'Heading 1' : level === 'h2' ? 'Heading 2' : 'Heading 3', level: level || 'h1', alignment: 'center', color: '#1f2937' };
-        case 'text': return { id, type: 'text', content: 'Nhập nội dung...', alignment: 'left' };
-        case 'image': return { id, type: 'image', src: '', alt: 'Hình ảnh', width: 'full', alignment: 'center' };
-        case 'button': return { id, type: 'button', label: 'Click', url: '#', backgroundColor: '#3b82f6', textColor: '#ffffff', borderRadius: 8, alignment: 'center' };
+        case 'heading': return { id, type: 'heading', content: level ? `Heading ${level.replace('h', '')}` : 'Heading 1', level: level || 'h1', alignment: 'left', color: '#1f2937' };
+        case 'text': return { id, type: 'text', content: 'This is a text block. Click to edit.', alignment: 'left' };
+        case 'image': return { id, type: 'image', src: 'https://placehold.co/600x400/e2e8f0/64748b?text=Image', alt: 'Image', width: 'full', alignment: 'center' };
+        case 'button': return { id, type: 'button', label: 'Click Me', url: '#', alignment: 'center', backgroundColor: '#2563eb', textColor: '#ffffff', borderRadius: 8 };
         case 'spacer': return { id, type: 'spacer', height: 32 };
         case 'divider': return { id, type: 'divider', style: 'solid', color: '#e5e7eb' };
+
         case 'social': return { id, type: 'social', platforms: [{ name: 'Facebook', url: '#' }], alignment: 'center' };
         case 'link': return { id, type: 'link', text: 'Click here', url: '#', alignment: 'left', color: '#3b82f6' };
         case 'row2': return { id, type: 'row2', children: [[], []] };
@@ -153,25 +154,81 @@ const createDefaultBlock = (type: EmailBlockType, level?: 'h1' | 'h2' | 'h3'): E
         case 'column3': return { id, type: 'column3', children: [[], [], []] };
         case 'html': return { id, type: 'html', content: '<p style="color:#3b82f6;font-weight:bold;">Custom HTML Content</p>' };
         case 'video': return { id, type: 'video', url: 'https://www.youtube.com/watch?v=dQw4w9WgXcQ', alt: 'Video thumbnail', alignment: 'center' };
-        case 'header': return { id, type: 'header', logoSrc: '', navLinks: [{ text: 'Home', url: '#' }, { text: 'Shop', url: '#' }, { text: 'Contact', url: '#' }], backgroundColor: '#ffffff', alignment: 'center' };
-        case 'footer': return { id, type: 'footer', content: '<p>&copy; 2024 Your Company. All rights reserved.</p>', address: '123 Street, City, Country', socialLinks: [{ name: 'Facebook', url: '#' }, { name: 'Instagram', url: '#' }], backgroundColor: '#f3f4f6', alignment: 'center' };
-        case 'product': return { id, type: 'product', productImage: '', title: 'Product Name', price: '$99.00', description: 'Amazing product description goes here.', url: '#', buttonText: 'Buy Now', buttonColor: '#3b82f6', backgroundColor: '#ffffff' };
-        case 'unsubscribe': return { id, type: 'unsubscribe', text: 'No longer want to receive these emails? <a href="{{unsubscribe}}">Unsubscribe</a>.', alignment: 'center' };
+        case 'header': return { id, type: 'header', logoSrc: '', companyName: 'Company Name', tagline: 'Your best solutions', showMenu: true, layout: 'inline', colors: { background: '#111111', companyName: '#ffffff', tagline: '#9ca3af', menu: '#ffffff' }, navLinks: [{ text: 'Home', url: '#' }, { text: 'About', url: '#' }, { text: 'Products', url: '#' }, { text: 'Contact', url: '#' }], alignment: 'center' };
+        case 'footer': return { id, type: 'footer', content: '', logoUrl: 'https://placehold.co/120x40/3b82f6/ffffff?text=LOGO', companyName: 'Your Company', companyEmail: 'contact@company.com', phone: '(555) 123-4567', address: '123 Business St, City, State 12345', socialLinks: [{ name: 'Facebook', url: '#' }, { name: 'Twitter', url: '#' }, { name: 'Instagram', url: '#' }], socialIconStyle: 'circle', socialIconSize: 'medium', copyrightText: '© 2025 Your Company. All rights reserved.', privacyUrl: '/privacy', termsUrl: '/terms', unsubscribeText: 'Hủy đăng ký', unsubscribeUrl: '/unsubscribe', backgroundColor: '#f3f4f6', alignment: 'center' };
+        case 'product': return { id, type: 'product', productImage: 'https://placehold.co/400x300/e2e8f0/64748b?text=Product+Image', title: 'Premium Product', price: '$99.99', originalPrice: '$149.99', description: 'This is a premium product with amazing features that you will love.', url: '#', buttonText: 'Mua ngay', buttonColor: '#2563eb', backgroundColor: '#ffffff', rating: 5, reviewCount: 128, badge: 'Best Seller', discount: '20', inStock: true, titleFontSize: 22, colors: { text: '#1f2937', price: '#1f2937', buttonText: '#ffffff', badge: '#ef4444' } };
+        case 'unsubscribe': return { id, type: 'unsubscribe', text: 'Nếu bạn không muốn nhận email từ chúng tôi, bạn có thể hủy đăng ký bất cứ lúc nào.', linkText: 'Hủy đăng ký', url: '{{UNSUBSCRIBE_URL}}', alignment: 'center', fontSize: 12, colors: { text: '#6b7280', link: '#3b82f6' } };
 
         // E-commerce
-        case 'product-grid': return { id, type: 'product-grid', products: [{ id: '1', image: '', title: 'Product 1', price: '$50', url: '#' }, { id: '2', image: '', title: 'Product 2', price: '$75', url: '#' }], backgroundColor: '#ffffff' };
-        case 'coupon': return { id, type: 'coupon', code: 'SAVE20', discount: '20% OFF', description: 'Use this code at checkout for 20% off your entire order.', backgroundColor: '#fef3c7', borderColor: '#d97706', alignment: 'center' };
-        case 'cart-reminder': return { id, type: 'cart-reminder', itemsCount: 2, totalPrice: '$125.00', itemImages: ['', ''], checkoutUrl: '#' };
-        case 'order-summary': return { id, type: 'order-summary', orderId: '#ORD-12345', items: [{ name: 'Product A', qty: 1, price: '$50' }, { name: 'Product B', qty: 1, price: '$75' }], total: '$125.00', shippingAddress: '123 Main St, City, Country' };
+        case 'product-grid': return {
+            id,
+            type: 'product-grid',
+            products: [
+                { id: '1', image: 'https://placehold.co/300x200?text=Product+1', title: 'Sản phẩm 1', price: '199.000đ', originalPrice: '299.000đ', url: '#' },
+                { id: '2', image: 'https://placehold.co/300x200?text=Product+2', title: 'Sản phẩm 2', price: '250.000đ', originalPrice: '', url: '#' },
+                { id: '3', image: 'https://placehold.co/300x200?text=Product+3', title: 'Sản phẩm 3', price: '320.000đ', originalPrice: '400.000đ', url: '#' }
+            ],
+            backgroundColor: '#ffffff',
+            title: 'Sản phẩm nổi bật',
+            columns: 3,
+            titleAlignment: 'center',
+            titleFontSize: 20,
+            titleFontWeight: 'bold',
+            titleFontStyle: 'normal',
+            fontFamily: 'Arial',
+            titleColors: { text: '#0F172A', background: '#DBEAFE' },
+            titleIcon: '',
+            cardBackgroundColor: '#FFFFFF',
+            cardBorderColor: '#E5E7EB',
+            cardBorderWidth: 1,
+            cardBorderRadius: 12,
+            cardPadding: 8,
+            productNameColor: '#1F2937',
+            priceColor: '#2563EB',
+            oldPriceColor: '#9CA3AF',
+            imageShape: 'rectangle',
+            imageHeight: 140,
+            imageBorderRadius: 0
+        };
+        case 'coupon': return {
+            id,
+            type: 'coupon',
+            code: 'SAVE20',
+            discount: '20% OFF',
+            description: 'Use this code at checkout',
+            expirationDate: 'Dec 31, 2025',
+            backgroundColor: '#FFFBEB',
+            borderColor: '#F59E0B',
+            alignment: 'center',
+            badgeColor: '#F59E0B',
+            codeColor: '#D97706',
+            iconUrl: 'https://img.icons8.com/ios-filled/50/ffffff/discount-ticket.png'
+        };
+        case 'order-summary': return {
+            id,
+            type: 'order-summary',
+            title: 'Tổng đơn hàng',
+            orderId: 'Đơn hàng #12345',
+            items: [{ name: 'Product A', qty: 1, price: '$50' }, { name: 'Product B', qty: 1, price: '$75' }],
+            subtotal: '597.000đ',
+            shippingFee: '30.000đ',
+            total: '627.000đ',
 
-        // Real Estate
-        case 'property-card': return { id, type: 'property-card', image: '', title: 'Modern Apartment', price: '$250,000', address: '123 Downtown Ave, City', specs: { beds: 2, baths: 2, area: '85m²' }, url: '#' };
-        case 'features': return { id, type: 'features', features: [{ icon: 'check', text: 'Swimming Pool' }, { icon: 'check', text: 'Gym' }, { icon: 'check', text: 'Parking' }, { icon: 'check', text: 'Security' }], columns: 2 };
-        case 'location': return { id, type: 'location', mapImage: '', address: '123 Downtown Ave, City, Country', url: '#' };
-
-        // Recruitment
-        case 'job-listing': return { id, type: 'job-listing', title: 'Senior Marketing Manager', department: 'Marketing', location: 'Remote / Ho Chi Minh', salary: '$2000 - $3000', url: '#', tags: ['Full-time', 'Senior Level'] };
-        case 'benefits': return { id, type: 'benefits', benefits: [{ title: 'Health Insurance', description: 'Full coverage for you and family' }, { title: 'Remote Work', description: 'Work from anywhere' }] };
+            backgroundColor: '#FFFFFF',
+            borderColor: '#E5E7EB',
+            fontFamily: 'Arial',
+            titleAlignment: 'left',
+            titleFontSize: 18,
+            titleFontWeight: 'bold',
+            titleFontStyle: 'normal',
+            titleColor: '#1F2937',
+            totalColor: '#1F2937',
+            iconUrl: 'https://img.icons8.com/ios-filled/50/ffffff/list.png',
+            iconColor: '#FFFFFF',
+            iconBackgroundColor: '#10B981',
+            shippingLabel: 'Ship to',
+            shippingAddress: '123 Main St, City, Country'
+        };
 
         default: return { id, type: 'text', content: '', alignment: 'left' };
     }
@@ -214,7 +271,7 @@ const DraggableMergeTag: React.FC<{ tag: { label: string; value: string } }> = (
     );
 };
 
-const LeftSidebar: React.FC<{ activeTab: LeftTabType; onTabChange: (t: LeftTabType) => void; onTemplateSelect: (id: string) => void; hasCustomerList: boolean }> = ({ activeTab, onTabChange, onTemplateSelect, hasCustomerList }) => {
+const LeftSidebar: React.FC<{ activeTab: LeftTabType; onTabChange: (t: LeftTabType) => void; onTemplateSelect: (id: string) => void; hasCustomerList: boolean; savedDesigns: SavedEmailDesign[]; onLoadDesign: (design: SavedEmailDesign) => void; onDeleteDesign: (id: string) => void }> = ({ activeTab, onTabChange, onTemplateSelect, hasCustomerList, savedDesigns, onLoadDesign, onDeleteDesign }) => {
     const tabs = [
         { id: 'elements' as const, label: 'Blocks', icon: <LayoutGrid size={15} /> },
         { id: 'templates' as const, label: 'Templates', icon: <FileText size={15} /> },
@@ -253,25 +310,45 @@ const LeftSidebar: React.FC<{ activeTab: LeftTabType; onTabChange: (t: LeftTabTy
                             <h3 className="text-sm font-semibold text-gray-800">E-commerce</h3>
                             <div className="grid grid-cols-2 gap-2">{ECOMMERCE_ELEMENTS.map((el, i) => <DraggableElement key={`ecom-${el.type}-${i}`} type={el.type} label={el.label} icon={el.icon} />)}</div>
                         </div>
-                        <div className="space-y-3">
-                            <h3 className="text-sm font-semibold text-gray-800">Bất Động Sản</h3>
-                            <div className="grid grid-cols-2 gap-2">{REAL_ESTATE_ELEMENTS.map((el, i) => <DraggableElement key={`real-${el.type}-${i}`} type={el.type} label={el.label} icon={el.icon} />)}</div>
-                        </div>
-                        <div className="space-y-3">
-                            <h3 className="text-sm font-semibold text-gray-800">Tuyển Dụng</h3>
-                            <div className="grid grid-cols-2 gap-2">{RECRUITMENT_ELEMENTS.map((el, i) => <DraggableElement key={`rec-${el.type}-${i}`} type={el.type} label={el.label} icon={el.icon} />)}</div>
-                        </div>
+
                     </div>
                 )}
                 {activeTab === 'templates' && (
-                    <div className="space-y-3">
-                        <button className="w-full py-2.5 px-4 bg-blue-600 text-white rounded-xl font-medium text-sm flex items-center justify-center gap-2 hover:bg-blue-700"><ExternalLink size={16} /> Open Library</button>
-                        <div className="space-y-2">{TEMPLATE_LIBRARY.map((tpl) => (
-                            <button key={tpl.id} onClick={() => onTemplateSelect(tpl.id)} className="w-full p-3 bg-white border border-gray-200 rounded-xl flex items-center gap-3 hover:border-blue-300 hover:shadow-sm text-left">
-                                <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${tpl.color}`}>{tpl.icon}</div>
-                                <div className="flex-1 min-w-0"><div className="font-medium text-gray-800 text-sm truncate">{tpl.name}</div><span className={`text-[10px] px-1.5 py-0.5 rounded ${tpl.color}`}>{tpl.category}</span></div>
-                            </button>
-                        ))}</div>
+                    <div className="space-y-4">
+                        {/* Saved Designs Section */}
+                        {savedDesigns.length > 0 && (
+                            <div className="space-y-2">
+                                <h3 className="text-xs font-bold text-gray-500 uppercase tracking-wide">Đã Lưu ({savedDesigns.length})</h3>
+                                <div className="space-y-2">
+                                    {savedDesigns.map((design) => (
+                                        <div key={design.id} className="p-3 bg-green-50 border border-green-200 rounded-xl flex items-center gap-3 hover:border-green-400 hover:shadow-sm transition-all group">
+                                            <div className="w-10 h-10 rounded-lg bg-green-100 flex items-center justify-center text-green-600">
+                                                <Save size={18} />
+                                            </div>
+                                            <div className="flex-1 min-w-0">
+                                                <div className="font-medium text-gray-800 text-sm truncate">{design.name}</div>
+                                                <div className="text-[10px] text-gray-400">{new Date(design.updatedAt).toLocaleDateString('vi-VN')}</div>
+                                            </div>
+                                            <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                                                <button onClick={() => onLoadDesign(design)} className="p-1.5 text-green-600 hover:bg-green-100 rounded-lg" title="Tải lại">
+                                                    <Upload size={14} />
+                                                </button>
+                                                <button onClick={() => onDeleteDesign(design.id)} className="p-1.5 text-red-400 hover:bg-red-100 rounded-lg" title="Xóa">
+                                                    <Trash2 size={14} />
+                                                </button>
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                        )}
+                        {savedDesigns.length === 0 && (
+                            <div className="text-center py-6 text-gray-400">
+                                <Save size={32} className="mx-auto mb-2 opacity-50" />
+                                <p className="text-xs">Chưa có template nào được lưu</p>
+                            </div>
+                        )}
+
                     </div>
                 )}
                 {activeTab === 'fields' && (
@@ -448,7 +525,7 @@ const FloatingToolbar: React.FC<{ onMoveUp: () => void; onMoveDown: () => void; 
 // Reusable Block Renderer
 const BlockRenderer: React.FC<{ block: EmailBlock; isSelected?: boolean; onSelect?: (id?: string) => void; onUpdate: (b: EmailBlock) => void }> = ({ block, isSelected, onSelect, onUpdate }) => {
     switch (block.type) {
-        case 'heading': const Tag = block.level as keyof JSX.IntrinsicElements; const sizes = { h1: 'text-2xl', h2: 'text-xl', h3: 'text-lg' }; return <Tag className={`${sizes[block.level]} font-bold py-3 px-4 rounded-lg outline-none`} style={{ textAlign: block.alignment, color: block.color }} contentEditable suppressContentEditableWarning onBlur={(e) => onUpdate({ ...block, content: e.currentTarget.textContent || '' })}>{block.content}</Tag>;
+        case 'heading': const Tag = block.level as any; const sizes = { h1: 'text-2xl', h2: 'text-xl', h3: 'text-lg' }; return <Tag className={`${sizes[block.level]} font-bold py-3 px-4 rounded-lg outline-none`} style={{ textAlign: block.alignment, color: block.color }} contentEditable suppressContentEditableWarning onBlur={(e) => onUpdate({ ...block, content: e.currentTarget.textContent || '' })}>{block.content}</Tag>;
         case 'text': return <div className="py-3 px-4 rounded-lg text-gray-700 outline-none" style={{ textAlign: block.alignment }} contentEditable suppressContentEditableWarning onBlur={(e) => onUpdate({ ...block, content: e.currentTarget.innerHTML })} dangerouslySetInnerHTML={{ __html: block.content }} />;
         case 'image': return <div className="py-3 px-4" style={{ textAlign: block.alignment }}>{block.src ? <img src={block.src} alt={block.alt} className={`inline-block rounded-lg ${block.width === 'full' ? 'w-full' : 'max-w-xs'}`} /> : <div className="border-2 border-dashed border-gray-300 rounded-xl p-6 text-center"><ImageIcon size={28} className="mx-auto text-gray-400 mb-2" /><span className="text-sm text-gray-500">Add image</span></div>}</div>;
         case 'button': return <div className="py-4 px-4" style={{ textAlign: block.alignment }}><a href="#" className="inline-block font-bold py-2.5 px-6" style={{ backgroundColor: block.backgroundColor, color: block.textColor, borderRadius: `${block.borderRadius}px` }} onClick={(e) => e.preventDefault()}>{block.label}</a></div>;
@@ -462,43 +539,274 @@ const BlockRenderer: React.FC<{ block: EmailBlock; isSelected?: boolean; onSelec
         case 'column3': return <div className="py-3 px-4 grid grid-cols-3 gap-2">{block.children.map((childBlocks, i) => <DroppableCell key={i} id={`${block.id}-cell-${i}`} className="p-3 bg-gray-50 border border-gray-200 border-dashed rounded-lg min-h-[60px]">{childBlocks.length === 0 ? <span className="text-xs text-gray-400">Thả element vào đây</span> : childBlocks.map(cb => <div key={cb.id} onClick={(e) => { e.stopPropagation(); onSelect && onSelect(cb.id); }} className={`mb-1 transition-all rounded-lg border-2 ${isSelected ? '' : 'hover:border-blue-300 border-transparent'} cursor-pointer bg-white relative`}>{cb.id === isSelected ? <div className="absolute inset-0 border-2 border-blue-500 rounded-lg pointer-events-none z-10" /> : null}<BlockRenderer block={cb} onUpdate={onUpdate} /></div>)}</DroppableCell>)}</div>;
         case 'html': return <div className="py-3 px-4"><div className="p-3 bg-white border border-gray-200 rounded-lg" dangerouslySetInnerHTML={{ __html: block.content }} /></div>;
         case 'video': return <div className="py-3 px-4" style={{ textAlign: block.alignment }}><div className="relative inline-block rounded-xl overflow-hidden bg-gray-900 group cursor-pointer">{block.thumbnail ? <img src={block.thumbnail} alt={block.alt} className="max-w-full h-auto opacity-80" /> : <div className="w-full h-48 bg-gray-800 flex items-center justify-center text-gray-500 mb-2 min-w-[300px]"><PlayCircle size={48} className="text-white opacity-80" /></div>}<div className="absolute inset-0 flex items-center justify-center"><div className="w-12 h-12 bg-white/20 backdrop-blur-sm rounded-full flex items-center justify-center"><PlayCircle size={24} className="text-white fill-white" /></div></div></div></div>;
-        case 'header': return <div className="py-4 px-6 flex items-center justify-between" style={{ backgroundColor: block.backgroundColor, flexDirection: block.alignment === 'center' ? 'column' : block.alignment === 'right' ? 'row-reverse' : 'row', gap: '1rem' }}>{block.logoSrc ? <img src={block.logoSrc} alt="Logo" className="h-8 object-contain" /> : <div className="h-8 px-3 bg-gray-200 rounded flex items-center text-xs font-bold text-gray-500">LOGO</div>}<div className="flex gap-4 text-sm font-medium text-gray-600">{block.navLinks.map((l, i) => <span key={i} className="cursor-pointer hover:text-blue-600">{l.text}</span>)}</div></div>;
-        case 'footer': return <div className="py-8 px-6 text-center space-y-4" style={{ backgroundColor: block.backgroundColor }}><div className="flex justify-center gap-4">{block.socialLinks.map((s, i) => <div key={i} className="w-8 h-8 bg-gray-200 rounded-full flex items-center justify-center text-gray-500 hover:bg-blue-100 hover:text-blue-600 cursor-pointer">{s.name[0]}</div>)}</div><div className="text-sm text-gray-500" dangerouslySetInnerHTML={{ __html: block.content }} /><div className="text-xs text-gray-400">{block.address}</div><div className="text-xs text-gray-400 mt-4"><a href="#" className="underline hover:text-gray-600">Unsubscribe</a></div></div>;
-        case 'product': return <div className="py-4 px-4"><div className="bg-white border boundary-gray-200 rounded-xl overflow-hidden flex flex-col items-center text-center p-4 hover:shadow-lg transition-shadow" style={{ backgroundColor: block.backgroundColor }}>{block.productImage ? <img src={block.productImage} alt={block.title} className="w-full h-48 object-cover rounded-lg mb-4" /> : <div className="w-full h-48 bg-gray-100 rounded-lg mb-4 flex items-center justify-center text-gray-400"><ShoppingBag size={32} /></div>}<h3 className="font-bold text-lg text-gray-800 mb-1">{block.title}</h3><div className="text-blue-600 font-bold mb-2">{block.price}</div><p className="text-sm text-gray-500 mb-4 line-clamp-2">{block.description}</p><a href={block.url} className="px-6 py-2 rounded-lg font-medium text-white transition-colors hover:opacity-90" style={{ backgroundColor: block.buttonColor }} onClick={(e) => e.preventDefault()}>{block.buttonText}</a></div></div>;
-        case 'unsubscribe': return <div className="py-3 px-4"><p className="text-xs text-gray-500" style={{ textAlign: block.alignment }} dangerouslySetInnerHTML={{ __html: block.text }} /></div>;
+        case 'header': return (
+            <div className={`py-6 px-6 flex ${block.layout === 'stacked' ? 'flex-col justify-center text-center gap-6' : 'flex-row items-center justify-between gap-4'}`} style={{ backgroundColor: block.colors.background }}>
+                <div className={`flex flex-col ${block.layout === 'stacked' ? 'items-center' : 'items-start'}`}>
+                    {block.logoSrc ? <img src={block.logoSrc} alt="Logo" className="h-10 object-contain mb-2" /> : block.companyName ? <div className="font-bold text-2xl tracking-tight leading-none" style={{ color: block.colors.companyName }}>{block.companyName}</div> : <div className="h-8 px-3 bg-gray-200 rounded flex items-center text-xs font-bold text-gray-500">LOGO</div>}
+                    {block.tagline && <div className="text-sm mt-1" style={{ color: block.colors.tagline }}>{block.tagline}</div>}
+                </div>
+                {block.showMenu && <div className="flex flex-wrap gap-6 text-sm font-medium" style={{ justifyContent: block.layout === 'stacked' ? 'center' : 'flex-end', color: block.colors.menu }}>{block.navLinks.map((l, i) => <span key={i} className="cursor-pointer hover:underline opacity-90 hover:opacity-100 transition-opacity">{l.text}</span>)}</div>}
+            </div>
+        );
+        case 'footer': return (
+            <div className="py-8 px-6 text-center space-y-6" style={{ backgroundColor: block.backgroundColor }}>
+                {/* Logo */}
+                {block.logoUrl && <img src={block.logoUrl} alt="Company Logo" className="h-8 mx-auto mb-4" />}
+
+                {/* Company Info */}
+                <div className="space-y-1">
+                    {block.companyName && <div className="font-bold text-gray-800">{block.companyName}</div>}
+                    <div className="text-sm text-gray-500 space-y-1">
+                        {block.address && <div>{block.address}</div>}
+                        {block.companyEmail && <div>{block.companyEmail}</div>}
+                        {block.phone && <div>{block.phone}</div>}
+                    </div>
+                </div>
+
+                {/* Social Links */}
+                {block.socialLinks.length > 0 && (
+                    <div className="flex justify-center gap-3">
+                        {block.socialLinks.map((s, i) => {
+                            const sizeClasses = { small: 'w-6 h-6 p-1.5', medium: 'w-8 h-8 p-2', large: 'w-10 h-10 p-2.5' };
+                            const styleClasses = { circle: 'rounded-full', square: 'rounded-none', rounded: 'rounded-lg' };
+                            const size = block.socialIconSize || 'medium';
+                            const style = block.socialIconStyle || 'circle';
+                            const iconSvg = SOCIAL_ICONS[s.name] || SOCIAL_ICONS['Website'];
+
+                            return (
+                                <a key={i} href={s.url} className={`${sizeClasses[size]} ${styleClasses[style]} bg-gray-200 text-gray-600 hover:bg-blue-100 hover:text-blue-600 flex items-center justify-center transition-colors`}>
+                                    <svg viewBox="0 0 24 24" width="100%" height="100%" stroke="currentColor" strokeWidth="2" fill="none" strokeLinecap="round" strokeLinejoin="round" dangerouslySetInnerHTML={{ __html: iconSvg }} />
+                                </a>
+                            );
+                        })}
+                    </div>
+                )}
+
+                {/* Copyright & Legal */}
+                <div className="pt-6 border-t border-gray-200/50">
+                    <div className="text-xs text-gray-400 mb-3">{block.copyrightText?.startsWith('©') ? block.copyrightText : `© ${block.copyrightText || ''}`}</div>
+                    <div className="flex justify-center flex-wrap gap-4 text-xs text-gray-400">
+                        {block.privacyUrl && <a href={block.privacyUrl} className="underline hover:text-gray-600">Privacy Policy</a>}
+                        {block.termsUrl && <a href={block.termsUrl} className="underline hover:text-gray-600">Terms of Service</a>}
+                        {block.unsubscribeUrl && <a href={block.unsubscribeUrl} className="underline hover:text-gray-600">{block.unsubscribeText || 'Unsubscribe'}</a>}
+                    </div>
+                </div>
+            </div>
+        );
+        case 'product': return (
+            <div className="py-4 px-4">
+                <div className="bg-white border border-gray-200 rounded-xl overflow-hidden flex flex-col items-center text-center hover:shadow-lg transition-shadow relative" style={{ backgroundColor: block.backgroundColor }}>
+                    {/* Badge */}
+                    {block.badge && (
+                        <div className="absolute top-4 left-4 text-white text-xs font-bold px-3 py-1 rounded-full z-10 shadow-sm" style={{ backgroundColor: block.colors?.badge || '#ef4444' }}>
+                            {block.badge}
+                        </div>
+                    )}
+
+                    {/* Image */}
+                    {block.productImage ? (
+                        <div className="w-full relative bg-gray-100 group">
+                            <img src={block.productImage} alt={block.title} className="w-full h-56 object-cover" />
+                            {!block.inStock && <div className="absolute inset-0 bg-white/60 flex items-center justify-center font-bold text-gray-500 uppercase tracking-widest text-sm">Out of Stock</div>}
+                        </div>
+                    ) : (
+                        <div className="w-full h-56 bg-gray-100 flex items-center justify-center text-gray-400">
+                            <ShoppingBag size={32} />
+                        </div>
+                    )}
+
+                    <div className="p-6 w-full flex flex-col items-center">
+                        {/* Title */}
+                        <h3 className="font-bold mb-2 leading-tight" style={{ fontSize: `${block.titleFontSize || 20}px`, color: block.colors?.text || '#1f2937' }}>
+                            {block.title}
+                        </h3>
+
+                        {/* Rating */}
+                        {(block.rating !== undefined) && !(block.rating === 5 && (!block.reviewCount || block.reviewCount === 0)) && (
+                            <div className="flex items-center gap-1.5 mb-3">
+                                <div className="flex text-yellow-400 text-sm">
+                                    {[1, 2, 3, 4, 5].map((s) => (
+                                        <span key={s}>{s <= (block.rating || 5) ? '★' : '☆'}</span>
+                                    ))}
+                                </div>
+                                {block.reviewCount ? <span className="text-xs text-gray-400">({block.reviewCount} reviews)</span> : null}
+                            </div>
+                        )}
+
+                        {/* Price */}
+                        <div className="flex items-center gap-2 mb-4">
+                            <span className="font-bold text-lg" style={{ color: block.colors?.price || '#1f2937' }}>{block.price}</span>
+                            {block.originalPrice && <span className="text-sm text-gray-400 line-through decoration-gray-400">{block.originalPrice}</span>}
+                            {block.discount && <span className="text-xs font-bold text-red-500 bg-red-50 px-1.5 py-0.5 rounded ml-1">-{block.discount}%</span>}
+                        </div>
+
+                        {/* Button */}
+                        <a
+                            href={block.url}
+                            className="w-full py-3 rounded-lg font-bold text-white transition-all hover:opacity-90 flex items-center justify-center gap-2"
+                            style={{ backgroundColor: block.buttonColor, color: block.colors?.buttonText || '#ffffff' }}
+                            onClick={(e) => e.preventDefault()}
+                        >
+                            <ShoppingCart size={16} />
+                            {block.buttonText}
+                        </a>
+                    </div>
+                </div>
+            </div>
+        );
+        case 'unsubscribe': return (
+            <div className="py-4 px-4" style={{ backgroundColor: block.colors?.background, textAlign: block.alignment }}>
+                <div className="text-gray-500 mb-2" style={{ fontSize: `${block.fontSize || 12}px`, color: block.colors?.text }} dangerouslySetInnerHTML={{ __html: block.text }} />
+                <a href={block.url} className="inline-block font-medium hover:underline" style={{ fontSize: `${block.fontSize || 12}px`, color: block.colors?.link || '#3b82f6' }} onClick={(e) => e.preventDefault()}>
+                    {block.linkText}
+                </a>
+            </div>
+        );
 
         // E-commerce
         case 'product-grid': return (
-            <div className="py-4 px-4"><div style={{ backgroundColor: block.backgroundColor }} className="p-4 rounded-lg pointer-events-none border border-gray-100"><div className="grid grid-cols-2 gap-4">{block.products.map((p, i) => (<div key={i} className="border border-gray-200 rounded-lg overflow-hidden bg-white"><div className="aspect-[4/3] bg-gray-100 relative">{p.image ? <img src={p.image} className="w-full h-full object-cover" /> : <div className="absolute inset-0 flex items-center justify-center text-gray-400 text-xs">No Image</div>}</div><div className="p-3"><div className="font-semibold text-sm text-gray-800 mb-1 line-clamp-1">{p.title}</div><div className="text-blue-600 font-bold text-sm">{p.price}</div></div></div>))}</div></div></div>
+            <div className="py-4 px-4" style={{ backgroundColor: block.backgroundColor }}>
+                {block.title && (
+                    <div className="flex items-center gap-2 mb-4 px-2" style={{ justifyContent: block.titleAlignment === 'center' ? 'center' : block.titleAlignment === 'right' ? 'flex-end' : 'flex-start' }}>
+                        {block.titleIcon && <img src={block.titleIcon} className="w-6 h-6 object-contain" />}
+                        <div style={{
+                            fontSize: `${block.titleFontSize || 20}px`,
+                            fontWeight: block.titleFontWeight === 'bold' ? '700' : '400',
+                            fontStyle: block.titleFontStyle || 'normal',
+                            fontFamily: block.fontFamily || 'Arial',
+                            color: block.titleColors?.text || '#1f2937',
+                            backgroundColor: block.titleColors?.background,
+                            padding: block.titleColors?.background ? '4px 12px' : '0',
+                            borderRadius: block.titleColors?.background ? '8px' : '0'
+                        }}>
+                            {block.title}
+                        </div>
+                    </div>
+                )}
+                <div className="grid" style={{ gridTemplateColumns: `repeat(${block.columns || 2}, 1fr)`, gap: '16px' }}>
+                    {block.products.map((p, i) => (
+                        <div key={i} style={{
+                            backgroundColor: block.cardBackgroundColor || '#ffffff',
+                            border: `${block.cardBorderWidth || 1}px solid ${block.cardBorderColor || '#e5e7eb'}`,
+                            borderRadius: `${block.cardBorderRadius || 8}px`,
+                            padding: `${block.cardPadding || 0}px`,
+                            overflow: 'hidden'
+                        }}>
+                            <div style={{
+                                width: '100%',
+                                height: `${block.imageHeight || 140}px`,
+                                overflow: 'hidden',
+                                borderRadius: `${block.imageBorderRadius || 0}px`,
+                                marginBottom: '8px'
+                            }}>
+                                {p.image ? (
+                                    <img src={p.image} className="w-full h-full object-cover" style={{ borderRadius: `${block.imageShape === 'circle' ? '50%' : block.imageBorderRadius + 'px'}` }} />
+                                ) : (
+                                    <div className="w-full h-full bg-gray-100 flex items-center justify-center text-xs text-gray-400">No Image</div>
+                                )}
+                            </div>
+                            <div className="px-2 pb-2 text-center">
+                                <div className="font-semibold mb-1 line-clamp-2" style={{ color: block.productNameColor || '#1f2937', fontSize: '14px' }}>{p.title}</div>
+                                <div className="flex items-center justify-center gap-2 flex-wrap">
+                                    <div style={{ color: block.priceColor || '#2563eb', fontWeight: 'bold' }}>{p.price}</div>
+                                    {p.originalPrice && <div style={{ color: block.oldPriceColor || '#9ca3af', textDecoration: 'line-through', fontSize: '12px' }}>{p.originalPrice}</div>}
+                                </div>
+                            </div>
+                        </div>
+                    ))}
+                </div>
+            </div>
         );
         case 'coupon': return (
-            <div className="py-4 px-8"><div style={{ backgroundColor: block.backgroundColor, borderColor: block.borderColor }} className="p-8 rounded-xl border-2 border-dashed text-center relative overflow-hidden"><div className="absolute -left-3 top-1/2 -translate-y-1/2 w-6 h-6 bg-white rounded-full border-r border-gray-200" /><div className="absolute -right-3 top-1/2 -translate-y-1/2 w-6 h-6 bg-white rounded-full border-l border-gray-200" /><div className="text-sm font-medium text-gray-500 mb-2 uppercase tracking-wider">{block.discount}</div><div className="text-3xl font-bold text-gray-800 mb-2 font-mono tracking-widest">{block.code}</div><div className="text-xs text-gray-600 max-w-[200px] mx-auto">{block.description}</div></div></div>
+            <div className="py-4 px-8" style={{ textAlign: 'center' }}>
+                <div style={{ backgroundColor: block.backgroundColor, borderColor: block.borderColor, borderStyle: 'dashed', borderWidth: '2px', borderRadius: '12px' }} className="p-8 relative overflow-visible">
+                    {/* Badge */}
+                    <div style={{ backgroundColor: block.badgeColor || '#F59E0B' }} className="absolute -top-4 left-1/2 -translate-x-1/2 px-4 py-1.5 rounded-full text-white font-bold text-sm shadow-sm flex items-center gap-2 whitespace-nowrap">
+                        {block.iconUrl && <img src={block.iconUrl} className="w-4 h-4 object-contain brightness-0 invert" />}
+                        {block.discount}
+                    </div>
+
+                    {/* Code Box */}
+                    <div className="border-2 rounded-xl py-4 px-8 mb-4 bg-white" style={{ borderColor: block.borderColor }}>
+                        <div className="text-3xl font-bold font-mono tracking-[0.2em]" style={{ color: block.codeColor }}>{block.code}</div>
+                    </div>
+
+                    {/* Details */}
+                    <div className="text-sm text-gray-600 mb-1">{block.description}</div>
+                    {block.expirationDate && <div className="text-xs text-gray-400">Hạn sử dụng: {block.expirationDate}</div>}
+                </div>
+            </div>
         );
-        case 'cart-reminder': return (
-            <div className="py-4 px-4"><div className="p-5 bg-white border border-gray-200 rounded-xl shadow-sm"><div className="flex items-center justify-between mb-4 pb-4 border-b border-gray-100"><div className="text-sm font-semibold text-gray-800 flex items-center gap-2"><ShoppingCart size={16} /> Your Cart ({block.itemsCount})</div><div className="text-sm font-bold text-blue-600">Total: {block.totalPrice}</div></div><div className="flex gap-3 mb-5">{block.itemImages.map((img, i) => (<div key={i} className="w-16 h-16 bg-gray-50 rounded-lg border border-gray-200 relative overflow-hidden shrink-0">{img ? <img src={img} className="w-full h-full object-cover" /> : <div className="absolute inset-0 flex items-center justify-center text-gray-300"><ShoppingBag size={16} /></div>}</div>))}{block.itemsCount > 2 && <div className="w-16 h-16 bg-gray-50 rounded-lg border border-gray-200 flex items-center justify-center text-gray-400 text-xs font-medium shrink-0">+{block.itemsCount - 2}</div>}</div><div className="w-full py-2.5 bg-blue-600 text-white text-center text-sm font-bold rounded-lg shadow-sm hover:bg-blue-700">Checkout Now</div></div></div>
-        );
+
         case 'order-summary': return (
-            <div className="py-4 px-4"><div className="bg-white border border-gray-200 rounded-xl overflow-hidden shadow-sm"><div className="bg-gray-50 p-4 border-b border-gray-200 flex justify-between items-center"><span className="text-xs font-semibold text-gray-600">Order {block.orderId}</span><span className="text-[10px] text-green-700 bg-green-100 px-2 py-0.5 rounded-full font-bold border border-green-200">CONFIRMED</span></div><div className="p-5 space-y-3">{block.items.map((item, i) => (<div key={i} className="flex justify-between text-sm py-1 border-b border-gray-50 last:border-0"><span className="text-gray-600"><span className="text-gray-400 mr-2">{item.qty}x</span>{item.name}</span><span className="font-medium text-gray-800">{item.price}</span></div>))}<div className="pt-3 border-t border-gray-100 flex justify-between font-bold text-gray-800 text-base"><span>Total</span><span>{block.total}</span></div></div><div className="p-4 bg-blue-50/50 text-xs text-gray-500 border-t border-gray-200 flex items-start gap-2"><MapPin size={14} className="mt-0.5 text-blue-400" /> Ship to: {block.shippingAddress}</div></div></div>
+            <div className="py-4 px-4">
+                <div className="bg-white border rounded-xl overflow-hidden shadow-sm hover:shadow-md transition-all" style={{ backgroundColor: block.backgroundColor, borderColor: block.borderColor, borderWidth: '1px', borderStyle: 'solid' }}>
+                    {/* Header */}
+                    <div className="p-4 border-b border-gray-100 flex items-center gap-3">
+                        {block.iconUrl && (
+                            <div className="w-8 h-8 rounded-full flex items-center justify-center shrink-0" style={{ backgroundColor: block.iconBackgroundColor || '#10B981' }}>
+                                <img src={block.iconUrl} className="w-4 h-4 object-contain brightness-0 invert" />
+                            </div>
+                        )}
+                        <div className="flex-1">
+                            <div style={{
+                                textAlign: block.titleAlignment,
+                                fontFamily: block.fontFamily,
+                                fontSize: `${block.titleFontSize || 18}px`,
+                                fontWeight: block.titleFontWeight === 'bold' ? 'bold' : 'normal',
+                                fontStyle: block.titleFontStyle || 'normal',
+                                color: block.titleColor
+                            }}>
+                                {block.title}
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Order ID */}
+                    <div className="px-5 py-3 bg-gray-50 border-b border-gray-100 text-sm font-medium text-gray-500">
+                        {block.orderId}
+                    </div>
+
+                    {/* Items List (Simplified for summary view as per mockup focus) */}
+                    <div className="p-5 space-y-3">
+                        {block.items.map((item, i) => (
+                            <div key={i} className="flex justify-between text-sm py-1 border-b border-gray-50 last:border-0 hover:bg-gray-50 px-2 rounded -mx-2 transition-colors">
+                                <span className="text-gray-600"><span className="text-gray-400 mr-2">{item.qty}x</span>{item.name}</span>
+                                <span className="font-medium text-gray-800">{item.price}</span>
+                            </div>
+                        ))}
+
+                        {/* Cost Breakdown */}
+                        <div className="pt-4 mt-4 border-t border-gray-100 space-y-2">
+                            <div className="flex justify-between text-sm text-gray-600">
+                                <span>Tạm tính</span>
+                                <span>{block.subtotal}</span>
+                            </div>
+                            <div className="flex justify-between text-sm text-gray-600">
+                                <span>Phí vận chuyển</span>
+                                <span>{block.shippingFee}</span>
+                            </div>
+                            <div className="flex justify-between text-base font-bold pt-2 mt-2 border-t border-gray-100" style={{ color: block.totalColor || '#1f2937' }}>
+                                <span>Tổng cộng</span>
+                                <span>{block.total}</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Address (Optional keep) */}
+                    {block.shippingAddress && (
+                        <div className="p-4 bg-gray-50/50 text-xs text-gray-500 border-t border-gray-100 flex items-start gap-2">
+                            <MapPin size={14} className="mt-0.5 text-gray-400" />
+                            <span>{block.shippingLabel || 'Ship to'}: {block.shippingAddress}</span>
+                        </div>
+                    )}
+                </div>
+            </div>
         );
 
-        // Real Estate
-        case 'property-card': return (
-            <div className="py-4 px-4"><div className="bg-white border border-gray-200 rounded-xl overflow-hidden shadow-sm hover:shadow-md transition-shadow group"><div className="aspect-video bg-gray-200 relative overflow-hidden">{block.image ? <img src={block.image} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" /> : <div className="absolute inset-0 flex items-center justify-center text-gray-400 bg-gray-100"><Home size={32} /></div>}<div className="absolute top-3 right-3 bg-white/90 backdrop-blur text-gray-900 text-xs font-bold px-2 py-1 rounded shadow-sm">FOR SALE</div></div><div className="p-5"><div className="flex justify-between items-start mb-2"><div><div className="font-bold text-gray-800 text-xl mb-1">{block.price}</div><div className="text-sm text-gray-600 font-medium">{block.title}</div></div></div><div className="flex gap-4 text-xs text-gray-500 mb-4 pb-4 border-b border-gray-100"><span className="flex items-center gap-1.5"><LayoutGrid size={14} /> {block.specs.beds} Beds</span><span className="flex items-center gap-1.5"><LayoutGrid size={14} /> {block.specs.baths} Baths</span><span className="flex items-center gap-1.5"><Square size={14} /> {block.specs.area}</span></div><div className="flex items-center gap-2 text-xs text-gray-500"><MapPin size={14} className="text-gray-400" /> {block.address}</div></div></div></div>
-        );
-        case 'features': return (
-            <div className="py-4 px-4"><div className={`grid ${block.columns === 3 ? 'grid-cols-3' : 'grid-cols-2'} gap-3`}>{block.features.map((f, i) => (<div key={i} className="flex flex-col items-center text-center p-4 bg-white border border-gray-200 rounded-xl hover:border-blue-300 transition-colors"><div className="w-10 h-10 rounded-full bg-blue-50 text-blue-600 flex items-center justify-center mb-2"><Check size={18} /></div><span className="text-xs font-semibold text-gray-700">{f.text}</span></div>))}</div></div>
-        );
-        case 'location': return (
-            <div className="py-4 px-4"><div className="bg-white border border-gray-200 rounded-xl overflow-hidden shadow-sm"><div className="aspect-[21/9] bg-blue-50 relative">{block.mapImage ? <img src={block.mapImage} className="w-full h-full object-cover" /> : <div className="absolute inset-0 flex items-center justify-center text-blue-300 bg-blue-50"><MapPin size={32} /></div>}</div><div className="p-4 flex items-start gap-3 bg-white"><div className="p-2 bg-red-50 text-red-500 rounded-lg shrink-0"><MapPin size={20} /></div><div><div className="text-sm font-bold text-gray-800 mb-1">Our Location</div><div className="text-xs text-gray-500 leading-relaxed">{block.address}</div></div></div></div></div>
-        );
 
-        // Recruitment
-        case 'job-listing': return (
-            <div className="py-3 px-4"><div className="bg-white border border-gray-200 rounded-xl p-5 hover:border-blue-400 transition-all shadow-sm hover:shadow-md cursor-pointer group"><div className="flex justify-between items-start mb-2"><div><h4 className="font-bold text-gray-800 text-lg group-hover:text-blue-600 transition-colors">{block.title}</h4><div className="text-xs text-blue-600 font-bold uppercase tracking-wide mb-3">{block.department}</div></div><div className="text-xs font-bold text-gray-700 bg-gray-100 px-2.5 py-1.5 rounded-lg border border-gray-200">{block.salary}</div></div><div className="flex flex-wrap gap-2 mb-4">{block.tags.map(t => <span key={t} className="text-[10px] bg-blue-50 text-blue-700 px-2 py-1 rounded-md font-semibold">{t}</span>)}</div><div className="flex items-center gap-2 text-xs text-gray-400 border-t border-gray-100 pt-3"><MapPin size={14} /> {block.location}</div></div></div>
-        );
-        case 'benefits': return (
-            <div className="py-4 px-4"><div className="grid gap-3">{block.benefits.map((b, i) => (<div key={i} className="flex items-start gap-4 p-4 bg-white border border-gray-200 rounded-xl hover:bg-gray-50 transition-colors"><div className="p-2 bg-green-100 text-green-600 rounded-lg shrink-0"><Gift size={20} /></div><div><div className="text-sm font-bold text-gray-800 mb-0.5">{b.title}</div><div className="text-xs text-gray-500 leading-snug">{b.description}</div></div></div>))}</div></div>
-        );
+
+
 
         default: return <div className="p-4 bg-red-50 text-red-500">Unknown</div>;
     }
@@ -632,25 +940,724 @@ const PropertiesPanel: React.FC<{ block: EmailBlock | null; onUpdate: (b: EmailB
             case 'column3': return (<div className="space-y-4"><div className="flex items-center gap-2 pb-2 border-b border-gray-100"><Columns size={16} className="text-gray-400" /><span className="font-semibold text-gray-800 text-sm">3 Columns</span></div><p className="text-xs text-gray-500">Kéo thả elements vào các ô trên canvas để thêm nội dung.</p><div className="text-xs text-gray-400 mt-2">Column 1: {block.children[0].length} elements</div><div className="text-xs text-gray-400">Column 2: {block.children[1].length} elements</div><div className="text-xs text-gray-400">Column 3: {block.children[2].length} elements</div></div>);
             case 'html': return (<div className="space-y-4"><div className="flex items-center gap-2 pb-2 border-b border-gray-100"><Code size={16} className="text-gray-400" /><span className="font-semibold text-gray-800 text-sm">Custom HTML</span></div><div><label className="text-xs font-medium text-gray-500 mb-1.5 block">HTML Code</label><textarea value={block.content} onChange={(e) => onUpdate({ ...block, content: e.target.value })} className="w-full p-2.5 bg-gray-900 text-green-400 border border-gray-700 rounded-xl text-sm font-mono h-40 resize-none" placeholder="<div>Your HTML here...</div>" /></div><p className="text-xs text-gray-400">⚠️ Chú ý: HTML tùy chỉnh có thể ảnh hưởng đến hiển thị email.</p></div>);
             case 'video': return (<div className="space-y-4"><div><label className="text-xs font-medium text-gray-500 mb-1.5 block">Video URL</label><input type="text" value={block.url} onChange={(e) => onUpdate({ ...block, url: e.target.value })} className="w-full p-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm" placeholder="https://youtube.com/..." /></div><div><label className="text-xs font-medium text-gray-500 mb-1.5 block">Thumbnail URL</label><input type="text" value={block.thumbnail || ''} onChange={(e) => onUpdate({ ...block, thumbnail: e.target.value })} className="w-full p-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm" placeholder="https://..." /></div><div><label className="text-xs font-medium text-gray-500 mb-1.5 block">Căn chỉnh</label><AlignBtns val={block.alignment} onChange={(v) => onUpdate({ ...block, alignment: v })} /></div></div>);
-            case 'header': return (<div className="space-y-4"><div><label className="text-xs font-medium text-gray-500 mb-1.5 block">Logo URL</label><input type="text" value={block.logoSrc} onChange={(e) => onUpdate({ ...block, logoSrc: e.target.value })} className="w-full p-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm" /></div><div className="p-3 bg-gray-50 rounded-xl border border-gray-200"><div className="text-xs font-semibold text-gray-700 mb-2">Nav Links</div>{block.navLinks.map((l, i) => (<div key={i} className="flex gap-2 mb-2"><input type="text" value={l.text} onChange={(e) => { const n = [...block.navLinks]; n[i].text = e.target.value; onUpdate({ ...block, navLinks: n }); }} className="flex-1 p-2 bg-white border border-gray-200 rounded-lg text-xs" placeholder="Text" /><input type="text" value={l.url} onChange={(e) => { const n = [...block.navLinks]; n[i].url = e.target.value; onUpdate({ ...block, navLinks: n }); }} className="flex-1 p-2 bg-white border border-gray-200 rounded-lg text-xs" placeholder="URL" /></div>))}</div><div><label className="text-xs font-medium text-gray-500 mb-1.5 block">Nền</label><div className="flex items-center gap-2 p-2 border border-gray-200 rounded-xl"><input type="color" className="w-8 h-8 rounded cursor-pointer" value={block.backgroundColor} onChange={(e) => onUpdate({ ...block, backgroundColor: e.target.value })} /></div></div></div>);
-            case 'footer': return (<div className="space-y-4"><div><label className="text-xs font-medium text-gray-500 mb-1.5 block">Nội dung</label><textarea value={block.content} onChange={(e) => onUpdate({ ...block, content: e.target.value })} className="w-full p-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm h-24" /></div><div><label className="text-xs font-medium text-gray-500 mb-1.5 block">Địa chỉ</label><input type="text" value={block.address} onChange={(e) => onUpdate({ ...block, address: e.target.value })} className="w-full p-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm" /></div><div><label className="text-xs font-medium text-gray-500 mb-1.5 block">Nền</label><div className="flex items-center gap-2 p-2 border border-gray-200 rounded-xl"><input type="color" className="w-8 h-8 rounded cursor-pointer" value={block.backgroundColor} onChange={(e) => onUpdate({ ...block, backgroundColor: e.target.value })} /></div></div></div>);
-            case 'product': return (<div className="space-y-4"><div><label className="text-xs font-medium text-gray-500 mb-1.5 block">Tên sản phẩm</label><input type="text" value={block.title} onChange={(e) => onUpdate({ ...block, title: e.target.value })} className="w-full p-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm" /></div><div><label className="text-xs font-medium text-gray-500 mb-1.5 block">Giá</label><input type="text" value={block.price} onChange={(e) => onUpdate({ ...block, price: e.target.value })} className="w-full p-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm" /></div><div><label className="text-xs font-medium text-gray-500 mb-1.5 block">Mô tả</label><textarea value={block.description} onChange={(e) => onUpdate({ ...block, description: e.target.value })} className="w-full p-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm h-20" /></div><div><label className="text-xs font-medium text-gray-500 mb-1.5 block">Ảnh URL</label><input type="text" value={block.productImage} onChange={(e) => onUpdate({ ...block, productImage: e.target.value })} className="w-full p-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm" /></div><div><label className="text-xs font-medium text-gray-500 mb-1.5 block">Button Text</label><input type="text" value={block.buttonText} onChange={(e) => onUpdate({ ...block, buttonText: e.target.value })} className="w-full p-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm" /></div></div>);
-            case 'unsubscribe': return (<div className="space-y-4"><div><label className="text-xs font-medium text-gray-500 mb-1.5 block">Text (HTML allowed)</label><textarea value={block.text} onChange={(e) => onUpdate({ ...block, text: e.target.value })} className="w-full p-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm h-24" /></div><div><label className="text-xs font-medium text-gray-500 mb-1.5 block">Căn chỉnh</label><AlignBtns val={block.alignment} onChange={(v) => onUpdate({ ...block, alignment: v })} /></div></div>);
+            case 'header': return (
+                <div className="space-y-4">
+                    {/* Layout */}
+                    <div>
+                        <label className="text-xs font-medium text-gray-500 mb-1.5 block">Layout</label>
+                        <div className="flex gap-2">
+                            {(['inline', 'stacked'] as const).map((l) => (
+                                <button key={l} onClick={() => onUpdate({ ...block, layout: l })} className={`flex-1 p-2 rounded-lg border text-xs capitalize ${block.layout === l ? 'border-blue-400 bg-blue-50 text-blue-700 font-medium' : 'border-gray-200 text-gray-600'}`}>{l}</button>
+                            ))}
+                        </div>
+                    </div>
 
-            // E-commerce Properties
-            case 'product-grid': return (<div className="space-y-4">{block.products.map((p, i) => (<div key={i} className="p-3 bg-gray-50 rounded-xl border border-gray-200"><div className="text-xs font-bold text-gray-700 mb-2">Product {i + 1}</div><div className="space-y-2"><input type="text" value={p.title} onChange={(e) => { const np = [...block.products]; np[i].title = e.target.value; onUpdate({ ...block, products: np }); }} className="w-full p-2 bg-white border border-gray-200 rounded-lg text-xs" placeholder="Title" /><input type="text" value={p.price} onChange={(e) => { const np = [...block.products]; np[i].price = e.target.value; onUpdate({ ...block, products: np }); }} className="w-full p-2 bg-white border border-gray-200 rounded-lg text-xs" placeholder="Price" /><input type="text" value={p.image} onChange={(e) => { const np = [...block.products]; np[i].image = e.target.value; onUpdate({ ...block, products: np }); }} className="w-full p-2 bg-white border border-gray-200 rounded-lg text-xs" placeholder="Image URL" /></div></div>))}</div>);
-            case 'coupon': return (<div className="space-y-4"><div><label className="text-xs font-medium text-gray-500 mb-1.5 block">Code</label><input type="text" value={block.code} onChange={(e) => onUpdate({ ...block, code: e.target.value })} className="w-full p-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm" /></div><div><label className="text-xs font-medium text-gray-500 mb-1.5 block">Discount</label><input type="text" value={block.discount} onChange={(e) => onUpdate({ ...block, discount: e.target.value })} className="w-full p-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm" /></div><div><label className="text-xs font-medium text-gray-500 mb-1.5 block">Description</label><input type="text" value={block.description} onChange={(e) => onUpdate({ ...block, description: e.target.value })} className="w-full p-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm" /></div></div>);
-            case 'cart-reminder': return (<div className="space-y-4"><div><label className="text-xs font-medium text-gray-500 mb-1.5 block">Total Price</label><input type="text" value={block.totalPrice} onChange={(e) => onUpdate({ ...block, totalPrice: e.target.value })} className="w-full p-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm" /></div><div><label className="text-xs font-medium text-gray-500 mb-1.5 block">Checkout URL</label><input type="text" value={block.checkoutUrl} onChange={(e) => onUpdate({ ...block, checkoutUrl: e.target.value })} className="w-full p-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm" /></div></div>);
-            case 'order-summary': return (<div className="space-y-4"><div><label className="text-xs font-medium text-gray-500 mb-1.5 block">Order ID</label><input type="text" value={block.orderId} onChange={(e) => onUpdate({ ...block, orderId: e.target.value })} className="w-full p-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm" /></div><div><label className="text-xs font-medium text-gray-500 mb-1.5 block">Total</label><input type="text" value={block.total} onChange={(e) => onUpdate({ ...block, total: e.target.value })} className="w-full p-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm" /></div></div>);
+                    {/* Branding */}
+                    <div className="space-y-3 pt-3 border-t border-gray-100">
+                        <div className="flex items-center justify-between"><div className="text-xs font-semibold text-gray-800">Branding</div><div className="w-full h-px bg-gray-100 ml-3"></div></div>
+                        <div>
+                            <label className="text-xs font-medium text-gray-500 mb-1.5 block">Logo & Brand Name</label>
+                            <input type="text" value={block.logoSrc} onChange={(e) => onUpdate({ ...block, logoSrc: e.target.value })} className="w-full p-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm mb-2" placeholder="Logo URL (optional)" />
+                            <input type="text" value={block.companyName} onChange={(e) => onUpdate({ ...block, companyName: e.target.value })} className="w-full p-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm mb-2" placeholder="Company Name" />
+                            <input type="text" value={block.tagline} onChange={(e) => onUpdate({ ...block, tagline: e.target.value })} className="w-full p-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm" placeholder="Tagline" />
+                        </div>
+                        {/* Colors for Branding */}
+                        <div className="grid grid-cols-2 gap-2">
+                            <div><label className="text-[10px] text-gray-400 mb-1 block">Brand Color</label><div className="flex items-center gap-2 p-1.5 border border-gray-200 rounded-lg"><div className="w-4 h-4 rounded overflow-hidden relative border"><input type="color" className="absolute -inset-1 w-[200%] h-[200%] cursor-pointer" value={block.colors.companyName} onChange={(e) => onUpdate({ ...block, colors: { ...block.colors, companyName: e.target.value } })} /></div><span className="text-[10px] mono">{block.colors.companyName}</span></div></div>
+                            <div><label className="text-[10px] text-gray-400 mb-1 block">Tagline Color</label><div className="flex items-center gap-2 p-1.5 border border-gray-200 rounded-lg"><div className="w-4 h-4 rounded overflow-hidden relative border"><input type="color" className="absolute -inset-1 w-[200%] h-[200%] cursor-pointer" value={block.colors.tagline} onChange={(e) => onUpdate({ ...block, colors: { ...block.colors, tagline: e.target.value } })} /></div><span className="text-[10px] mono">{block.colors.tagline}</span></div></div>
+                        </div>
+                    </div>
 
-            // Real Estate Properties
-            case 'property-card': return (<div className="space-y-4"><div><label className="text-xs font-medium text-gray-500 mb-1.5 block">Title</label><input type="text" value={block.title} onChange={(e) => onUpdate({ ...block, title: e.target.value })} className="w-full p-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm" /></div><div><label className="text-xs font-medium text-gray-500 mb-1.5 block">Price</label><input type="text" value={block.price} onChange={(e) => onUpdate({ ...block, price: e.target.value })} className="w-full p-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm" /></div><div><label className="text-xs font-medium text-gray-500 mb-1.5 block">Address</label><input type="text" value={block.address} onChange={(e) => onUpdate({ ...block, address: e.target.value })} className="w-full p-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm" /></div><div><label className="text-xs font-medium text-gray-500 mb-1.5 block">Image URL</label><input type="text" value={block.image} onChange={(e) => onUpdate({ ...block, image: e.target.value })} className="w-full p-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm" /></div></div>);
-            case 'features': return (<div className="space-y-4">{block.features.map((f, i) => (<div key={i} className="flex gap-2"><input type="text" value={f.text} onChange={(e) => { const nf = [...block.features]; nf[i].text = e.target.value; onUpdate({ ...block, features: nf }); }} className="flex-1 p-2 bg-gray-50 border border-gray-200 rounded-lg text-xs" /><button onClick={() => { const nf = [...block.features]; nf.splice(i, 1); onUpdate({ ...block, features: nf }); }} className="text-red-500 hover:bg-red-50 p-2 rounded-lg"><Trash2 size={16} /></button></div>))}<button onClick={() => onUpdate({ ...block, features: [...block.features, { icon: 'check', text: 'New Feature' }] })} className="w-full py-2 bg-blue-50 text-blue-600 rounded-lg text-xs font-bold">+ Add Feature</button></div>);
-            case 'location': return (<div className="space-y-4"><div><label className="text-xs font-medium text-gray-500 mb-1.5 block">Address</label><input type="text" value={block.address} onChange={(e) => onUpdate({ ...block, address: e.target.value })} className="w-full p-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm" /></div><div><label className="text-xs font-medium text-gray-500 mb-1.5 block">Map Image URL</label><input type="text" value={block.mapImage} onChange={(e) => onUpdate({ ...block, mapImage: e.target.value })} className="w-full p-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm" /></div></div>);
+                    {/* Navigation */}
+                    <div className="space-y-3 pt-3 border-t border-gray-100">
+                        <div className="flex items-center justify-between cursor-pointer" onClick={() => onUpdate({ ...block, showMenu: !block.showMenu })}><div className="text-xs font-semibold text-gray-800 flex items-center gap-2">{block.showMenu ? <CheckSquare size={14} className="text-blue-600" /> : <Square size={14} className="text-gray-400" />} Navigation Menu</div><div className="w-16 h-px bg-gray-100 ml-3"></div></div>
 
-            // Recruitment Properties
-            case 'job-listing': return (<div className="space-y-4"><div><label className="text-xs font-medium text-gray-500 mb-1.5 block">Job Title</label><input type="text" value={block.title} onChange={(e) => onUpdate({ ...block, title: e.target.value })} className="w-full p-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm" /></div><div><label className="text-xs font-medium text-gray-500 mb-1.5 block">Department</label><input type="text" value={block.department} onChange={(e) => onUpdate({ ...block, department: e.target.value })} className="w-full p-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm" /></div><div><label className="text-xs font-medium text-gray-500 mb-1.5 block">Location</label><input type="text" value={block.location} onChange={(e) => onUpdate({ ...block, location: e.target.value })} className="w-full p-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm" /></div><div><label className="text-xs font-medium text-gray-500 mb-1.5 block">Salary</label><input type="text" value={block.salary} onChange={(e) => onUpdate({ ...block, salary: e.target.value })} className="w-full p-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm" /></div></div>);
-            case 'benefits': return (<div className="space-y-4">{block.benefits.map((b, i) => (<div key={i} className="p-3 bg-gray-50 rounded-xl border border-gray-200"><input type="text" value={b.title} onChange={(e) => { const nb = [...block.benefits]; nb[i].title = e.target.value; onUpdate({ ...block, benefits: nb }); }} className="w-full p-2 bg-white border border-gray-200 rounded-lg text-xs font-bold mb-2" placeholder="Title" /><textarea value={b.description} onChange={(e) => { const nb = [...block.benefits]; nb[i].description = e.target.value; onUpdate({ ...block, benefits: nb }); }} className="w-full p-2 bg-white border border-gray-200 rounded-lg text-xs" placeholder="Description" /></div>))}</div>);
+                        {block.showMenu && (
+                            <div className="space-y-3">
+                                <div className="space-y-2">
+                                    {block.navLinks.map((l, i) => (
+                                        <div key={i} className="p-3 bg-gray-50 border border-gray-200 rounded-lg relative group transition-all hover:shadow-sm">
+                                            <button
+                                                onClick={() => { const n = [...block.navLinks]; n.splice(i, 1); onUpdate({ ...block, navLinks: n }); }}
+                                                className="absolute top-2 right-2 text-gray-400 hover:text-red-500 p-1 rounded-md hover:bg-red-50 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-all"
+                                                title="Remove Link"
+                                            >
+                                                <X size={14} />
+                                            </button>
+
+                                            <div className="space-y-3">
+                                                <div>
+                                                    <label className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1 block">Navigation Label</label>
+                                                    <input
+                                                        type="text"
+                                                        value={l.text}
+                                                        onChange={(e) => { const n = [...block.navLinks]; n[i].text = e.target.value; onUpdate({ ...block, navLinks: n }); }}
+                                                        className="w-full p-2 bg-white border border-gray-200 rounded-lg text-sm font-medium text-gray-700 focus:border-blue-500 focus:ring-1 focus:ring-blue-200 transition-all outline-none"
+                                                        placeholder="Ex: Home"
+                                                    />
+                                                </div>
+                                                <div>
+                                                    <label className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1 block">Destination URL</label>
+                                                    <input
+                                                        type="text"
+                                                        value={l.url}
+                                                        onChange={(e) => { const n = [...block.navLinks]; n[i].url = e.target.value; onUpdate({ ...block, navLinks: n }); }}
+                                                        className="w-full p-2 bg-white border border-gray-200 rounded-lg text-xs text-gray-600 font-mono focus:border-blue-500 focus:ring-1 focus:ring-blue-200 transition-all outline-none"
+                                                        placeholder="https://..."
+                                                    />
+                                                </div>
+                                            </div>
+                                        </div>
+                                    ))}
+                                    <button onClick={() => onUpdate({ ...block, navLinks: [...block.navLinks, { text: 'New Link', url: '#' }] })} className="w-full py-2.5 bg-white text-blue-600 rounded-lg text-xs font-bold border border-dashed border-blue-200 hover:border-blue-400 hover:bg-blue-50 transition-all flex items-center justify-center gap-2 shadow-sm">
+                                        <Plus size={14} /> Add Menu Link
+                                    </button>
+                                </div>
+                                {/* Menu Color */}
+                                <div><label className="text-[10px] text-gray-400 mb-1 block">Menu Text Color</label><div className="flex items-center gap-2 p-1.5 border border-gray-200 rounded-lg"><div className="w-4 h-4 rounded overflow-hidden relative border"><input type="color" className="absolute -inset-1 w-[200%] h-[200%] cursor-pointer" value={block.colors.menu} onChange={(e) => onUpdate({ ...block, colors: { ...block.colors, menu: e.target.value } })} /></div><span className="text-[10px] mono">{block.colors.menu}</span></div></div>
+                            </div>
+                        )}
+                    </div>
+
+                    {/* Background */}
+                    <div className="pt-3 border-t border-gray-100">
+                        <label className="text-xs font-medium text-gray-500 mb-1.5 block">Nền Header</label>
+                        <div className="flex items-center gap-2 p-2 border border-gray-200 rounded-xl">
+                            <div className="w-8 h-8 rounded-lg overflow-hidden relative border"><input type="color" className="absolute -inset-2 w-[150%] h-[150%] cursor-pointer" value={block.colors.background} onChange={(e) => onUpdate({ ...block, colors: { ...block.colors, background: e.target.value } })} /></div>
+                            <span className="text-xs font-mono text-gray-600">{block.colors.background}</span>
+                        </div>
+                    </div>
+                </div>
+            );
+            case 'footer': return (
+                <div className="space-y-4">
+                    <div className="flex items-center justify-between"><h4 className="font-semibold text-xs text-gray-900 uppercase tracking-wider">Footer Settings</h4><div className="p-1.5 bg-gray-100 rounded-md"><Settings size={14} className="text-gray-500" /></div></div>
+
+                    {/* Logo */}
+
+                    {/* Logo */}
+                    <div>
+                        <label className="text-[10px] text-gray-400 mb-1 block uppercase font-bold">Logo Công Ty</label>
+                        <div className="gap-2 space-y-2">
+                            <input type="text" value={block.logoUrl || ''} onChange={(e) => onUpdate({ ...block, logoUrl: e.target.value })} className="w-full p-2.5 bg-gray-50 border border-gray-200 rounded-xl text-xs" placeholder="https://..." />
+                            <div className="relative">
+                                <input
+                                    type="file"
+                                    accept="image/*"
+                                    className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
+                                    onChange={(e) => {
+                                        const file = e.target.files?.[0];
+                                        if (file) {
+                                            const reader = new FileReader();
+                                            reader.onloadend = () => {
+                                                onUpdate({ ...block, logoUrl: reader.result as string });
+                                            };
+                                            reader.readAsDataURL(file);
+                                        }
+                                    }}
+                                />
+                                <button className="w-full py-1.5 bg-blue-600 text-white rounded-lg text-xs font-medium hover:bg-blue-700 transition-colors flex items-center justify-center gap-2">
+                                    <Upload size={14} /> Upload Logo
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Company Info */}
+                    <div className="grid grid-cols-2 gap-2">
+                        <div>
+                            <label className="text-[10px] text-gray-400 mb-1 block uppercase font-bold">Tên Công Ty</label>
+                            <input type="text" value={block.companyName || ''} onChange={(e) => onUpdate({ ...block, companyName: e.target.value })} className="w-full p-2.5 bg-gray-50 border border-gray-200 rounded-xl text-xs" placeholder="Your Brand" />
+                        </div>
+                        <div>
+                            <label className="text-[10px] text-gray-400 mb-1 block uppercase font-bold">Email</label>
+                            <input type="text" value={block.companyEmail || ''} onChange={(e) => onUpdate({ ...block, companyEmail: e.target.value })} className="w-full p-2.5 bg-gray-50 border border-gray-200 rounded-xl text-xs" placeholder="contact@..." />
+                        </div>
+                    </div>
+
+                    <div>
+                        <label className="text-[10px] text-gray-400 mb-1 block uppercase font-bold">Địa chỉ</label>
+                        <textarea value={block.address} onChange={(e) => onUpdate({ ...block, address: e.target.value })} className="w-full p-2.5 bg-gray-50 border border-gray-200 rounded-xl text-xs h-16 resize-none" placeholder="123 Street..." />
+                    </div>
+
+                    <div>
+                        <label className="text-[10px] text-gray-400 mb-1 block uppercase font-bold">Điện Thoại</label>
+                        <input type="text" value={block.phone || ''} onChange={(e) => onUpdate({ ...block, phone: e.target.value })} className="w-full p-2.5 bg-gray-50 border border-gray-200 rounded-xl text-xs" placeholder="(555) 000-0000" />
+                    </div>
+
+                    {/* Social Media Section */}
+                    <div className="pt-3 border-t border-gray-100">
+                        <div className="flex items-center justify-between mb-3">
+                            <label className="text-[10px] text-gray-400 block uppercase font-bold">Mạng xã hội</label>
+                            <button onClick={() => onUpdate({ ...block, socialLinks: [...block.socialLinks, { name: 'Social', url: '#' }] })} className="px-2 py-1 bg-blue-600 text-white rounded text-[10px] font-bold flex items-center gap-1 hover:bg-blue-700"><Plus size={10} /> Thêm</button>
+                        </div>
+
+                        <div className="grid grid-cols-2 gap-2 mb-3">
+                            <div>
+                                <label className="text-[10px] text-gray-400 mb-1 block">Kiểu Icon</label>
+                                <select className="w-full p-2 bg-gray-50 border border-gray-200 rounded-lg text-xs" value={block.socialIconStyle || 'circle'} onChange={(e) => onUpdate({ ...block, socialIconStyle: e.target.value as any })}>
+                                    <option value="circle">Tròn</option>
+                                    <option value="items-center">Vuông</option>
+                                    <option value="rounded">Bo góc</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label className="text-[10px] text-gray-400 mb-1 block">Kích thước</label>
+                                <select className="w-full p-2 bg-gray-50 border border-gray-200 rounded-lg text-xs" value={block.socialIconSize || 'medium'} onChange={(e) => onUpdate({ ...block, socialIconSize: e.target.value as any })}>
+                                    <option value="small">Nhỏ</option>
+                                    <option value="medium">Vừa</option>
+                                    <option value="large">Lớn</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <div className="space-y-2">
+                            {block.socialLinks.map((s, i) => (
+                                <div key={i} className="p-2 bg-gray-50 border border-gray-200 rounded-lg group">
+                                    <div className="flex items-center justify-between mb-2">
+                                        <select className="bg-transparent text-xs font-semibold text-gray-700 outline-none" value={s.name} onChange={(e) => { const n = [...block.socialLinks]; n[i].name = e.target.value; onUpdate({ ...block, socialLinks: n }); }}>
+                                            <option value="Facebook">Facebook</option>
+                                            <option value="Twitter">Twitter</option>
+                                            <option value="Instagram">Instagram</option>
+                                            <option value="LinkedIn">LinkedIn</option>
+                                            <option value="YouTube">YouTube</option>
+                                            <option value="TikTok">TikTok</option>
+                                            <option value="Website">Website</option>
+                                        </select>
+                                        <button onClick={() => { const n = [...block.socialLinks]; n.splice(i, 1); onUpdate({ ...block, socialLinks: n }); }} className="text-gray-400 hover:text-red-500"><Trash2 size={12} /></button>
+                                    </div>
+                                    <input type="text" value={s.url} onChange={(e) => { const n = [...block.socialLinks]; n[i].url = e.target.value; onUpdate({ ...block, socialLinks: n }); }} className="w-full p-1.5 bg-white border border-gray-200 rounded text-[10px] mb-1.5" placeholder="Profile URL" />
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+
+                    {/* Legal */}
+                    <div className="pt-3 border-t border-gray-100 space-y-3">
+                        <div>
+                            <label className="text-[10px] text-gray-400 mb-1 block uppercase font-bold">Copyright</label>
+                            <input type="text" value={block.copyrightText || ''} onChange={(e) => onUpdate({ ...block, copyrightText: e.target.value })} className="w-full p-2.5 bg-gray-50 border border-gray-200 rounded-xl text-xs" />
+                        </div>
+                        <div className="grid grid-cols-2 gap-2">
+                            <div><label className="text-[10px] text-gray-400 mb-1 block uppercase font-bold">Privacy URL</label><input type="text" value={block.privacyUrl || ''} onChange={(e) => onUpdate({ ...block, privacyUrl: e.target.value })} className="w-full p-2.5 bg-gray-50 border border-gray-200 rounded-xl text-xs" placeholder="/privacy" /></div>
+                            <div><label className="text-[10px] text-gray-400 mb-1 block uppercase font-bold">Terms URL</label><input type="text" value={block.termsUrl || ''} onChange={(e) => onUpdate({ ...block, termsUrl: e.target.value })} className="w-full p-2.5 bg-gray-50 border border-gray-200 rounded-xl text-xs" placeholder="/terms" /></div>
+                        </div>
+                        <div className="grid grid-cols-2 gap-2">
+                            <div><label className="text-[10px] text-gray-400 mb-1 block uppercase font-bold">Unsubscribe Text</label><input type="text" value={block.unsubscribeText || ''} onChange={(e) => onUpdate({ ...block, unsubscribeText: e.target.value })} className="w-full p-2.5 bg-gray-50 border border-gray-200 rounded-xl text-xs" placeholder="Unsubscribe" /></div>
+                            <div><label className="text-[10px] text-gray-400 mb-1 block uppercase font-bold">Unsubscribe URL</label><input type="text" value={block.unsubscribeUrl || ''} onChange={(e) => onUpdate({ ...block, unsubscribeUrl: e.target.value })} className="w-full p-2.5 bg-gray-50 border border-gray-200 rounded-xl text-xs" placeholder="/unsubscribe" /></div>
+                        </div>
+                    </div>
+                </div>
+            );
+            case 'product': return (
+                <div className="space-y-4">
+                    {/* Basic Info */}
+                    <div><label className="text-xs font-medium text-gray-500 mb-1.5 block">Tên sản phẩm</label><textarea value={block.title} onChange={(e) => onUpdate({ ...block, title: e.target.value })} className="w-full p-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm h-16" /></div>
+                    <div><label className="text-xs font-medium text-gray-500 mb-1.5 block">Mô tả</label><textarea value={block.description} onChange={(e) => onUpdate({ ...block, description: e.target.value })} className="w-full p-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm h-20" /></div>
+
+                    {/* Pricing */}
+                    <div className="grid grid-cols-2 gap-2">
+                        <div><label className="text-[10px] text-gray-400 mb-1 block">Giá</label><input type="text" value={block.price} onChange={(e) => onUpdate({ ...block, price: e.target.value })} className="w-full p-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm" /></div>
+                        <div><label className="text-[10px] text-gray-400 mb-1 block">Giá gốc</label><input type="text" value={block.originalPrice || ''} onChange={(e) => onUpdate({ ...block, originalPrice: e.target.value })} className="w-full p-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm text-gray-500" placeholder="$129" /></div>
+                    </div>
+
+                    {/* Image */}
+                    <div><label className="text-xs font-medium text-gray-500 mb-1.5 block">Hình ảnh</label><input type="text" value={block.productImage} onChange={(e) => onUpdate({ ...block, productImage: e.target.value })} className="w-full p-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm" placeholder="https://..." /></div>
+
+                    {/* Ratings & Metrics */}
+                    <div className="grid grid-cols-2 gap-2">
+                        <div>
+                            <label className="text-[10px] text-gray-400 mb-1 block">Đánh giá (Stars)</label>
+                            <select className="w-full p-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm" value={block.rating || 5} onChange={(e) => onUpdate({ ...block, rating: Number(e.target.value) })}>
+                                {[1, 2, 3, 4, 5].map(n => <option key={n} value={n}>{n} Stars</option>)}
+                            </select>
+                        </div>
+                        <div><label className="text-[10px] text-gray-400 mb-1 block">Số đánh giá</label><input type="number" value={block.reviewCount || 0} onChange={(e) => onUpdate({ ...block, reviewCount: Number(e.target.value) })} className="w-full p-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm" /></div>
+                    </div>
+
+                    {/* Badge & Discount */}
+                    <div className="grid grid-cols-2 gap-2">
+                        <div><label className="text-[10px] text-gray-400 mb-1 block">Badge</label><input type="text" value={block.badge || ''} onChange={(e) => onUpdate({ ...block, badge: e.target.value })} className="w-full p-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm" placeholder="Best Seller" /></div>
+                        <div><label className="text-[10px] text-gray-400 mb-1 block">Giảm giá %</label><input type="text" value={block.discount || ''} onChange={(e) => onUpdate({ ...block, discount: e.target.value })} className="w-full p-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm" placeholder="20" /></div>
+                    </div>
+
+                    {/* Stock Status */}
+                    <div onClick={() => onUpdate({ ...block, inStock: !block.inStock })} className="flex items-center gap-2 cursor-pointer p-2 border border-blue-100 bg-blue-50 rounded-lg">
+                        {block.inStock ? <CheckSquare size={16} className="text-blue-600" /> : <Square size={16} className="text-gray-400" />}
+                        <span className="text-sm font-medium text-blue-800">Còn hàng</span>
+                    </div>
+
+                    {/* Button Details */}
+                    <div className="pt-3 border-t border-gray-100">
+                        <div className="flex items-center justify-between mb-2"><div className="text-xs font-semibold text-gray-800">Văn bản nút</div><div className="w-full h-px bg-gray-100 ml-3"></div></div>
+                        <div className="grid grid-cols-2 gap-2 mb-2">
+                            <input type="text" value={block.buttonText} onChange={(e) => onUpdate({ ...block, buttonText: e.target.value })} className="w-full p-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm" placeholder="Label" />
+                            <input type="text" value={block.url} onChange={(e) => onUpdate({ ...block, url: e.target.value })} className="w-full p-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm" placeholder="URL" />
+                        </div>
+                    </div>
+
+                    {/* Typography */}
+                    <div className="pt-3 border-t border-gray-100">
+                        <div className="flex items-center justify-between mb-2"><div className="text-xs font-semibold text-gray-800">Cỡ chữ tên SP</div><div className="w-full h-px bg-gray-100 ml-3"></div></div>
+                        <div className="flex gap-2">
+                            {[18, 20, 22, 24, 28].map(s => (
+                                <button key={s} onClick={() => onUpdate({ ...block, titleFontSize: s })} className={`flex-1 p-1.5 rounded-lg border text-xs font-medium ${block.titleFontSize === s ? 'bg-blue-600 text-white border-blue-600' : 'bg-white text-gray-600 border-gray-200 hover:bg-gray-50'}`}>{s}</button>
+                            ))}
+                        </div>
+                    </div>
+
+                    {/* Colors */}
+                    <div className="pt-3 border-t border-gray-100 space-y-3">
+                        <div className="flex items-center justify-between"><div className="text-xs font-semibold text-gray-800">Colors</div><div className="w-full h-px bg-gray-100 ml-3"></div></div>
+
+                        <div className="grid grid-cols-2 gap-3">
+                            <div><label className="text-[10px] text-gray-400 mb-1 block">Nền</label><div className="flex items-center gap-2 p-1.5 border border-gray-200 rounded-lg"><div className="w-6 h-6 rounded overflow-hidden relative border"><input type="color" className="absolute -inset-1 w-[200%] h-[200%] cursor-pointer" value={block.backgroundColor} onChange={(e) => onUpdate({ ...block, backgroundColor: e.target.value })} /></div><span className="text-[10px] mono">{block.backgroundColor}</span></div></div>
+                            <div><label className="text-[10px] text-gray-400 mb-1 block">Chữ</label><div className="flex items-center gap-2 p-1.5 border border-gray-200 rounded-lg"><div className="w-6 h-6 rounded overflow-hidden relative border"><input type="color" className="absolute -inset-1 w-[200%] h-[200%] cursor-pointer" value={block.colors?.text || '#1f2937'} onChange={(e) => onUpdate({ ...block, colors: { ...block.colors, text: e.target.value } })} /></div><span className="text-[10px] mono">{block.colors?.text || '#1f2937'}</span></div></div>
+                            <div><label className="text-[10px] text-gray-400 mb-1 block">Giá</label><div className="flex items-center gap-2 p-1.5 border border-gray-200 rounded-lg"><div className="w-6 h-6 rounded overflow-hidden relative border"><input type="color" className="absolute -inset-1 w-[200%] h-[200%] cursor-pointer" value={block.colors?.price || '#1f2937'} onChange={(e) => onUpdate({ ...block, colors: { ...block.colors, price: e.target.value } })} /></div><span className="text-[10px] mono">{block.colors?.price || '#1f2937'}</span></div></div>
+                            <div><label className="text-[10px] text-gray-400 mb-1 block">Nút</label><div className="flex items-center gap-2 p-1.5 border border-gray-200 rounded-lg"><div className="w-6 h-6 rounded overflow-hidden relative border"><input type="color" className="absolute -inset-1 w-[200%] h-[200%] cursor-pointer" value={block.buttonColor} onChange={(e) => onUpdate({ ...block, buttonColor: e.target.value })} /></div><span className="text-[10px] mono">{block.buttonColor}</span></div></div>
+
+                            <div><label className="text-[10px] text-gray-400 mb-1 block">Badge</label><div className="flex items-center gap-2 p-1.5 border border-gray-200 rounded-lg"><div className="w-6 h-6 rounded overflow-hidden relative border"><input type="color" className="absolute -inset-1 w-[200%] h-[200%] cursor-pointer" value={block.colors?.badge || '#ef4444'} onChange={(e) => onUpdate({ ...block, colors: { ...block.colors, badge: e.target.value } })} /></div><span className="text-[10px] mono">{block.colors?.badge || '#ef4444'}</span></div></div>
+                        </div>
+                    </div>
+                </div>
+            );
+            case 'unsubscribe': return (
+                <div className="space-y-4">
+                    <div>
+                        <label className="text-xs font-medium text-gray-500 mb-1.5 block uppercase">Văn bản Link</label>
+                        <input type="text" value={block.linkText} onChange={(e) => onUpdate({ ...block, linkText: e.target.value })} className="w-full p-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm" />
+                    </div>
+                    <div>
+                        <label className="text-xs font-medium text-gray-500 mb-1.5 block uppercase">Link</label>
+                        <input type="text" value={block.url} onChange={(e) => onUpdate({ ...block, url: e.target.value })} className="w-full p-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm font-mono text-gray-600" />
+                        <div className="mt-1 text-[10px] text-blue-500 flex items-center gap-1"><span className="w-3 h-3 rounded-full bg-blue-100 flex items-center justify-center font-bold">i</span> Sử dụng <code>{'{{UNSUBSCRIBE_URL}}'}</code> để tự động inject token</div>
+                    </div>
+                    <div>
+                        <label className="text-xs font-medium text-gray-500 mb-1.5 block uppercase">Mô tả</label>
+                        <textarea value={block.text} onChange={(e) => onUpdate({ ...block, text: e.target.value })} className="w-full p-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm h-20 text-gray-600" />
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-3">
+                        <div>
+                            <label className="text-xs font-medium text-gray-500 mb-1.5 block uppercase">Căn chỉnh</label>
+                            <AlignBtns val={block.alignment} onChange={(v) => onUpdate({ ...block, alignment: v })} />
+                        </div>
+                        <div>
+                            <label className="text-xs font-medium text-gray-500 mb-1.5 block uppercase">Cỡ chữ</label>
+                            <div className="flex bg-gray-50 rounded-lg p-1 border border-gray-200">
+                                {[10, 11, 12, 13, 14].map(s => (
+                                    <button key={s} onClick={() => onUpdate({ ...block, fontSize: s })} className={`flex-1 py-1 rounded text-xs font-medium transition-all ${block.fontSize === s ? 'bg-white text-blue-600 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}>{s}</button>
+                                ))}
+                            </div>
+                        </div>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-3 pt-3 border-t border-gray-100">
+                        <div><label className="text-[10px] text-gray-400 mb-1 block uppercase font-bold">Chữ</label><div className="flex items-center gap-2 p-1.5 border border-gray-200 rounded-lg"><div className="w-6 h-6 rounded overflow-hidden relative border"><input type="color" className="absolute -inset-1 w-[200%] h-[200%] cursor-pointer" value={block.colors?.text || '#6b7280'} onChange={(e) => onUpdate({ ...block, colors: { ...block.colors, text: e.target.value } })} /></div><span className="text-[10px] mono">{block.colors?.text || '#6b7280'}</span></div></div>
+                        <div><label className="text-[10px] text-gray-400 mb-1 block uppercase font-bold">Link</label><div className="flex items-center gap-2 p-1.5 border border-gray-200 rounded-lg"><div className="w-6 h-6 rounded overflow-hidden relative border"><input type="color" className="absolute -inset-1 w-[200%] h-[200%] cursor-pointer" value={block.colors?.link || '#3b82f6'} onChange={(e) => onUpdate({ ...block, colors: { ...block.colors, link: e.target.value } })} /></div><span className="text-[10px] mono">{block.colors?.link || '#3b82f6'}</span></div></div>
+                    </div>
+
+                    <div className="pt-3 border-t border-gray-100">
+                        <label className="text-[10px] text-gray-400 mb-1 block uppercase font-bold">Nền</label>
+                        <div className="flex items-center gap-2 p-1.5 border border-gray-200 rounded-lg">
+                            <div className="w-6 h-6 rounded overflow-hidden relative border">
+                                <input type="color" className="absolute -inset-1 w-[200%] h-[200%] cursor-pointer" value={block.colors?.background || '#ffffff'} onChange={(e) => onUpdate({ ...block, colors: { ...block.colors, background: e.target.value } })} />
+                            </div>
+                            <span className="text-[10px] mono">{block.colors?.background || 'Transparent'}</span>
+                            {block.colors?.background && <button onClick={() => onUpdate({ ...block, colors: { ...block.colors, background: undefined } })} className="ml-auto text-xs text-red-500 underline">Xóa</button>}
+                        </div>
+                    </div>
+                </div>
+            );
+
+            case 'product-grid': return (
+                <div className="space-y-6">
+                    {/* --- Title Section --- */}
+                    <div className="space-y-4 pb-4 border-b border-gray-100">
+                        <div className="flex items-center gap-2 font-bold text-xs text-gray-600 uppercase"><Layers size={14} /> Tiêu đề</div>
+                        <input type="text" value={block.title} onChange={(e) => onUpdate({ ...block, title: e.target.value })} className="w-full p-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm" placeholder="Sản phẩm nổi bật" />
+
+                        <div>
+                            <label className="text-xs font-medium text-gray-500 mb-1.5 block uppercase">Số cột</label>
+                            <select value={block.columns || 2} onChange={(e) => onUpdate({ ...block, columns: Number(e.target.value) as 2 | 3 })} className="w-full p-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm">
+                                <option value={2}>2 cột</option>
+                                <option value={3}>3 cột</option>
+                            </select>
+                        </div>
+
+                        <div className="space-y-3">
+                            <label className="text-xs font-medium text-gray-500 block uppercase">Căn chỉnh tiêu đề</label>
+                            <div className="flex bg-gray-50 rounded-lg p-1 border border-gray-200">
+                                {['left', 'center', 'right'].map((a) => (
+                                    <button key={a} onClick={() => onUpdate({ ...block, titleAlignment: a as any })} className={`flex-1 py-1.5 rounded text-gray-500 hover:text-gray-900 ${block.titleAlignment === a ? 'bg-white shadow-sm text-blue-600' : ''}`}>
+                                        {a === 'left' ? <AlignLeft size={16} /> : a === 'center' ? <AlignCenter size={16} /> : <AlignRight size={16} />}
+                                    </button>
+                                ))}
+                            </div>
+                        </div>
+
+                        <div className="grid grid-cols-2 gap-3">
+                            <div>
+                                <label className="text-xs font-medium text-gray-500 mb-1.5 block uppercase">Font Family</label>
+                                <select value={block.fontFamily || 'Arial'} onChange={(e) => onUpdate({ ...block, fontFamily: e.target.value })} className="w-full p-2 bg-gray-50 border border-gray-200 rounded-lg text-xs">
+                                    <option value="Arial">Arial</option>
+                                    <option value="Helvetica">Helvetica</option>
+                                    <option value="Times New Roman">Times New Roman</option>
+                                    <option value="Courier New">Courier New</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label className="text-xs font-medium text-gray-500 mb-1.5 block uppercase">Font Size</label>
+                                <select value={block.titleFontSize || 20} onChange={(e) => onUpdate({ ...block, titleFontSize: Number(e.target.value) })} className="w-full p-2 bg-gray-50 border border-gray-200 rounded-lg text-xs">
+                                    {[16, 18, 20, 24, 28, 32].map(s => <option key={s} value={s}>{s}px</option>)}
+                                </select>
+                            </div>
+                        </div>
+
+                        <div className="flex gap-2">
+                            <div className="flex-1">
+                                <label className="text-xs font-medium text-gray-500 mb-1.5 block uppercase">Style</label>
+                                <div className="flex bg-gray-50 rounded-lg p-1 border border-gray-200">
+                                    <button onClick={() => onUpdate({ ...block, titleFontWeight: block.titleFontWeight === 'bold' ? 'normal' : 'bold' })} className={`flex-1 py-1 rounded ${block.titleFontWeight === 'bold' ? 'bg-blue-600 text-white' : 'text-gray-500'}`}><Bold size={14} /></button>
+                                    <button onClick={() => onUpdate({ ...block, titleFontStyle: block.titleFontStyle === 'italic' ? 'normal' : 'italic' })} className={`flex-1 py-1 rounded ${block.titleFontStyle === 'italic' ? 'bg-blue-600 text-white' : 'text-gray-500'}`}><Italic size={14} /></button>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div className="grid grid-cols-2 gap-3">
+                            <div>
+                                <label className="text-xs font-medium text-gray-500 mb-1 block uppercase">Màu chữ</label>
+                                <div className="flex items-center gap-2 p-1.5 border border-gray-200 rounded-lg"><div className="w-6 h-6 rounded border relative overflow-hidden"><input type="color" className="absolute -inset-1 w-[200%] h-[200%] cursor-pointer" value={block.titleColors?.text} onChange={(e) => onUpdate({ ...block, titleColors: { ...block.titleColors!, text: e.target.value } })} /></div><span className="text-[10px] mono">{block.titleColors?.text}</span></div>
+                            </div>
+                            <div>
+                                <label className="text-xs font-medium text-gray-500 mb-1 block uppercase">Nền Icon/Tiêu đề</label>
+                                <div className="flex items-center gap-2 p-1.5 border border-gray-200 rounded-lg"><div className="w-6 h-6 rounded border relative overflow-hidden"><input type="color" className="absolute -inset-1 w-[200%] h-[200%] cursor-pointer" value={block.titleColors?.background || '#ffffff'} onChange={(e) => onUpdate({ ...block, titleColors: { ...block.titleColors!, background: e.target.value } })} /></div><span className="text-[10px] mono">{block.titleColors?.background}</span></div>
+                            </div>
+                        </div>
+
+                        <div>
+                            <label className="text-xs font-medium text-gray-500 mb-1.5 block uppercase">Icon URL</label>
+                            <input type="text" value={block.titleIcon || ''} onChange={(e) => onUpdate({ ...block, titleIcon: e.target.value })} className="w-full p-2 bg-gray-50 border border-gray-200 rounded-lg text-xs" placeholder="https://..." />
+                        </div>
+                    </div>
+
+                    {/* --- Card Settings --- */}
+                    <div className="space-y-4 pb-4 border-b border-gray-100">
+                        <div className="flex items-center gap-2 font-bold text-xs text-gray-600 uppercase"><LayoutGrid size={14} /> Cài đặt Card</div>
+
+                        <div className="grid grid-cols-2 gap-3">
+                            <div>
+                                <label className="text-xs font-medium text-gray-500 mb-1 block uppercase">Nền Card</label>
+                                <div className="flex items-center gap-2 p-1.5 border border-gray-200 rounded-lg"><div className="w-6 h-6 rounded border relative overflow-hidden"><input type="color" className="absolute -inset-1 w-[200%] h-[200%] cursor-pointer" value={block.cardBackgroundColor} onChange={(e) => onUpdate({ ...block, cardBackgroundColor: e.target.value })} /></div><span className="text-[10px] mono">{block.cardBackgroundColor}</span></div>
+                            </div>
+                            <div>
+                                <label className="text-xs font-medium text-gray-500 mb-1 block uppercase">Viền Card</label>
+                                <div className="flex items-center gap-2 p-1.5 border border-gray-200 rounded-lg"><div className="w-6 h-6 rounded border relative overflow-hidden"><input type="color" className="absolute -inset-1 w-[200%] h-[200%] cursor-pointer" value={block.cardBorderColor} onChange={(e) => onUpdate({ ...block, cardBorderColor: e.target.value })} /></div><span className="text-[10px] mono">{block.cardBorderColor}</span></div>
+                            </div>
+                        </div>
+
+                        <div className="grid grid-cols-3 gap-2">
+                            <div>
+                                <label className="text-[10px] text-gray-400 mb-1 block uppercase font-bold">Tên SP</label>
+                                <div className="w-full h-8 rounded border relative overflow-hidden"><input type="color" className="absolute -inset-1 w-[200%] h-[200%] cursor-pointer" value={block.productNameColor} onChange={(e) => onUpdate({ ...block, productNameColor: e.target.value })} /></div>
+                            </div>
+                            <div>
+                                <label className="text-[10px] text-gray-400 mb-1 block uppercase font-bold">Giá</label>
+                                <div className="w-full h-8 rounded border relative overflow-hidden"><input type="color" className="absolute -inset-1 w-[200%] h-[200%] cursor-pointer" value={block.priceColor} onChange={(e) => onUpdate({ ...block, priceColor: e.target.value })} /></div>
+                            </div>
+                            <div>
+                                <label className="text-[10px] text-gray-400 mb-1 block uppercase font-bold">Giá Cũ</label>
+                                <div className="w-full h-8 rounded border relative overflow-hidden"><input type="color" className="absolute -inset-1 w-[200%] h-[200%] cursor-pointer" value={block.oldPriceColor} onChange={(e) => onUpdate({ ...block, oldPriceColor: e.target.value })} /></div>
+                            </div>
+                        </div>
+
+                        <div>
+                            <label className="text-xs font-medium text-gray-500 mb-1.5 block uppercase">Độ Dày Viền</label>
+                            <div className="flex bg-gray-50 rounded-lg p-1 border border-gray-200">
+                                {[0, 1, 2, 3].map(w => (
+                                    <button key={w} onClick={() => onUpdate({ ...block, cardBorderWidth: w })} className={`flex-1 py-1 rounded text-xs font-medium transition-all ${block.cardBorderWidth === w ? 'bg-white text-blue-600 shadow-sm border border-gray-100' : 'text-gray-500'}`}>{w}</button>
+                                ))}
+                            </div>
+                        </div>
+                        <div>
+                            <label className="text-xs font-medium text-gray-500 mb-1.5 block uppercase">Bo góc Card</label>
+                            <div className="flex bg-gray-50 rounded-lg p-1 border border-gray-200">
+                                {[0, 8, 12, 16, 24].map(r => (
+                                    <button key={r} onClick={() => onUpdate({ ...block, cardBorderRadius: r })} className={`flex-1 py-1 rounded text-xs font-medium transition-all ${block.cardBorderRadius === r ? 'bg-white text-blue-600 shadow-sm border border-gray-100' : 'text-gray-500'}`}>{r}</button>
+                                ))}
+                            </div>
+                        </div>
+                        <div>
+                            <label className="text-xs font-medium text-gray-500 mb-1.5 block uppercase">Padding Card</label>
+                            <div className="flex bg-gray-50 rounded-lg p-1 border border-gray-200">
+                                {[0, 4, 8, 12, 16].map(r => (
+                                    <button key={r} onClick={() => onUpdate({ ...block, cardPadding: r })} className={`flex-1 py-1 rounded text-xs font-medium transition-all ${block.cardPadding === r ? 'bg-white text-blue-600 shadow-sm border border-gray-100' : 'text-gray-500'}`}>{r}</button>
+                                ))}
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* --- Image Settings --- */}
+                    <div className="space-y-4 pb-4 border-b border-gray-100">
+                        <div className="flex items-center gap-2 font-bold text-xs text-gray-600 uppercase"><ImageIcon size={14} /> Cài đặt Hình ảnh</div>
+
+                        <div className="flex gap-2">
+                            <div className="flex-1">
+                                <label className="text-xs font-medium text-gray-500 mb-1.5 block uppercase">Kiểu hình</label>
+                                <div className="flex bg-gray-50 rounded-lg p-1 border border-gray-200">
+                                    <button onClick={() => onUpdate({ ...block, imageShape: 'rectangle' })} className={`flex-1 py-1 rounded text-xs font-medium ${block.imageShape === 'rectangle' ? 'bg-blue-600 text-white' : 'text-gray-500'}`}>Chữ nhật</button>
+                                    <button onClick={() => onUpdate({ ...block, imageShape: 'circle' })} className={`flex-1 py-1 rounded text-xs font-medium ${block.imageShape === 'circle' ? 'bg-blue-600 text-white' : 'text-gray-500'}`}>Tròn</button>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div>
+                            <label className="text-xs font-medium text-gray-500 mb-1.5 block uppercase">Chiều cao ảnh</label>
+                            <div className="flex bg-gray-50 rounded-lg p-1 border border-gray-200">
+                                {[100, 120, 140, 160, 180].map(h => (
+                                    <button key={h} onClick={() => onUpdate({ ...block, imageHeight: h })} className={`flex-1 py-1 rounded text-xs font-medium transition-all ${block.imageHeight === h ? 'bg-white text-blue-600 shadow-sm border border-gray-100' : 'text-gray-500'}`}>{h}</button>
+                                ))}
+                            </div>
+                        </div>
+
+                        <div>
+                            <label className="text-xs font-medium text-gray-500 mb-1.5 block uppercase">Bo góc hình ảnh</label>
+                            <div className="flex bg-gray-50 rounded-lg p-1 border border-gray-200">
+                                {[0, 8, 12, 16].map(r => (
+                                    <button key={r} onClick={() => onUpdate({ ...block, imageBorderRadius: r })} className={`flex-1 py-1 rounded text-xs font-medium transition-all ${block.imageBorderRadius === r ? 'bg-white text-blue-600 shadow-sm border border-gray-100' : 'text-gray-500'}`}>{r}</button>
+                                ))}
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* --- Product List --- */}
+                    <div className="space-y-4">
+                        <div className="flex items-center justify-between">
+                            <div className="text-xs font-bold text-gray-600 uppercase">Sản phẩm ({block.products.length})</div>
+                            <button onClick={() => onUpdate({ ...block, products: [...block.products, { id: Date.now().toString(), image: '', title: 'Sản phẩm mới', price: '0đ', originalPrice: '', url: '#' }] })} className="px-3 py-1 bg-blue-600 text-white text-xs rounded hover:bg-blue-700 flex items-center gap-1">+ Thêm</button>
+                        </div>
+                        {block.products.map((p, i) => (
+                            <div key={i} className="p-3 bg-gray-50 rounded-xl border border-gray-200 relative group">
+                                <button onClick={() => { const np = [...block.products]; np.splice(i, 1); onUpdate({ ...block, products: np }); }} className="absolute top-2 right-2 p-1 text-gray-400 hover:text-red-500"><Trash2 size={12} /></button>
+                                <div className="text-xs font-bold text-gray-700 mb-2">Sản phẩm {i + 1}</div>
+                                <div className="space-y-2">
+                                    <input type="text" value={p.title} onChange={(e) => { const np = [...block.products]; np[i].title = e.target.value; onUpdate({ ...block, products: np }); }} className="w-full p-2 bg-white border border-gray-200 rounded-lg text-xs" placeholder="Tên sản phẩm" />
+                                    <div className="flex gap-2">
+                                        <input type="text" value={p.price} onChange={(e) => { const np = [...block.products]; np[i].price = e.target.value; onUpdate({ ...block, products: np }); }} className="w-full p-2 bg-white border border-gray-200 rounded-lg text-xs" placeholder="Giá" />
+                                        <input type="text" value={p.originalPrice || ''} onChange={(e) => { const np = [...block.products]; np[i].originalPrice = e.target.value; onUpdate({ ...block, products: np }); }} className="w-full p-2 bg-white border border-gray-200 rounded-lg text-xs" placeholder="Giá cũ" />
+                                    </div>
+                                    <input type="text" value={p.image} onChange={(e) => { const np = [...block.products]; np[i].image = e.target.value; onUpdate({ ...block, products: np }); }} className="w-full p-2 bg-white border border-gray-200 rounded-lg text-xs" placeholder="Image URL (https://...)" />
+                                    <input type="text" value={p.url} onChange={(e) => { const np = [...block.products]; np[i].url = e.target.value; onUpdate({ ...block, products: np }); }} className="w-full p-2 bg-white border border-gray-200 rounded-lg text-xs" placeholder="Link (#)" />
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                </div>
+            );
+            case 'coupon': return (
+                <div className="space-y-4">
+                    <div className="space-y-4 pb-4 border-b border-gray-100">
+                        <div className="flex items-center gap-2 font-bold text-xs text-gray-600 uppercase"><Ticket size={14} /> Mã giảm giá</div>
+                        <div>
+                            <label className="text-xs font-medium text-gray-500 mb-1.5 block uppercase">MÃ COUPON</label>
+                            <input type="text" value={block.code} onChange={(e) => onUpdate({ ...block, code: e.target.value })} className="w-full p-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm" placeholder="SAVE20" />
+                        </div>
+
+                        <div className="grid grid-cols-2 gap-3">
+                            <div>
+                                <label className="text-xs font-medium text-gray-500 mb-1.5 block uppercase">Badge</label>
+                                <input type="text" value={block.discount} onChange={(e) => onUpdate({ ...block, discount: e.target.value })} className="w-full p-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm" placeholder="20% OFF" />
+                            </div>
+                            <div>
+                                <label className="text-xs font-medium text-gray-500 mb-1.5 block uppercase">Hạn sử dụng</label>
+                                <input type="text" value={block.expirationDate || ''} onChange={(e) => onUpdate({ ...block, expirationDate: e.target.value })} className="w-full p-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm" placeholder="Dec 31, 2025" />
+                            </div>
+                        </div>
+
+                        <div>
+                            <label className="text-xs font-medium text-gray-500 mb-1.5 block uppercase">Điều kiện</label>
+                            <input type="text" value={block.description} onChange={(e) => onUpdate({ ...block, description: e.target.value })} className="w-full p-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm" placeholder="Use this code at checkout" />
+                        </div>
+                    </div>
+
+                    <div className="space-y-4 pb-4 border-b border-gray-100">
+                        <div className="flex items-center gap-2 font-bold text-xs text-gray-600 uppercase"><Palette size={14} /> Cài đặt Card Phẩm</div>
+
+                        <div className="grid grid-cols-2 gap-3">
+                            <div>
+                                <label className="text-xs font-medium text-gray-500 mb-1 block uppercase">Nền</label>
+                                <div className="flex items-center gap-2 p-1.5 border border-gray-200 rounded-lg"><div className="w-6 h-6 rounded border relative overflow-hidden"><input type="color" className="absolute -inset-1 w-[200%] h-[200%] cursor-pointer" value={block.backgroundColor} onChange={(e) => onUpdate({ ...block, backgroundColor: e.target.value })} /></div><span className="text-[10px] mono">{block.backgroundColor}</span></div>
+                            </div>
+                            <div>
+                                <label className="text-xs font-medium text-gray-500 mb-1 block uppercase">Viền</label>
+                                <div className="flex items-center gap-2 p-1.5 border border-gray-200 rounded-lg"><div className="w-6 h-6 rounded border relative overflow-hidden"><input type="color" className="absolute -inset-1 w-[200%] h-[200%] cursor-pointer" value={block.borderColor} onChange={(e) => onUpdate({ ...block, borderColor: e.target.value })} /></div><span className="text-[10px] mono">{block.borderColor}</span></div>
+                            </div>
+                        </div>
+
+                        <div className="grid grid-cols-2 gap-3">
+                            <div>
+                                <label className="text-xs font-medium text-gray-500 mb-1 block uppercase">Màu Mã</label>
+                                <div className="flex items-center gap-2 p-1.5 border border-gray-200 rounded-lg"><div className="w-6 h-6 rounded border relative overflow-hidden"><input type="color" className="absolute -inset-1 w-[200%] h-[200%] cursor-pointer" value={block.codeColor || '#D97706'} onChange={(e) => onUpdate({ ...block, codeColor: e.target.value })} /></div><span className="text-[10px] mono">{block.codeColor}</span></div>
+                            </div>
+                            <div>
+                                <label className="text-xs font-medium text-gray-500 mb-1 block uppercase">Nền Icon</label>
+                                <div className="flex items-center gap-2 p-1.5 border border-gray-200 rounded-lg"><div className="w-6 h-6 rounded border relative overflow-hidden"><input type="color" className="absolute -inset-1 w-[200%] h-[200%] cursor-pointer" value={block.badgeColor || '#F59E0B'} onChange={(e) => onUpdate({ ...block, badgeColor: e.target.value })} /></div><span className="text-[10px] mono">{block.badgeColor}</span></div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div>
+                        <label className="text-xs font-medium text-gray-500 mb-1.5 block uppercase">URL Icon</label>
+                        <input type="text" value={block.iconUrl || ''} onChange={(e) => onUpdate({ ...block, iconUrl: e.target.value })} className="w-full p-2 bg-gray-50 border border-gray-200 rounded-lg text-xs" placeholder="https://img.icons8.com/..." />
+                        <div className="mt-1 text-[10px] text-gray-400">ĐIcon hiển thị trên badge</div>
+                    </div>
+                </div>
+            );
+
+            case 'order-summary': return (
+                <div className="space-y-4">
+                    <div className="space-y-4 pb-4 border-b border-gray-100">
+                        <div className="flex items-center gap-2 font-bold text-xs text-gray-600 uppercase"><Receipt size={14} /> Tổng đơn hàng</div>
+
+                        {/* Title & Order ID */}
+                        <div>
+                            <label className="text-xs font-medium text-gray-500 mb-1.5 block uppercase">TIÊU ĐỀ</label>
+                            <input type="text" value={block.title} onChange={(e) => onUpdate({ ...block, title: e.target.value })} className="w-full p-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm mb-2" placeholder="Tổng đơn hàng" />
+                            <input type="text" value={block.orderId} onChange={(e) => onUpdate({ ...block, orderId: e.target.value })} className="w-full p-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm" placeholder="Đơn hàng #12345" />
+                        </div>
+
+                        {/* Items Management */}
+                        <div>
+                            <div className="flex justify-between items-center mb-1.5">
+                                <label className="text-xs font-medium text-gray-500 uppercase">SẢN PHẨM</label>
+                                <button onClick={() => onUpdate({ ...block, items: [...block.items, { name: 'New Item', qty: 1, price: '$0' }] })} className="px-2 py-1 bg-blue-600 text-white text-[10px] font-bold rounded flex items-center gap-1 hover:bg-blue-700 transition-colors"><Plus size={12} /> Thêm</button>
+                            </div>
+                            <div className="space-y-2 max-h-40 overflow-y-auto pr-1">
+                                {block.items.map((item, i) => (
+                                    <div key={i} className="p-2 bg-gray-50 border border-gray-200 rounded-lg text-xs space-y-1 group">
+                                        <div className="flex gap-2">
+                                            <input type="text" value={item.name} onChange={(e) => { const newItems = [...block.items]; newItems[i].name = e.target.value; onUpdate({ ...block, items: newItems }); }} className="flex-1 p-1 bg-white border border-gray-200 rounded" placeholder="Name" />
+                                            <input type="number" value={item.qty} onChange={(e) => { const newItems = [...block.items]; newItems[i].qty = +e.target.value; onUpdate({ ...block, items: newItems }); }} className="w-10 p-1 bg-white border border-gray-200 rounded text-center" />
+                                        </div>
+                                        <div className="flex gap-2 items-center">
+                                            <input type="text" value={item.price} onChange={(e) => { const newItems = [...block.items]; newItems[i].price = e.target.value; onUpdate({ ...block, items: newItems }); }} className="flex-1 p-1 bg-white border border-gray-200 rounded text-right" placeholder="Price" />
+                                            <button onClick={() => { const newItems = block.items.filter((_, idx) => idx !== i); onUpdate({ ...block, items: newItems }); }} className="text-gray-400 hover:text-red-500 p-1"><Trash2 size={12} /></button>
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+
+                        {/* Costs */}
+                        <div className="space-y-2">
+                            <div className="flex items-center gap-2">
+                                <label className="w-20 text-xs text-gray-500">Tạm tính</label>
+                                <input type="text" value={block.subtotal} onChange={(e) => onUpdate({ ...block, subtotal: e.target.value })} className="flex-1 p-2 bg-gray-50 border border-gray-200 rounded-lg text-sm text-right" />
+                            </div>
+                            <div className="flex items-center gap-2">
+                                <label className="w-20 text-xs text-gray-500">Phí ship</label>
+                                <input type="text" value={block.shippingFee} onChange={(e) => onUpdate({ ...block, shippingFee: e.target.value })} className="flex-1 p-2 bg-gray-50 border border-gray-200 rounded-lg text-sm text-right" />
+                            </div>
+                            <div className="flex items-center gap-2">
+                                <label className="w-20 text-xs font-bold text-gray-700">Tổng cộng</label>
+                                <input type="text" value={block.total} onChange={(e) => onUpdate({ ...block, total: e.target.value })} className="flex-1 p-2 bg-gray-50 border border-gray-200 rounded-lg text-sm text-right font-bold" />
+                            </div>
+                        </div>
+
+                        {/* Shipping Address */}
+                        <div className="space-y-2 pt-2 mt-2 border-t border-gray-100">
+                            <div className="flex items-center gap-2">
+                                <label className="w-20 text-xs text-gray-500">Label Ship</label>
+                                <input type="text" value={block.shippingLabel || 'Ship to'} onChange={(e) => onUpdate({ ...block, shippingLabel: e.target.value })} className="flex-1 p-2 bg-gray-50 border border-gray-200 rounded-lg text-sm" placeholder="Ship to" />
+                            </div>
+                            <div className="flex items-center gap-2">
+                                <label className="w-20 text-xs text-gray-500">Địa chỉ</label>
+                                <input type="text" value={block.shippingAddress} onChange={(e) => onUpdate({ ...block, shippingAddress: e.target.value })} className="flex-1 p-2 bg-gray-50 border border-gray-200 rounded-lg text-sm" placeholder="123 Main St..." />
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Styling */}
+                    <div className="space-y-4">
+                        <div className="flex items-center gap-2 font-bold text-xs text-gray-600 uppercase"><Palette size={14} /> Căn chỉnh Tiêu đề</div>
+                        <div className="flex bg-gray-100 p-1 rounded-lg">
+                            {['left', 'center', 'right'].map((align) => (
+                                <button key={align} onClick={() => onUpdate({ ...block, titleAlignment: align as any })} className={`flex-1 p-1.5 rounded-md flex justify-center ${block.titleAlignment === align ? 'bg-blue-600 text-white shadow-sm' : 'text-gray-500 hover:bg-gray-200'}`}>
+                                    {align === 'left' && <AlignLeft size={16} />}
+                                    {align === 'center' && <AlignCenter size={16} />}
+                                    {align === 'right' && <AlignRight size={16} />}
+                                </button>
+                            ))}
+                        </div>
+
+                        <div className="grid grid-cols-2 gap-3">
+                            <div>
+                                <label className="text-xs font-medium text-gray-500 mb-1 block uppercase">Cỡ chữ tiêu đề</label>
+                                <div className="flex gap-1">
+                                    {[16, 18, 20, 24].map((size) => (
+                                        <button key={size} onClick={() => onUpdate({ ...block, titleFontSize: size })} className={`flex-1 py-1 rounded text-xs font-medium border ${block.titleFontSize === size ? 'bg-blue-600 text-white border-blue-600' : 'bg-white border-gray-200 text-gray-600 hover:bg-gray-50'}`}>{size}</button>
+                                    ))}
+                                </div>
+                            </div>
+                            <div>
+                                <label className="text-xs font-medium text-gray-500 mb-1 block uppercase">Kiểu chữ</label>
+                                <div className="flex gap-1">
+                                    <button onClick={() => onUpdate({ ...block, titleFontWeight: block.titleFontWeight === 'bold' ? 'normal' : 'bold' })} className={`flex-1 py-1 rounded border flex items-center justify-center ${block.titleFontWeight === 'bold' ? 'bg-blue-600 text-white border-blue-600' : 'bg-white border-gray-200 text-gray-600'}`}><Bold size={14} /></button>
+                                    <button onClick={() => onUpdate({ ...block, titleFontStyle: block.titleFontStyle === 'italic' ? 'normal' : 'italic' })} className={`flex-1 py-1 rounded border flex items-center justify-center ${block.titleFontStyle === 'italic' ? 'bg-blue-600 text-white border-blue-600' : 'bg-white border-gray-200 text-gray-600'}`}><Italic size={14} /></button>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div>
+                            <label className="text-xs font-medium text-gray-500 mb-1 block uppercase">Font Chữ</label>
+                            <select value={block.fontFamily} onChange={(e) => onUpdate({ ...block, fontFamily: e.target.value })} className="w-full p-2 bg-gray-50 border border-gray-200 rounded-lg text-sm">
+                                <option value="Arial">Arial</option>
+                                <option value="Helvetica">Helvetica</option>
+                                <option value="Times New Roman">Times New Roman</option>
+                                <option value="Courier New">Courier New</option>
+                            </select>
+                        </div>
+
+                        <div className="grid grid-cols-2 gap-3">
+                            <div>
+                                <label className="text-xs font-medium text-gray-500 mb-1 block uppercase">Nền</label>
+                                <div className="flex items-center gap-2 p-1.5 border border-gray-200 rounded-lg"><div className="w-6 h-6 rounded border relative overflow-hidden"><input type="color" className="absolute -inset-1 w-[200%] h-[200%] cursor-pointer" value={block.backgroundColor} onChange={(e) => onUpdate({ ...block, backgroundColor: e.target.value })} /></div><span className="text-[10px] mono">{block.backgroundColor}</span></div>
+                            </div>
+                            <div>
+                                <label className="text-xs font-medium text-gray-500 mb-1 block uppercase">Tiêu đề</label>
+                                <div className="flex items-center gap-2 p-1.5 border border-gray-200 rounded-lg"><div className="w-6 h-6 rounded border relative overflow-hidden"><input type="color" className="absolute -inset-1 w-[200%] h-[200%] cursor-pointer" value={block.titleColor || '#1F2937'} onChange={(e) => onUpdate({ ...block, titleColor: e.target.value })} /></div><span className="text-[10px] mono">{block.titleColor}</span></div>
+                            </div>
+                        </div>
+
+                        <div className="grid grid-cols-2 gap-3">
+                            <div>
+                                <label className="text-xs font-medium text-gray-500 mb-1 block uppercase">Tổng tiền</label>
+                                <div className="flex items-center gap-2 p-1.5 border border-gray-200 rounded-lg"><div className="w-6 h-6 rounded border relative overflow-hidden"><input type="color" className="absolute -inset-1 w-[200%] h-[200%] cursor-pointer" value={block.totalColor || '#2563EB'} onChange={(e) => onUpdate({ ...block, totalColor: e.target.value })} /></div><span className="text-[10px] mono">{block.totalColor}</span></div>
+                            </div>
+                            <div>
+                                <label className="text-xs font-medium text-gray-500 mb-1 block uppercase">Viền</label>
+                                <div className="flex items-center gap-2 p-1.5 border border-gray-200 rounded-lg"><div className="w-6 h-6 rounded border relative overflow-hidden"><input type="color" className="absolute -inset-1 w-[200%] h-[200%] cursor-pointer" value={block.borderColor || '#E5E7EB'} onChange={(e) => onUpdate({ ...block, borderColor: e.target.value })} /></div><span className="text-[10px] mono">{block.borderColor}</span></div>
+                            </div>
+                        </div>
+
+                        <div className="grid grid-cols-2 gap-3">
+                            <div>
+                                <label className="text-xs font-medium text-gray-500 mb-1 block uppercase">Nền Icon</label>
+                                <div className="flex items-center gap-2 p-1.5 border border-gray-200 rounded-lg"><div className="w-6 h-6 rounded border relative overflow-hidden"><input type="color" className="absolute -inset-1 w-[200%] h-[200%] cursor-pointer" value={block.iconBackgroundColor || '#10B981'} onChange={(e) => onUpdate({ ...block, iconBackgroundColor: e.target.value })} /></div><span className="text-[10px] mono">{block.iconBackgroundColor}</span></div>
+                            </div>
+                        </div>
+
+                        <div>
+                            <label className="text-xs font-medium text-gray-500 mb-1.5 block uppercase">URL Icon</label>
+                            <input type="text" value={block.iconUrl || ''} onChange={(e) => onUpdate({ ...block, iconUrl: e.target.value })} className="w-full p-2 bg-gray-50 border border-gray-200 rounded-lg text-xs" placeholder="https://img.icons8.com/..." />
+                        </div>
+                    </div>
+                </div>
+            );
+
+
+
+
             default: return null;
         }
     };
@@ -691,7 +1698,8 @@ const TopControlBar: React.FC<{
     onSave: () => void;
     onImport: () => void;
     onPreview: () => void;
-}> = ({ device, onDeviceChange, onSave, onImport, onPreview }) => {
+    onToggleStructureMap: () => void;
+}> = ({ device, onDeviceChange, onSave, onImport, onPreview, onToggleStructureMap }) => {
     return (
         <div className="h-12 bg-white border-b border-gray-200 px-4 flex items-center justify-between shrink-0 mb-0">
             {/* Device Toggle */}
@@ -709,6 +1717,15 @@ const TopControlBar: React.FC<{
                     <Smartphone size={14} /> Mobile
                 </button>
             </div>
+
+            {/* Structure Map Toggle */}
+            <button
+                onClick={onToggleStructureMap}
+                className="flex items-center gap-1.5 px-3 py-1.5 ml-2 mr-auto text-gray-600 hover:text-blue-600 hover:bg-blue-50 rounded-lg text-xs font-medium transition-all"
+                title="Bản Đồ Cấu Trúc"
+            >
+                <Network size={16} />
+            </button>
 
             {/* Actions */}
             <div className="flex items-center gap-2">
@@ -1131,6 +2148,116 @@ const PreviewModal: React.FC<{
 };
 
 // =============================================
+// STRUCTURE MAP MODAL
+// =============================================
+const StructureMapModal: React.FC<{
+    isOpen: boolean;
+    onClose: () => void;
+    blocks: EmailBlock[];
+    onSelectBlock: (id: string) => void;
+    selectedId: string | null;
+}> = ({ isOpen, onClose, blocks, onSelectBlock, selectedId }) => {
+    if (!isOpen) return null;
+
+    // Helper to count blocks recursively
+    const countBlocks = (list: EmailBlock[]): number => {
+        let count = list.length;
+        list.forEach(b => {
+            if ((b as any).children) count += countBlocks((b as any).children);
+        });
+        return count;
+    };
+
+    // Helper to render tree
+    const renderTree = (list: EmailBlock[], depth: number = 0) => {
+        return list.map(b => (
+            <div key={b.id}>
+                <div
+                    onClick={(e) => { e.stopPropagation(); onSelectBlock(b.id); }}
+                    className={`flex items-center gap-2 p-2 rounded-lg cursor-pointer mb-1 transition-colors ${selectedId === b.id ? 'bg-blue-50 text-blue-700 border border-blue-200' : 'hover:bg-gray-50 text-gray-700'}`}
+                    style={{ paddingLeft: `${depth * 16 + 8}px` }}
+                >
+                    <div className="text-gray-400">
+                        {b.type === 'heading' && <Type size={14} />}
+                        {b.type === 'text' && <Type size={14} />}
+                        {b.type === 'image' && <ImageIcon size={14} />}
+                        {b.type === 'button' && <MousePointerClick size={14} />}
+                        {b.type === 'divider' && <Minus size={14} />}
+                        {b.type === 'spacer' && <Maximize2 size={14} />}
+                        {b.type === 'social' && <Share2 size={14} />}
+                        {b.type === 'footer' && <LayoutTemplate size={14} />}
+                        {b.type === 'product' && <ShoppingBag size={14} />}
+                        {b.type === 'coupon' && <Ticket size={14} />}
+                        {b.type === 'order-summary' && <Receipt size={14} />}
+                        {(b.type === 'row2' || b.type === 'row3') && <Columns size={14} />}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                        <div className="text-xs font-bold truncate">
+                            {b.type === 'heading' ? 'Tiêu đề' :
+                                b.type === 'text' ? 'Văn bản' :
+                                    b.type === 'button' ? 'Nút bấm' :
+                                        b.type === 'image' ? 'Hình ảnh' :
+                                            b.type === 'divider' ? 'Đường kẻ' :
+                                                b.type === 'product' ? 'Sản phẩm' :
+                                                    b.type === 'coupon' ? 'Coupon' :
+                                                        b.type === 'order-summary' ? 'Order Summary' :
+                                                            b.type.charAt(0).toUpperCase() + b.type.slice(1)}
+                        </div>
+                        <div className="text-[10px] text-gray-500 truncate">
+                            {b.type === 'heading' && b.content}
+                            {b.type === 'text' && b.content.substring(0, 30)}
+                            {b.type === 'button' && b.label}
+                            {b.type === 'image' && b.alt}
+                            {b.type === 'product' && b.title}
+                        </div>
+                    </div>
+                </div>
+                {/* Recursive Children for Rows/Columns */}
+                {(b as any).children && (
+                    <div className="border-l border-gray-100 ml-4 pl-1">
+                        {/* Flatten children arrays for row/col structure if needed, but row2 has multiple columns. children is actually array of arrays for columns? 
+                            Let's check usages. 
+                            Actually createDefaultBlock for row2 has `children: [[], []]`.
+                            So it's an array of arrays of blocks.
+                        */}
+                        {Array.isArray((b as any).children) && (b as any).children.map((col: EmailBlock[], colIdx: number) => (
+                            <div key={`${b.id}-col-${colIdx}`} className="ml-2 mb-2">
+                                <div className="text-[9px] font-bold text-gray-300 uppercase mb-1">Cột {colIdx + 1}</div>
+                                {renderTree(col, depth + 1)}
+                            </div>
+                        ))}
+                    </div>
+                )}
+            </div>
+        ));
+    };
+
+    return (
+        <div className="absolute right-0 top-14 bottom-0 w-80 bg-white shadow-xl border-l border-gray-200 z-30 flex flex-col animate-in slide-in-from-right duration-300">
+            <div className="h-14 border-b border-gray-100 flex items-center justify-between px-5 bg-gray-50/50">
+                <h3 className="font-bold text-gray-800">Bản Đồ Cấu Trúc</h3>
+                <button onClick={onClose} className="text-gray-400 hover:text-gray-600 p-1 hover:bg-gray-100 rounded-full transition-colors"><X size={16} /></button>
+            </div>
+
+            <div className="flex-1 overflow-y-auto p-4">
+                <div className="flex items-center gap-2 mb-4 text-xs font-bold text-blue-600 px-2">
+                    <Network size={14} /> Cấu Trúc
+                </div>
+
+                <div className="space-y-1">
+                    {blocks.length === 0 ? <div className="text-center text-gray-400 text-xs py-4">Trống</div> : renderTree(blocks)}
+                </div>
+            </div>
+
+            <div className="p-4 border-t border-gray-100 bg-gray-50 text-xs font-medium text-gray-500 flex justify-between">
+                <span>Tổng cộng:</span>
+                <span>{countBlocks(blocks)} elements</span>
+            </div>
+        </div>
+    );
+};
+
+// =============================================
 // MAIN COMPONENT
 // =============================================
 const VisualEmailBuilder: React.FC = () => {
@@ -1145,12 +2272,21 @@ const VisualEmailBuilder: React.FC = () => {
     const [showHistoryModal, setShowHistoryModal] = useState(false);
     const [showImportModal, setShowImportModal] = useState(false);
     const [showPreviewModal, setShowPreviewModal] = useState(false);
+    const [showStructureMap, setShowStructureMap] = useState(false);
     const [emailHistory, setEmailHistory] = useState<EmailHistoryRecord[]>([]);
     const [previewHistoryItem, setPreviewHistoryItem] = useState<EmailHistoryRecord | null>(null);
+    const [currentDesignId, setCurrentDesignId] = useState<string | null>(null);
+    const [savedDesigns, setSavedDesigns] = useState<SavedEmailDesign[]>([]);
     const [toast, setToast] = useState<{ message: string; type: ToastType } | null>(null);
     const [confirmDialog, setConfirmDialog] = useState<{ isOpen: boolean; title: string; message: string; onConfirm: () => void; isDestructive?: boolean }>({ isOpen: false, title: '', message: '', onConfirm: () => { } });
+    const [showReportModal, setShowReportModal] = useState(false);
+    const [showCampaignModal, setShowCampaignModal] = useState(false);
 
-    React.useEffect(() => { setEmailHistory(StorageService.getEmailHistory()); }, []);
+    React.useEffect(() => {
+        setEmailHistory(StorageService.getEmailHistory());
+        // Fetch saved designs from Supabase
+        emailDesignService.getAll().then(designs => setSavedDesigns(designs));
+    }, []);
     const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 8 } }), useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }));
     const showToast = (msg: string, type: ToastType = 'info') => setToast({ message: msg, type });
     const closeConfirm = () => setConfirmDialog((p) => ({ ...p, isOpen: false }));
@@ -1257,44 +2393,276 @@ const VisualEmailBuilder: React.FC = () => {
                 case 'column3': return `<table width="100%" cellpadding="0" cellspacing="8" style="margin:16px 0;"><tr>${b.children.map(cells => `<td width="33%" style="padding:12px;background:#f9fafb;border:1px solid #e5e7eb;border-radius:8px;vertical-align:top;">${cells.map(c => toHtml(c)).join('')}</td>`).join('')}</tr></table>`;
                 case 'html': return b.content;
                 case 'video': return `<div style="text-align:${b.alignment};margin:16px 0;"><a href="${b.url}" target="_blank"><div style="position:relative;display:inline-block;"><img src="${b.thumbnail || 'https://placehold.co/600x337/333/FFF?text=PLAY+VIDEO'}" alt="${b.alt}" style="max-width:100%;border-radius:8px;" /><div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:48px;height:48px;background:rgba(255,255,255,0.9);border-radius:50%;display:flex;align-items:center;justify-content:center;">▶</div></div></a></div>`;
-                case 'header': return `<div style="background:${b.backgroundColor};padding:16px;display:flex;align-items:center;justify-content:space-between;flex-direction:${b.alignment === 'center' ? 'column' : b.alignment === 'right' ? 'row-reverse' : 'row'};"><div><img src="${b.logoSrc}" alt="Logo" style="height:32px;" /></div><div style="margin-top:${b.alignment === 'center' ? '12px' : '0'};">${b.navLinks.map(l => `<a href="${l.url}" style="margin:0 8px;color:#4b5563;text-decoration:none;">${l.text}</a>`).join('')}</div></div>`;
-                case 'footer': return `<div style="background:${b.backgroundColor};padding:32px 16px;text-align:center;"><div style="margin-bottom:16px;">${b.socialLinks.map(s => `<span style="margin:0 8px;">${s.name}</span>`).join('')}</div><div style="color:#6b7280;font-size:14px;margin-bottom:8px;">${b.content}</div><div style="color:#9ca3af;font-size:12px;">${b.address}</div></div>`;
-                case 'product': return `<div style="background:${b.backgroundColor};border:1px solid #e5e7eb;border-radius:8px;padding:16px;text-align:center;"><img src="${b.productImage}" alt="${b.title}" style="width:100%;height:auto;border-radius:4px;margin-bottom:16px;" /><h3 style="margin:0 0 8px;font-size:18px;color:#1f2937;">${b.title}</h3><div style="color:#2563eb;font-weight:bold;margin-bottom:8px;">${b.price}</div><p style="color:#6b7280;font-size:14px;margin-bottom:16px;">${b.description}</p><a href="${b.url}" style="display:inline-block;background:${b.buttonColor};color:#fff;padding:8px 24px;border-radius:4px;text-decoration:none;">${b.buttonText}</a></div>`;
-                case 'unsubscribe': return `<div style="text-align:${b.alignment};font-size:12px;color:#9ca3af;padding:16px;">${b.text}</div>`;
+                case 'header':
+                    return `<div style="background:${b.colors.background};padding:24px;display:flex;flex-direction:${b.layout === 'stacked' ? 'column' : 'row'};align-items:center;justify-content:${b.layout === 'stacked' ? 'center' : 'space-between'};gap:16px;">
+                        <div style="display:flex;flex-direction:column;align-items:${b.layout === 'stacked' ? 'center' : 'flex-start'};">
+                            ${b.logoSrc ? `<img src="${b.logoSrc}" alt="Logo" style="height:40px;display:block;margin-bottom:4px;" />` : b.companyName ? `<div style="font-size:24px;font-weight:bold;color:${b.colors.companyName};line-height:1;">${b.companyName}</div>` : `<div style="background:#e5e7eb;color:#6b7280;font-size:12px;font-weight:bold;padding:4px 12px;border-radius:4px;">LOGO</div>`}
+                            ${b.tagline ? `<div style="font-size:14px;color:${b.colors.tagline};margin-top:4px;">${b.tagline}</div>` : ''}
+                        </div>
+                        ${b.showMenu ? `<div style="margin-top:${b.layout === 'stacked' ? '16px' : '0'};text-align:${b.layout === 'stacked' ? 'center' : 'right'};">${b.navLinks.map(l => `<a href="${l.url}" style="margin:0 10px;color:${b.colors.menu};text-decoration:none;font-size:14px;font-weight:500;">${l.text}</a>`).join('')}</div>` : ''}
+                    </div>`;
+                case 'footer': return `
+                    <div style="background:${b.backgroundColor};padding:32px 24px;text-align:center;">
+                        ${b.logoUrl ? `<img src="${b.logoUrl}" alt="Company Logo" style="height:32px;margin:0 auto 16px;display:block;" />` : ''}
+                        
+                        <div style="margin-bottom:24px;">
+                            ${b.companyName ? `<div style="font-weight:bold;color:#1f2937;margin-bottom:4px;">${b.companyName}</div>` : ''}
+                            <div style="font-size:12px;color:#6b7280;line-height:1.5;">
+                                ${b.address ? `<div>${b.address}</div>` : ''}
+                                ${b.companyEmail ? `<div>${b.companyEmail}</div>` : ''}
+                                ${b.phone ? `<div>${b.phone}</div>` : ''}
+                            </div>
+                        </div>
+
+                        ${b.socialLinks.length > 0 ? `
+                            <div style="margin-bottom:24px;">
+                                ${b.socialLinks.map(s => {
+                    const sizeMap = { small: '24px', medium: '32px', large: '40px' };
+                    const radMap = { circle: '50%', square: '0', rounded: '8px' };
+                    const size = sizeMap[b.socialIconSize || 'medium'];
+                    const rad = radMap[b.socialIconStyle || 'circle'];
+
+                    // SVG Icons for Email (inline is best for modern clients, fallback is tricky without CDN)
+                    const icons = {
+                        Facebook: '<path d="M18 2h-3a5 5 0 00-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 011-1h3z"></path>',
+                        Twitter: '<path d="M23 3a10.9 10.9 0 01-3.14 1.53 4.48 4.48 0 00-7.86 3v1A10.66 10.66 0 013 4s-4 9 5 13a11.64 11.64 0 01-7 2c9 5 20 0 20-11.5a4.5 4.5 0 00-.08-.83A7.72 7.72 0 0023 3z"></path>',
+                        Instagram: '<rect x="2" y="2" width="20" height="20" rx="5" ry="5"></rect><path d="M16 11.37A4 4 0 1112.63 8 4 4 0 0116 11.37z"></path><line x1="17.5" y1="6.5" x2="17.51" y2="6.5"></line>',
+                        LinkedIn: '<path d="M16 8a6 6 0 016 6v7h-4v-7a2 2 0 00-2-2 2 2 0 00-2 2v7h-4v-7a6 6 0 016-6z"></path><rect x="2" y="9" width="4" height="12"></rect><circle cx="4" cy="4" r="2"></circle>',
+                        YouTube: '<path d="M22.54 6.42a2.78 2.78 0 00-1.94-2C18.88 4 12 4 12 4s-6.88 0-8.6.46a2.78 2.78 0 00-1.94 2A29 29 0 001 11.75a29 29 0 00.46 5.33A2.78 2.78 0 003.4 19c1.72.46 8.6.46 8.6.46s6.88 0 8.6-.46a2.78 2.78 0 001.94-2 29 29 0 00.46-5.33 29 29 0 00-.46-5.33z"></path><polygon points="9.75 15.02 15.5 11.75 9.75 8.48 9.75 15.02"></polygon>',
+                        TikTok: '<path d="M9 12a4 4 0 1 0 4 4V4a5 5 0 0 0 5 5v4a9 9 0 0 1-9-9v17"></path>',
+                        Website: '<circle cx="12" cy="12" r="10"></circle><line x1="2" y1="12" x2="22" y2="12"></line><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"></path>'
+                    };
+                    const content = icons[s.name] || icons['Website'];
+                    const iconSize = parseInt(size) - 12;
+
+                    return `<a href="${s.url}" style="display:inline-block;width:${size};height:${size};line-height:${size};background:#e5e7eb;color:#4b5563;border-radius:${rad};text-align:center;text-decoration:none;margin:0 4px;">
+                                        <svg viewBox="0 0 24 24" width="${iconSize}" height="${iconSize}" style="vertical-align:middle;" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round">
+                                            ${content}
+                                        </svg>
+                                    </a>`;
+                }).join('')}
+                            </div>
+                        ` : ''}
+
+                        <div style="border-top:1px solid #e5e7eb;padding-top:24px;">
+                             <div style="font-size:12px;color:#9ca3af;margin-bottom:12px;">${(b.copyrightText && !b.copyrightText.startsWith('©')) ? '© ' : ''}${b.copyrightText || ''}</div>
+                             <div style="font-size:12px;color:#9ca3af;">
+                                ${b.privacyUrl ? `<a href="${b.privacyUrl}" style="color:#6b7280;text-decoration:underline;margin:0 8px;">Privacy Policy</a>` : ''}
+                                ${b.termsUrl ? `<a href="${b.termsUrl}" style="color:#6b7280;text-decoration:underline;margin:0 8px;">Terms of Service</a>` : ''}
+                                ${b.unsubscribeUrl ? `<a href="${b.unsubscribeUrl}" style="color:#6b7280;text-decoration:underline;margin:0 8px;">${b.unsubscribeText || 'Unsubscribe'}</a>` : ''}
+                             </div>
+                        </div>
+                    </div>`;
+                case 'product': return `
+                    <div style="background:${b.backgroundColor};border:1px solid #e5e7eb;border-radius:12px;overflow:hidden;text-align:center;position:relative;">
+                        ${b.badge ? `<div style="position:absolute;top:16px;left:16px;background:${b.colors?.badge || '#ef4444'};color:#fff;font-size:12px;font-weight:bold;padding:4px 12px;border-radius:999px;z-index:10;">${b.badge}</div>` : ''}
+                        
+                        <div style="position:relative;">
+                            ${b.productImage ?
+                        `<img src="${b.productImage}" alt="${b.title}" style="width:100%;height:224px;object-fit:cover;display:block;" />` :
+                        `<div style="width:100%;height:224px;background:#f3f4f6;display:flex;align-items:center;justify-content:center;color:#9ca3af;">Product Image</div>`
+                    }
+                            ${!b.inStock ? `<div style="position:absolute;top:0;left:0;right:0;bottom:0;background:rgba(255,255,255,0.6);display:flex;align-items:center;justify-content:center;font-weight:bold;color:#6b7280;text-transform:uppercase;letter-spacing:1px;">Out of Stock</div>` : ''}
+                        </div>
+                        
+                        <div style="padding:24px;">
+                            <h3 style="margin:0 0 8px;font-size:${b.titleFontSize || 20}px;color:${b.colors?.text || '#1f2937'};font-weight:bold;line-height:1.25;">${b.title}</h3>
+                            
+                            ${(b.rating !== undefined && !(b.rating === 5 && (!b.reviewCount || b.reviewCount === 0))) ? `
+                                <div style="display:flex;align-items:center;justify-content:center;gap:4px;margin-bottom:12px;">
+                                    <span style="color:#facc15;font-size:14px;">${'★'.repeat(b.rating || 5)}${'☆'.repeat(5 - (b.rating || 5))}</span>
+                                    ${b.reviewCount ? `<span style="font-size:12px;color:#9ca3af;">(${b.reviewCount} reviews)</span>` : ''}
+                                </div>
+                            ` : ''}
+                            
+                            <div style="display:flex;align-items:center;justify-content:center;gap:8px;margin-bottom:16px;">
+                                <span style="font-size:18px;font-weight:bold;color:${b.colors?.price || '#1f2937'};">${b.price}</span>
+                                ${b.originalPrice ? `<span style="font-size:14px;color:#9ca3af;text-decoration:line-through;">${b.originalPrice}</span>` : ''}
+                                ${b.discount ? `<span style="font-size:12px;font-weight:bold;color:#ef4444;background:#fef2f2;padding:2px 6px;border-radius:4px;">-${b.discount}%</span>` : ''}
+                            </div>
+                            
+                            <p style="color:#6b7280;font-size:14px;margin-bottom:16px;line-height:1.5;">${b.description}</p>
+                            
+                            <a href="${b.url}" style="display:block;width:100%;background:${b.buttonColor};color:${b.colors?.buttonText || '#fff'};padding:12px 24px;border-radius:8px;text-decoration:none;font-weight:bold;text-align:center;">
+                                ${b.buttonText}
+                            </a>
+                        </div>
+                    </div>`;
+                case 'unsubscribe': return `
+                    <div style="background:${b.colors?.background || 'transparent'};text-align:${b.alignment};padding:16px;">
+                        <div style="font-size:${b.fontSize || 12}px;color:${b.colors?.text || '#6b7280'};margin-bottom:8px;">${b.text}</div>
+                        <a href="${b.url}" style="display:inline-block;font-size:${b.fontSize || 12}px;color:${b.colors?.link || '#3b82f6'};text-decoration:none;font-weight:500;">
+                            ${b.linkText}
+                        </a>
+                    </div>`;
 
                 // E-commerce
-                case 'product-grid': return `<div style="background:${b.backgroundColor};padding:16px;border-radius:8px;"><table width="100%" cellpadding="0" cellspacing="8"><tr>${b.products.map(p => `<td width="50%" style="background:#fff;border:1px solid #e5e7eb;border-radius:8px;overflow:hidden;vertical-align:top;"><img src="${p.image}" style="width:100%;height:auto;display:block;"/><div style="padding:12px;"><div style="font-weight:bold;font-size:14px;margin-bottom:4px;">${p.title}</div><div style="color:#2563eb;font-weight:bold;">${p.price}</div></div></td>`).join('')}</tr></table></div>`;
-                case 'coupon': return `<div style="background:${b.backgroundColor};border:2px dashed ${b.borderColor};border-radius:12px;padding:32px;text-align:center;margin:16px 0;"><div style="font-size:14px;color:#6b7280;text-transform:uppercase;letter-spacing:1px;margin-bottom:8px;">${b.discount}</div><div style="font-size:32px;font-weight:bold;color:#1f2937;letter-spacing:2px;margin-bottom:8px;font-family:monospace;">${b.code}</div><div style="font-size:12px;color:#4b5563;">${b.description}</div></div>`;
-                case 'cart-reminder': return `<div style="background:#fff;border:1px solid #e5e7eb;border-radius:12px;padding:20px;margin:16px 0;"><div style="border-bottom:1px solid #f3f4f6;padding-bottom:16px;margin-bottom:16px;display:flex;justify-content:space-between;align-items:center;"><strong>Your Cart (${b.itemsCount})</strong><span style="color:#2563eb;font-weight:bold;">Total: ${b.totalPrice}</span></div><div style="margin-bottom:20px;display:flex;gap:12px;">${b.itemImages.map(img => `<img src="${img}" style="width:64px;height:64px;border-radius:8px;object-fit:cover;border:1px solid #e5e7eb;"/>`).join('')}</div><a href="${b.checkoutUrl}" style="display:block;background:#2563eb;color:#fff;text-align:center;padding:12px;border-radius:8px;text-decoration:none;font-weight:bold;">Checkout Now</a></div>`;
-                case 'order-summary': return `<div style="background:#fff;border:1px solid #e5e7eb;border-radius:12px;overflow:hidden;margin:16px 0;"><div style="background:#f9fafb;padding:12px 16px;border-bottom:1px solid #e5e7eb;font-size:12px;font-weight:bold;color:#4b5563;display:flex;justify-content:space-between;"><span>Order ${b.orderId}</span><span style="color:#047857;">CONFIRMED</span></div><div style="padding:20px;">${b.items.map(item => `<div style="display:flex;justify-content:space-between;font-size:14px;margin-bottom:12px;border-bottom:1px dashed #f3f4f6;padding-bottom:12px;"><span style="color:#4b5563;">${item.qty}x ${item.name}</span><span style="font-weight:500;">${item.price}</span></div>`).join('')}<div style="display:flex;justify-content:space-between;font-weight:bold;font-size:16px;margin-top:16px;"><span>Total</span><span>${b.total}</span></div></div><div style="background:#f9fafb;padding:12px 16px;border-top:1px solid #e5e7eb;font-size:12px;color:#6b7280;">Ship to: ${b.shippingAddress}</div></div>`;
+                // E-commerce
+                case 'product-grid':
+                    const colWidth = b.columns === 3 ? '32%' : '48%';
+                    const gap = '2%';
+                    return `
+                    <div style="padding:16px;">
+                        ${b.title ? `
+                        <div style="text-align:${b.titleAlignment};margin-bottom:16px;">
+                            ${b.titleIcon ? `<img src="${b.titleIcon}" style="height:24px;vertical-align:middle;margin-right:8px;" />` : ''}
+                            <span style="font-size:${b.titleFontSize || 20}px;font-weight:${b.titleFontWeight === 'bold' ? 'bold' : 'normal'};font-family:${b.fontFamily || 'Arial'}, sans-serif;font-style:${b.titleFontStyle || 'normal'};color:${b.titleColors?.text || '#1f2937'};background:${b.titleColors?.background || 'transparent'};padding:${b.titleColors?.background ? '4px 12px' : '0'};border-radius:${b.titleColors?.background ? '8px' : '0'};display:inline-block;">${b.title}</span>
+                        </div>` : ''}
+                        
+                        <div style="font-size:0;text-align:center;">
+                            ${b.products.map((p) => `
+                            <div style="display:inline-block;width:${colWidth};vertical-align:top;background:${b.cardBackgroundColor || '#ffffff'};border:${b.cardBorderWidth || 1}px solid ${b.cardBorderColor || '#e5e7eb'};border-radius:${b.cardBorderRadius || 8}px;padding:${b.cardPadding || 0}px;margin-bottom:16px;margin-left:1%;margin-right:1%;">
+                                <div style="height:${b.imageHeight || 140}px;overflow:hidden;border-radius:${b.imageBorderRadius || 0}px;margin-bottom:8px;">
+                                    ${p.image ? `<img src="${p.image}" style="width:100%;height:100%;object-fit:cover;border-radius:${b.imageShape === 'circle' ? '50%' : (b.imageBorderRadius || 0) + 'px'};display:block;" />` : `<div style="width:100%;height:100%;background:#f3f4f6;display:flex;align-items:center;justify-content:center;color:#9ca3af;font-size:12px;">No Image</div>`}
+                                </div>
+                                <div style="padding:0 8px 8px;text-align:center;font-family:${b.fontFamily || 'Arial'}, sans-serif;">
+                                    <div style="font-size:14px;font-weight:600;color:${b.productNameColor || '#1f2937'};margin-bottom:4px;overflow:hidden;text-overflow:ellipsis;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;">${p.title}</div>
+                                    <div style="color:${b.priceColor || '#2563eb'};font-weight:bold;font-size:16px;">${p.price}</div>
+                                    ${p.originalPrice ? `<div style="color:${b.oldPriceColor || '#9ca3af'};font-size:12px;text-decoration:line-through;">${p.originalPrice}</div>` : ''}
+                                </div>
+                            </div>
+                            `).join('')}
+                        </div>
+                    </div>`;
+                case 'coupon': return `
+                    <div style="padding:16px 32px;text-align:center;">
+                        <div style="background:${b.backgroundColor};border:2px dashed ${b.borderColor};border-radius:12px;padding:32px;position:relative;margin:16px 0;">
+                             <!-- Badge -->
+                             <div style="position:absolute;top:-16px;left:50%;transform:translateX(-50%);background:${b.badgeColor || '#F59E0B'};color:#ffffff;padding:6px 16px;border-radius:999px;font-size:14px;font-weight:bold;white-space:nowrap;display:inline-flex;align-items:center;gap:8px;">
+                                ${b.iconUrl ? `<img src="${b.iconUrl}" style="width:16px;height:16px;display:block;filter:brightness(0) invert(1);" />` : ''}
+                                ${b.discount}
+                             </div>
 
-                // Real Estate
-                case 'property-card': return `<div style="background:#fff;border:1px solid #e5e7eb;border-radius:12px;overflow:hidden;margin:16px 0;"><div style="position:relative;"><img src="${b.image}" style="width:100%;height:auto;display:block;" /><div style="position:absolute;top:12px;right:12px;background:rgba(255,255,255,0.9);padding:4px 8px;border-radius:4px;font-size:12px;font-weight:bold;">FOR SALE</div></div><div style="padding:20px;"><div style="font-size:20px;font-weight:bold;color:#1f2937;margin-bottom:4px;">${b.price}</div><div style="color:#4b5563;font-size:14px;margin-bottom:16px;">${b.title}</div><div style="display:flex;gap:16px;font-size:12px;color:#6b7280;padding-bottom:16px;border-bottom:1px solid #f3f4f6;margin-bottom:16px;"><span>${b.specs.beds} Beds</span><span>${b.specs.baths} Baths</span><span>${b.specs.area}</span></div><div style="font-size:12px;color:#9ca3af;">${b.address}</div><a href="${b.url}" style="display:block;margin-top:16px;text-align:center;color:#2563eb;text-decoration:none;font-weight:500;">View Details</a></div></div>`;
-                case 'features': return `<table width="100%" cellpadding="0" cellspacing="8" style="margin:16px 0;"><tr>${b.features.map(f => `<td width="${b.columns === 3 ? '33%' : '50%'}" style="text-align:center;padding:16px;background:#fff;border:1px solid #e5e7eb;border-radius:12px;"><div style="display:inline-block;padding:8px;background:#eff6ff;border-radius:50%;color:#2563eb;margin-bottom:8px;">✓</div><div style="font-size:12px;font-weight:600;color:#374151;">${f.text}</div></td>`).join('')}</tr></table>`;
-                case 'location': return `<div style="background:#fff;border:1px solid #e5e7eb;border-radius:12px;overflow:hidden;margin:16px 0;"><img src="${b.mapImage}" style="width:100%;height:auto;display:block;" /><div style="padding:16px;display:flex;gap:12px;"><div style="font-size:14px;font-weight:bold;color:#1f2937;">Our Location</div><div style="font-size:12px;color:#6b7280;">${b.address}</div></div></div>`;
+                             <!-- Code Box -->
+                             <div style="background:#ffffff;border:2px solid ${b.borderColor};border-radius:12px;padding:16px 32px;margin-bottom:16px;">
+                                <div style="font-family:monospace;font-size:32px;font-weight:bold;color:${b.codeColor || '#D97706'};letter-spacing:4px;">${b.code}</div>
+                             </div>
 
-                // Recruitment
-                case 'job-listing': return `<div style="background:#fff;border:1px solid #e5e7eb;border-radius:12px;padding:20px;margin:16px 0;"><div style="display:flex;justify-content:space-between;align-items:start;margin-bottom:12px;"><div><h4 style="margin:0 0 4px;font-size:18px;color:#1f2937;">${b.title}</h4><div style="color:#2563eb;font-size:12px;font-weight:bold;text-transform:uppercase;">${b.department}</div></div><div style="background:#f3f4f6;padding:4px 8px;border-radius:4px;font-size:12px;font-weight:bold;color:#374151;">${b.salary}</div></div><div style="margin-bottom:16px;">${b.tags.map(t => `<span style="display:inline-block;background:#eff6ff;color:#1d4ed8;font-size:10px;padding:2px 6px;border-radius:4px;margin-right:4px;">${t}</span>`).join('')}</div><div style="border-top:1px solid #f3f4f6;padding-top:12px;font-size:12px;color:#9ca3af;">${b.location}</div></div>`;
-                case 'benefits': return `<div style="margin:16px 0;">${b.benefits.map(benefit => `<div style="display:flex;gap:16px;padding:16px;background:#fff;border:1px solid #e5e7eb;border-radius:12px;margin-bottom:12px;"><div style="font-weight:bold;color:#1f2937;">${benefit.title}</div><div style="font-size:12px;color:#6b7280;">${benefit.description}</div></div>`).join('')}</div>`;
+                             <div style="font-size:14px;color:#4b5563;margin-bottom:4px;">${b.description}</div>
+                             ${b.expirationDate ? `<div style="font-size:12px;color:#9ca3af;">Hạn sử dụng: ${b.expirationDate}</div>` : ''}
+                        </div>
+                    </div>`;
+
+                case 'order-summary': return `
+                    <div style="padding:16px;">
+                        <div style="background:${b.backgroundColor};border:1px solid ${b.borderColor};border-radius:12px;overflow:hidden;margin:16px 0;">
+                             <!-- Header -->
+                             <div style="padding:16px;border-bottom:1px solid #f3f4f6;display:flex;align-items:center;gap:12px;">
+                                ${b.iconUrl ? `<div style="width:32px;height:32px;border-radius:50%;background:${b.iconBackgroundColor || '#10B981'};display:flex;align-items:center;justify-content:center;flex-shrink:0;"><img src="${b.iconUrl}" style="width:16px;height:16px;filter:brightness(0) invert(1);display:block;" /></div>` : ''}
+                                <div style="flex:1;text-align:${b.titleAlignment};font-family:${b.fontFamily};font-size:${b.titleFontSize || 18}px;font-weight:${b.titleFontWeight === 'bold' ? 'bold' : 'normal'};font-style:${b.titleFontStyle || 'normal'};color:${b.titleColor || '#1f2937'};">
+                                    ${b.title}
+                                </div>
+                             </div>
+
+                             <!-- Order ID -->
+                             <div style="padding:12px 20px;background:#f9fafb;border-bottom:1px solid #f3f4f6;font-size:14px;color:#6b7280;font-weight:500;">
+                                ${b.orderId}
+                             </div>
+
+                             <!-- Items -->
+                             <div style="padding:20px;">
+                                ${b.items.map(item => `
+                                    <div style="display:flex;justify-content:space-between;font-size:14px;margin-bottom:12px;border-bottom:1px dashed #f3f4f6;padding-bottom:12px;">
+                                        <span style="color:#4b5563;"><span style="color:#9ca3af;margin-right:8px;">${item.qty}x</span>${item.name}</span>
+                                        <span style="font-weight:500;">${item.price}</span>
+                                    </div>
+                                `).join('')}
+
+                                <!-- Costs -->
+                                <div style="margin-top:16px;padding-top:16px;border-top:1px solid #f3f4f6;">
+                                    <div style="display:flex;justify-content:space-between;font-size:14px;color:#4b5563;margin-bottom:8px;">
+                                        <span>Tạm tính</span>
+                                        <span>${b.subtotal}</span>
+                                    </div>
+                                    <div style="display:flex;justify-content:space-between;font-size:14px;color:#4b5563;margin-bottom:8px;">
+                                        <span>Phí vận chuyển</span>
+                                        <span>${b.shippingFee}</span>
+                                    </div>
+                                    <div style="display:flex;justify-content:space-between;font-size:16px;font-weight:bold;color:${b.totalColor || '#1f2937'};margin-top:12px;padding-top:12px;border-top:1px solid #f3f4f6;">
+                                        <span>Tổng cộng</span>
+                                        <span>${b.total}</span>
+                                    </div>
+                                </div>
+                             </div>
+
+                             <!-- Address -->
+                             ${b.shippingAddress ? `<div style="padding:16px;background:#eff6ff;font-size:12px;color:#6b7280;border-top:1px solid #f3f4f6;">${b.shippingLabel || 'Ship to'}: ${b.shippingAddress}</div>` : ''}
+                        </div>
+                    </div>`;
+
+
+
+
 
                 default: return '';
             }
         };
-        return `<!DOCTYPE html><html><head><meta charset="utf-8"><title>${emailTitle}</title></head><body style="margin:0;padding:0;font-family:${settings.fontFamily};background:${settings.backgroundColor};"><div style="max-width:${settings.contentWidth}px;margin:0 auto;padding:40px 20px;"><div style="background:#fff;border-radius:16px;padding:40px;box-shadow:0 4px 6px rgba(0,0,0,0.05);">${blocks.map(toHtml).join('\n')}</div></div></body></html>`;
+        return `<!DOCTYPE html><html><head><meta charset="utf-8"><title>${emailTitle}</title></head><body style="margin:0;padding:0;font-family:${settings.fontFamily};background:${settings.backgroundColor};"><div style="max-width:${settings.contentWidth}px;margin:0 auto;padding:40px 20px;"><div style="background:#fff;border-radius:16px;padding:40px;box-shadow:0 4px 6px rgba(0,0,0,0.05);">${blocks.map(b => toHtml(b)).join('\n')}</div></div></body></html>`;
     };
 
     const handleExport = () => { const html = generateHTML(); StorageService.addEmailHistory({ id: Date.now().toString(), timestamp: Date.now(), title: emailTitle, html }); setEmailHistory(StorageService.getEmailHistory()); const blob = new Blob([html], { type: 'text/html' }); const a = window.document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = `email-${Date.now()}.html`; a.click(); showToast('Xuất thành công!', 'success'); };
-    const handleCreateNew = () => { setConfirmDialog({ isOpen: true, title: 'Tạo mới?', message: 'Thay đổi chưa lưu sẽ mất.', onConfirm: () => { setDoc(DEFAULT_DOC); setEmailTitle('Email mới'); setSelectedId(null); closeConfirm(); showToast('Đã tạo mới', 'success'); } }); };
+    const handleCreateNew = () => { setConfirmDialog({ isOpen: true, title: 'Tạo mới?', message: 'Thay đổi chưa lưu sẽ mất.', onConfirm: () => { setDoc(DEFAULT_DOC); setEmailTitle('Email mới'); setSelectedId(null); setCurrentDesignId(null); closeConfirm(); showToast('Đã tạo mới', 'success'); } }); };
     const handleDeleteHistory = (e: React.MouseEvent, id: string) => { e.stopPropagation(); setConfirmDialog({ isOpen: true, title: 'Xóa?', message: 'Chắc chắn?', isDestructive: true, onConfirm: () => { StorageService.deleteEmailHistory(id); setEmailHistory((p) => p.filter((h) => h.id !== id)); if (previewHistoryItem?.id === id) setPreviewHistoryItem(null); closeConfirm(); showToast('Đã xóa', 'success'); } }); };
 
-    const handleSaveDesign = () => {
-        const json = JSON.stringify(doc);
-        const blob = new Blob([json], { type: 'application/json' });
-        const a = window.document.createElement('a');
-        a.href = URL.createObjectURL(blob);
-        a.download = `design-${Date.now()}.json`;
-        a.click();
-        showToast('Đã lưu thiết kế (JSON)', 'success');
+    const handleSaveDesign = async () => {
+        const now = Date.now();
+        const designId = currentDesignId || `design_${now}`;
+        const existingDesign = savedDesigns.find(d => d.id === designId);
+        const design: SavedEmailDesign = {
+            id: designId,
+            name: emailTitle,
+            createdAt: existingDesign?.createdAt || now,
+            updatedAt: now,
+            doc: doc
+        };
+        showToast('Đang lưu...', 'info');
+        const success = await emailDesignService.save(design);
+        if (success) {
+            if (!currentDesignId) setCurrentDesignId(designId);
+            const updatedDesigns = await emailDesignService.getAll();
+            setSavedDesigns(updatedDesigns);
+            showToast('Đã lưu template thành công!', 'success');
+        } else {
+            showToast('Lưu thất bại. Vui lòng thử lại.', 'error');
+        }
+    };
+
+    const handleLoadDesign = (design: SavedEmailDesign) => {
+        setConfirmDialog({
+            isOpen: true,
+            title: 'Tải template?',
+            message: 'Thay đổi chưa lưu sẽ mất.',
+            onConfirm: () => {
+                setDoc(design.doc);
+                setEmailTitle(design.name);
+                setCurrentDesignId(design.id);
+                setSelectedId(null);
+                closeConfirm();
+                showToast(`Đã tải "${design.name}"`, 'success');
+            }
+        });
+    };
+
+    const handleDeleteDesign = (id: string) => {
+        setConfirmDialog({
+            isOpen: true,
+            title: 'Xóa template?',
+            message: 'Hành động này không thể hoàn tác.',
+            isDestructive: true,
+            onConfirm: async () => {
+                showToast('Đang xóa...', 'info');
+                const success = await emailDesignService.delete(id);
+                if (success) {
+                    const updatedDesigns = await emailDesignService.getAll();
+                    setSavedDesigns(updatedDesigns);
+                    if (currentDesignId === id) setCurrentDesignId(null);
+                    showToast('Đã xóa template', 'success');
+                } else {
+                    showToast('Xóa thất bại', 'error');
+                }
+                closeConfirm();
+            }
+        });
     };
 
     const handleImportDesign = () => {
@@ -1324,14 +2692,14 @@ const VisualEmailBuilder: React.FC = () => {
         <div className="h-screen flex flex-col bg-gray-50 overflow-hidden">
             <div className="h-14 bg-white border-b border-gray-200 px-4 flex items-center justify-between shrink-0 shadow-sm z-20">
                 <div className="flex items-center gap-3"><div className="bg-pink-100 p-2 rounded-lg text-pink-600"><Mail size={18} /></div><h2 className="text-lg font-bold text-gray-800">Visual Email</h2><span className="text-[10px] bg-blue-100 text-blue-600 px-2 py-0.5 rounded font-semibold">Pro</span></div>
-                <div className="flex gap-2"><button onClick={handleCreateNew} className="bg-white border border-gray-200 text-gray-600 px-3 py-1.5 rounded-lg text-sm font-medium flex items-center gap-1.5 hover:bg-gray-50"><Plus size={16} />Tạo mới</button><button onClick={() => setShowHistoryModal(true)} className="bg-white border border-gray-200 text-gray-600 px-3 py-1.5 rounded-lg text-sm font-medium flex items-center gap-1.5 hover:bg-gray-50"><History size={16} />Lịch sử</button><button onClick={handleExport} className="bg-blue-600 text-white px-4 py-1.5 rounded-lg text-sm font-bold flex items-center gap-1.5 hover:bg-blue-700 shadow-sm"><Download size={16} />Xuất</button></div>
+                <div className="flex gap-2"><button onClick={handleCreateNew} className="bg-white border border-gray-200 text-gray-600 px-3 py-1.5 rounded-lg text-sm font-medium flex items-center gap-1.5 hover:bg-gray-50"><Plus size={16} />Tạo mới</button><button onClick={() => setShowReportModal(true)} className="bg-white border border-gray-200 text-gray-600 px-3 py-1.5 rounded-lg text-sm font-medium flex items-center gap-1.5 hover:bg-gray-50"><BarChart2 size={16} />Report</button><button onClick={() => setShowCampaignModal(true)} className="bg-blue-600 text-white px-4 py-1.5 rounded-lg text-sm font-bold flex items-center gap-1.5 hover:bg-blue-700 shadow-sm"><Send size={16} />Chiến dịch</button></div>
             </div>
 
             <DndContext sensors={sensors} collisionDetection={closestCenter} onDragStart={handleDragStart} onDragOver={handleDragOver} onDragEnd={handleDragEnd}>
                 <div className="flex-1 flex overflow-hidden">
-                    <LeftSidebar activeTab={leftTab} onTabChange={setLeftTab} onTemplateSelect={handleTemplateSelect} hasCustomerList={hasCustomerList} />
+                    <LeftSidebar activeTab={leftTab} onTabChange={setLeftTab} onTemplateSelect={handleTemplateSelect} hasCustomerList={hasCustomerList} savedDesigns={savedDesigns} onLoadDesign={handleLoadDesign} onDeleteDesign={handleDeleteDesign} />
                     <div className="flex-1 flex flex-col min-w-0 bg-gray-100">
-                        <TopControlBar device={viewMode} onDeviceChange={setViewMode} onSave={handleSaveDesign} onImport={handleImportDesign} onPreview={handlePreview} />
+                        <TopControlBar device={viewMode} onDeviceChange={setViewMode} onSave={handleSaveDesign} onImport={handleImportDesign} onPreview={handlePreview} onToggleStructureMap={() => setShowStructureMap(!showStructureMap)} />
                         <div className="flex-1 overflow-y-auto p-6 flex justify-center" onClick={() => setSelectedId(null)}>
                             <div className={`transition-all duration-300 ${viewMode === 'mobile' ? 'w-[375px]' : 'w-full max-w-[700px]'}`}>
                                 <div className="mb-3 sticky top-0 z-10 bg-gray-100/95 backdrop-blur-sm pt-2 pb-2"><input type="text" value={emailTitle} onChange={(e) => setEmailTitle(e.target.value)} className="w-full text-center text-base font-bold text-gray-700 bg-transparent border-none outline-none focus:bg-white focus:rounded-lg focus:px-4 py-1" placeholder="Tiêu đề..." /></div>
@@ -1360,7 +2728,7 @@ const VisualEmailBuilder: React.FC = () => {
                 >
                     {activeId && (
                         activeId.startsWith('element-') ? (() => {
-                            const allElements = [...ELEMENT_TYPES, ...LAYOUT_ELEMENTS, ...MEDIA_ELEMENTS, ...CUSTOM_ELEMENTS, ...ECOMMERCE_ELEMENTS, ...REAL_ESTATE_ELEMENTS, ...RECRUITMENT_ELEMENTS];
+                            const allElements = [...ELEMENT_TYPES, ...LAYOUT_ELEMENTS, ...MEDIA_ELEMENTS, ...CUSTOM_ELEMENTS, ...ECOMMERCE_ELEMENTS];
                             const el = allElements.find((e) => `element-${e.type}-${e.label}` === activeId);
 
                             if (!el) return null;
@@ -1396,6 +2764,15 @@ const VisualEmailBuilder: React.FC = () => {
                 </div>
             )}
 
+            {/* Structure Map Modal */}
+            <StructureMapModal
+                isOpen={showStructureMap}
+                onClose={() => setShowStructureMap(false)}
+                blocks={doc.blocks}
+                onSelectBlock={(id) => { setSelectedId(id); setShowStructureMap(false); }}
+                selectedId={selectedId}
+            />
+
             <ImportJsonModal isOpen={showImportModal} onClose={() => setShowImportModal(false)} onImport={executeImport} />
 
             <PreviewModal
@@ -1418,6 +2795,24 @@ const VisualEmailBuilder: React.FC = () => {
 
             {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
             <ConfirmDialog isOpen={confirmDialog.isOpen} title={confirmDialog.title} message={confirmDialog.message} isDestructive={confirmDialog.isDestructive} onConfirm={confirmDialog.onConfirm} onCancel={closeConfirm} />
+
+            {/* Email Report Modal */}
+            {showReportModal && (
+                <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center">
+                    <div className="bg-white rounded-2xl w-[95vw] h-[90vh] overflow-hidden shadow-2xl flex flex-col">
+                        <div className="flex-1 overflow-auto">
+                            <EmailReport onBack={() => setShowReportModal(false)} />
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Campaign Manager Modal */}
+            <CampaignManager
+                isOpen={showCampaignModal}
+                onClose={() => setShowCampaignModal(false)}
+                onCreateCampaign={() => { }}
+            />
         </div>
     );
 };

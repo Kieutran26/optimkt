@@ -46,6 +46,8 @@ import FeaturesGuide from './components/FeaturesGuide';
 import { ViewState, StudyMode, Word, MastermindStrategy } from './types';
 import { BrandProvider } from './components/BrandContext';
 import { TaskProvider } from './components/TaskContext';
+import { ToastProvider } from './components/Toast';
+import { ConfirmProvider } from './components/ConfirmModal';
 
 function AppContent() {
   const [currentView, setCurrentView] = useState<ViewState>('HOME_DASHBOARD');
@@ -228,7 +230,11 @@ function App() {
   return (
     <BrandProvider>
       <TaskProvider>
-        <AppContent />
+        <ToastProvider>
+          <ConfirmProvider>
+            <AppContent />
+          </ConfirmProvider>
+        </ToastProvider>
       </TaskProvider>
     </BrandProvider>
   );

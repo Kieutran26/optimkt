@@ -1,4 +1,4 @@
-import { VocabSet, Word, TranslationRecord, Plan, SavedPrompt, ToDoTask, ContentHistoryRecord, KeyVisualProject, EmailTemplate, EmailHistoryRecord, StoryboardProject, UtmRecord, UtmPreset, RoasScenario, Brand, Competitor, Persona, MindmapProject, ScamperSession, CalendarProject, MastermindStrategy } from '../types';
+import { VocabSet, Word, TranslationRecord, Plan, SavedPrompt, ToDoTask, ContentHistoryRecord, KeyVisualProject, EmailTemplate, EmailHistoryRecord, StoryboardProject, UtmRecord, UtmPreset, RoasScenario, Brand, Competitor, Persona, MindmapProject, ScamperSession, CalendarProject, MastermindStrategy, SavedEmailDesign } from '../types';
 
 const KEYS = {
   // ... (Existing keys)
@@ -23,7 +23,8 @@ const KEYS = {
   MINDMAPS: 'eng_app_mindmaps',
   SCAMPER_SESSIONS: 'eng_app_scamper_sessions',
   CALENDAR_PROJECTS: 'eng_app_calendar_projects',
-  MASTERMIND_STRATEGIES: 'eng_app_mastermind_strategies'
+  MASTERMIND_STRATEGIES: 'eng_app_mastermind_strategies',
+  SAVED_EMAIL_DESIGNS: 'eng_app_saved_email_designs'
 };
 
 export const StorageService = {
@@ -543,5 +544,34 @@ export const StorageService = {
     const list = StorageService.getMastermindStrategies();
     const newList = list.filter(s => s.id !== id);
     localStorage.setItem(KEYS.MASTERMIND_STRATEGIES, JSON.stringify(newList));
+  },
+
+  // Saved Email Designs (Visual Email Builder)
+  getSavedEmailDesigns: (): SavedEmailDesign[] => {
+    const data = localStorage.getItem(KEYS.SAVED_EMAIL_DESIGNS);
+    return data ? JSON.parse(data) : [];
+  },
+  saveEmailDesign: (design: SavedEmailDesign) => {
+    const designs = StorageService.getSavedEmailDesigns();
+    const index = designs.findIndex(d => d.id === design.id);
+    let newDesigns;
+    if (index !== -1) {
+      designs[index] = { ...design, updatedAt: Date.now() };
+      newDesigns = designs;
+    } else {
+      newDesigns = [design, ...designs];
+    }
+    try {
+      localStorage.setItem(KEYS.SAVED_EMAIL_DESIGNS, JSON.stringify(newDesigns));
+      return true;
+    } catch (e) {
+      alert("Bộ nhớ đầy. Vui lòng xóa bớt thiết kế cũ.");
+      return false;
+    }
+  },
+  deleteSavedEmailDesign: (id: string) => {
+    const designs = StorageService.getSavedEmailDesigns();
+    const newDesigns = designs.filter(d => d.id !== id);
+    localStorage.setItem(KEYS.SAVED_EMAIL_DESIGNS, JSON.stringify(newDesigns));
   }
 };
