@@ -852,6 +852,91 @@ const ImportJsonModal: React.FC<{
 };
 
 // =============================================
+// SUBCOMPONENTS: MODALS
+// =============================================
+const SendTestModal: React.FC<{
+    isOpen: boolean;
+    onClose: () => void;
+    onSend: (email: string, subject: string) => Promise<void>;
+    defaultSubject: string;
+}> = ({ isOpen, onClose, onSend, defaultSubject }) => {
+    const [email, setEmail] = useState('');
+    const [subject, setSubject] = useState(defaultSubject);
+    const [isSending, setIsSending] = useState(false);
+
+    useEffect(() => {
+        if (isOpen) setSubject(defaultSubject);
+    }, [isOpen, defaultSubject]);
+
+    if (!isOpen) return null;
+
+    const handleSend = async () => {
+        if (!email) return;
+        setIsSending(true);
+        await onSend(email, subject);
+        setIsSending(false);
+        onClose();
+    };
+
+    return (
+        <div className="fixed inset-0 bg-gray-900/60 backdrop-blur-sm z-[60] flex items-center justify-center p-4 animate-in fade-in duration-200">
+            <div className="bg-white rounded-2xl w-full max-w-md shadow-2xl flex flex-col overflow-hidden ring-1 ring-gray-900/5 animate-in zoom-in-95 duration-200">
+                <div className="p-6">
+                    <div className="flex items-center gap-4 mb-6">
+                        <div className="w-12 h-12 rounded-2xl bg-purple-50 flex items-center justify-center shrink-0">
+                            <Send size={24} className="text-purple-600 -ml-1 mt-1" />
+                        </div>
+                        <div>
+                            <h3 className="text-xl font-bold text-gray-900">Gửi Email Test</h3>
+                            <p className="text-sm text-gray-500">Kiểm tra template trên email thật</p>
+                        </div>
+                        <button onClick={onClose} className="ml-auto text-gray-400 hover:text-gray-600 p-1">
+                            <X size={20} />
+                        </button>
+                    </div>
+
+                    <div className="space-y-4">
+                        <div>
+                            <label className="block text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-2">Email nhận *</label>
+                            <input
+                                type="email"
+                                value={email}
+                                onChange={(e) => setEmail(e.target.value)}
+                                placeholder="name@example.com"
+                                className="w-full px-4 py-3 bg-blue-50/50 border border-transparent rounded-xl text-gray-900 placeholder-gray-400 focus:bg-white focus:border-purple-500 focus:ring-2 focus:ring-purple-200 transition-all outline-none font-medium"
+                                autoFocus
+                            />
+                        </div>
+
+                        <div>
+                            <label className="block text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-2">Tiêu đề Email</label>
+                            <input
+                                type="text"
+                                value={subject}
+                                onChange={(e) => setSubject(e.target.value)}
+                                className="w-full px-4 py-3 bg-blue-50/50 border border-transparent rounded-xl text-gray-900 placeholder-gray-400 focus:bg-white focus:border-purple-500 focus:ring-2 focus:ring-purple-200 transition-all outline-none font-medium"
+                            />
+                        </div>
+
+                        <button
+                            onClick={handleSend}
+                            disabled={!email || isSending}
+                            className={`w-full mt-4 py-3 px-4 rounded-xl text-white font-bold flex items-center justify-center gap-2 transition-all ${!email || isSending ? 'bg-gray-300 cursor-not-allowed' : 'bg-purple-600 hover:bg-purple-700 shadow-lg hover:shadow-purple-500/30'}`}
+                        >
+                            {isSending ? (
+                                <>Đang gửi...</>
+                            ) : (
+                                <><Send size={18} /> Gửi Test Ngay</>
+                            )}
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    );
+};
+
+// =============================================
 // PREVIEW MODAL
 // =============================================
 const PreviewModal: React.FC<{
@@ -860,12 +945,11 @@ const PreviewModal: React.FC<{
     htmlContent: string;
     jsonContent: string;
     emailTitle: string;
-    onSendTest: (email: string) => void;
+    onSendTest: (email: string, subject: string) => Promise<void>;
 }> = ({ isOpen, onClose, htmlContent, jsonContent, emailTitle, onSendTest }) => {
     const [activeTab, setActiveTab] = useState<'preview' | 'html' | 'json'>('preview');
     const [device, setDevice] = useState<'desktop' | 'mobile'>('desktop');
-    const [showSendInput, setShowSendInput] = useState(false);
-    const [testEmail, setTestEmail] = useState('');
+    const [showSendModal, setShowSendModal] = useState(false);
 
     const formatHtml = (html: string) => {
         let formatted = '';
@@ -912,44 +996,26 @@ const PreviewModal: React.FC<{
                         </div>
                     </div>
 
+
                     <div className="flex items-center gap-3">
-                        {showSendInput ? (
-                            <div className="flex items-center gap-2 bg-purple-50 p-1 rounded-lg border border-purple-100 animate-in fade-in slide-in-from-right-4 duration-300">
-                                <input
-                                    type="email"
-                                    value={testEmail}
-                                    onChange={(e) => setTestEmail(e.target.value)}
-                                    placeholder="email@example.com"
-                                    className="px-3 py-1.5 text-sm border border-purple-200 rounded-md focus:outline-none focus:border-purple-400 w-48"
-                                    autoFocus
-                                    onKeyDown={(e) => { if (e.key === 'Enter') { onSendTest(testEmail); setShowSendInput(false); } }}
-                                />
-                                <button
-                                    onClick={() => { onSendTest(testEmail); setShowSendInput(false); }}
-                                    className="p-1.5 bg-purple-600 text-white rounded-md hover:bg-purple-700 transition-colors"
-                                >
-                                    <Send size={14} />
-                                </button>
-                                <button
-                                    onClick={() => setShowSendInput(false)}
-                                    className="p-1.5 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-md transition-colors"
-                                >
-                                    <X size={14} />
-                                </button>
-                            </div>
-                        ) : (
-                            <button
-                                onClick={() => setShowSendInput(true)}
-                                className="flex items-center gap-2 px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-lg text-sm font-bold transition-colors shadow-sm"
-                            >
-                                <Send size={16} /> Gửi Test
-                            </button>
-                        )}
+                        <button
+                            onClick={() => setShowSendModal(true)}
+                            className="flex items-center gap-2 px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-lg text-sm font-bold transition-colors shadow-sm"
+                        >
+                            <Send size={16} /> Gửi Test
+                        </button>
                         <button onClick={onClose} className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-full transition-colors">
                             <X size={24} />
                         </button>
                     </div>
                 </div>
+
+                <SendTestModal
+                    isOpen={showSendModal}
+                    onClose={() => setShowSendModal(false)}
+                    defaultSubject={emailTitle}
+                    onSend={onSendTest}
+                />
 
                 {/* Tabs */}
                 <div className="h-12 border-b border-gray-200 flex items-center bg-white px-6 gap-6 shrink-0">
@@ -1338,13 +1404,13 @@ const VisualEmailBuilder: React.FC = () => {
                 htmlContent={generateHTML()}
                 jsonContent={JSON.stringify(doc, null, 2)}
                 emailTitle={emailTitle}
-                onSendTest={async (email) => {
+                onSendTest={async (email, subject) => {
                     showToast(`Đang gửi test tới ${email}...`, 'info');
                     try {
-                        await EmailService.sendTestEmail(email, generateHTML(), emailTitle);
-                        showToast('Đã gửi thành công! Kiểm tra hộp thư (cả mục Spam).', 'success');
+                        await EmailService.sendTestEmail(email, generateHTML(), subject);
+                        showToast('Đã gửi thành công! Kiểm tra hộp thư.', 'success');
                     } catch (error) {
-                        showToast('Gửi thất bại. Kiểm tra console hoặc Edge Function.', 'error');
+                        showToast('Gửi thất bại. Kiểm tra console.', 'error');
                         console.error(error);
                     }
                 }}

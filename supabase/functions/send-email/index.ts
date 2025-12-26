@@ -1,5 +1,5 @@
 
-const RESEND_API_KEY = "re_SE8iu9qw_DiAn6BJU2mGiYUPMGpbiSsR9"; // User provided key
+const RESEND_API_KEY = Deno.env.get('RESEND_API_KEY');
 
 const corsHeaders = {
     'Access-Control-Allow-Origin': '*',
