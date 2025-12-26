@@ -40,14 +40,25 @@ const FEED_SOURCES = [
     { url: 'https://feeds.feedburner.com/entrepreneur/latest', source: 'Entrepreneur', category: 'Business' }
 ];
 
-// ... existing code ...
-
-// Custom Scraper for Advertising Vietnam
-// Custom scraping logic removed to rely on more robust Google News RSS aggregation.
-// This matches the user request to ensure reliable content for Advertising Vietnam via RSS.
-
-// Custom scraper removed due to 403 Cloudflare blocks. 
-// Using Google News RSS with broader query "Advertising Vietnam" is more reliable.
+// Helper function to fetch og:image from article URL
+async function fetchOgImage(url) {
+    try {
+        const { data: html } = await axios.get(url, {
+            headers: {
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
+            },
+            timeout: 5000 // 5 second timeout to avoid slowing down aggregation
+        });
+        const $ = cheerio.load(html);
+        // Try og:image first, then twitter:image, then first img
+        const ogImage = $('meta[property="og:image"]').attr('content')
+            || $('meta[name="twitter:image"]').attr('content');
+        return ogImage || null;
+    } catch (error) {
+        // Silently fail - just return null if we can't fetch the image
+        return null;
+    }
+}
 
 export async function fetchAndStoreNews(supabase) {
     console.log('📰 Starting News Aggregation...');
@@ -80,6 +91,16 @@ export async function fetchAndStoreNews(supabase) {
                         imageUrl = item.enclosure.url;
                     } else if (item['content:encoded'] && item['content:encoded'].match(/src="([^"]+)"/)) {
                         imageUrl = item['content:encoded'].match(/src="([^"]+)"/)[1];
+                    } else if (item.content && item.content.match(/src="([^"]+)"/)) {
+                        imageUrl = item.content.match(/src="([^"]+)"/)[1];
+                    } else if (item.description && item.description.match(/src="([^"]+)"/)) {
+                        // Google News often puts the image in the description as an <img> tag 
+                        imageUrl = item.description.match(/src="([^"]+)"/)[1];
+                    }
+
+                    // If no image found in RSS, try fetching og:image from the article page
+                    if (!imageUrl && item.link) {
+                        imageUrl = await fetchOgImage(item.link);
                     }
 
                     const { error } = await supabase.from('news_articles').insert({

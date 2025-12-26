@@ -14,12 +14,24 @@ export interface NewsArticle {
 
 interface NewsCardProps {
     article: NewsArticle;
+    index?: number;
 }
 
-export const NewsCard: React.FC<NewsCardProps> = ({ article }) => {
-    // Format date nicely (e.g., "Today, 10:00 AM" or "25 Dec")
+export const NewsCard: React.FC<NewsCardProps> = ({ article, index = 10 }) => {
+    const [imageLoaded, setImageLoaded] = React.useState(false);
+
+    // Format date nicely (e.g., "14:30 25/12")
     const date = new Date(article.pub_date);
-    const dateStr = date.toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit' });
+    const dateStr = date.toLocaleDateString('vi-VN', {
+        day: '2-digit',
+        month: '2-digit',
+        hour: '2-digit',
+        minute: '2-digit'
+    }).replace(',', ''); // "HH:MM dd/MM"
+
+    // Logic for image loading priority
+    // First 6 images (top 2 rows) load eagerly for speed, rest lazy
+    const loadingStrategy = index < 6 ? "eager" : "lazy";
 
     // Category badge colors (Soft Pastel)
     const getCategoryColor = (cat: string) => {
@@ -31,6 +43,8 @@ export const NewsCard: React.FC<NewsCardProps> = ({ article }) => {
         }
     };
 
+
+
     // Helper to decode HTML entities
     const decodeHtml = (html: string) => {
         const txt = document.createElement("textarea");
@@ -38,8 +52,16 @@ export const NewsCard: React.FC<NewsCardProps> = ({ article }) => {
         return txt.value;
     };
 
+    // Helper to optimize external images
+    const getOptimizedImageUrl = (url?: string) => {
+        if (!url) return '';
+        const encodedUrl = encodeURIComponent(url);
+        return `https://wsrv.nl/?url=${encodedUrl}&w=500&q=80&output=webp`;
+    };
+
     const title = decodeHtml(article.title);
     const summary = decodeHtml(article.summary.replace(/<[^>]*>?/gm, ''));
+    const displayImage = getOptimizedImageUrl(article.image_url);
 
     return (
         <a
@@ -63,17 +85,29 @@ export const NewsCard: React.FC<NewsCardProps> = ({ article }) => {
                 </div>
 
                 {/* Image (Always show - use placeholder if missing) */}
-                <div className="mb-4 overflow-hidden rounded-xl bg-gray-100 aspect-video relative">
+                <div className="mb-4 overflow-hidden rounded-xl bg-gray-100 aspect-video relative group-hover:shadow-sm transition-all">
+                    {/* Skeleton Loading State */}
+                    {!imageLoaded && article.image_url && (
+                        <div className="absolute inset-0 bg-gray-200 animate-pulse z-10" />
+                    )}
+
                     {article.image_url ? (
                         <img
-                            src={article.image_url}
+                            src={displayImage}
                             alt={title}
-                            loading="lazy"
-                            decoding="async"
-                            className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
+                            loading={loadingStrategy}
+                            crossOrigin="anonymous" // Helpful for CDN
+                            className={`w-full h-full object-cover transition-all duration-700 group-hover:scale-105 ${imageLoaded ? 'opacity-100 blur-0' : 'opacity-0 blur-lg'}`}
+                            onLoad={() => setImageLoaded(true)}
                             onError={(e) => {
-                                e.currentTarget.style.display = 'none';
-                                e.currentTarget.nextElementSibling?.classList.remove('hidden');
+                                // If proxy fails, try original url as fallback before giving up
+                                if (e.currentTarget.src.includes('wsrv.nl') && article.image_url) {
+                                    e.currentTarget.src = article.image_url;
+                                } else {
+                                    e.currentTarget.style.display = 'none';
+                                    e.currentTarget.nextElementSibling?.classList.remove('hidden');
+                                    setImageLoaded(true);
+                                }
                             }}
                         />
                     ) : null}
