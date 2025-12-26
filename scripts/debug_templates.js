@@ -1,69 +1,65 @@
+
 import { createClient } from '@supabase/supabase-js';
 import dotenv from 'dotenv';
+import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
 
-// Load env vars
-const __dirname = path.dirname(fileURLToPath(import.meta.url));
-dotenv.config({ path: path.join(__dirname, '../.env.local') });
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
+// Load .env.local
+try {
+    const envPath = path.resolve(__dirname, '../.env.local');
+    const envConfig = dotenv.parse(fs.readFileSync(envPath));
+    for (const k in envConfig) {
+        process.env[k] = envConfig[k];
+    }
+} catch (e) {
+    console.error('Error loading .env.local', e);
+}
 
 const supabaseUrl = process.env.VITE_SUPABASE_URL;
-const supabaseKey = process.env.VITE_SUPABASE_ANON_KEY; // Use Anon key or Service Role if available, assuming Anon works for now if RLS allows
+const supabaseAnonKey = process.env.VITE_SUPABASE_ANON_KEY;
 
-if (!supabaseUrl || !supabaseKey) {
-    console.error('Missing Supabase credentials');
+if (!supabaseUrl || !supabaseAnonKey) {
+    console.error("Missing Supabase credentials");
     process.exit(1);
 }
 
-const supabase = createClient(supabaseUrl, supabaseKey);
+const supabase = createClient(supabaseUrl, supabaseAnonKey);
 
-async function main() {
-    console.log('--- EMAIL DESIGNS ---');
-    const { data: designs, error: designError } = await supabase
+async function dumpDesigns() {
+    const { data: designs, error } = await supabase
         .from('email_designs')
-        .select('*')
-        .order('updated_at', { ascending: false });
+        .select('*');
 
-    if (designError) {
-        console.error('Error fetching designs:', designError);
-    } else {
-        designs.forEach(d => {
-            const doc = d.doc || {};
-            const blocks = doc.blocks || [];
-            const firstBlock = blocks.length > 0 ? blocks[0] : null;
-            let contentSnippet = 'Empty/No Blocks';
-            if (firstBlock) {
-                if (firstBlock.content) contentSnippet = firstBlock.content.substring(0, 50).replace(/\n/g, ' ');
-                else if (firstBlock.type) contentSnippet = `[Type: ${firstBlock.type}]`;
-            }
-
-            console.log(`ID: ${d.id}`);
-            console.log(`  Name: ${d.name}`);
-            console.log(`  Updated: ${d.updated_at}`);
-            console.log(`  Blocks: ${blocks.length}`);
-            console.log(`  First Block: ${contentSnippet}`);
-            console.log('-----------------------------------');
-        });
+    if (error) {
+        console.error("Error:", error);
+        return;
     }
 
-    console.log('\n--- EMAIL CAMPAIGNS ---');
-    const { data: campaigns, error: campaignError } = await supabase
+    // Simplify output
+    const simplified = designs.map(d => ({
+        id: d.id,
+        name: d.name,
+        updated_at: d.updated_at,
+        first_block: d.doc?.blocks?.[0]?.content?.substring(0, 50) || "N/A",
+        block_count: d.doc?.blocks?.length || 0,
+        doc_sample: JSON.stringify(d.doc).substring(0, 100)
+    }));
+
+    const { data: campaigns } = await supabase
         .from('email_campaigns')
-        .select('id, name, template_id, status, created_at')
-        .order('created_at', { ascending: false })
-        .limit(5);
+        .select('id, name, template_id');
 
-    if (campaignError) {
-        console.error('Error fetching campaigns:', campaignError);
-    } else {
-        campaigns.forEach(c => {
-            console.log(`ID: ${c.id}`);
-            console.log(`  Name: ${c.name}`);
-            console.log(`  Template ID: ${c.template_id}`);
-            console.log(`  Status: ${c.status}`);
-            console.log('-----------------------------------');
-        });
-    }
+    // Write to file instead of console log to avoid truncation
+    const output = {
+        designs: simplified,
+        campaigns: campaigns
+    };
+    fs.writeFileSync('debug_output.json', JSON.stringify(output, null, 2));
+    console.log("Done writing to debug_output.json");
 }
 
-main();
+dumpDesigns();

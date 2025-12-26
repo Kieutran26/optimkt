@@ -35,6 +35,7 @@ import { ConfirmDialog } from './ConfirmDialog';
 import { emailDesignService } from '../services/emailDesignService';
 import EmailReport from './EmailReport';
 import CampaignManager from './EmailMarketing/CampaignManager';
+import { generateEmailHTML } from '../utils/emailRenderer';
 
 // =============================================
 // CONSTANTS
@@ -2375,153 +2376,12 @@ const VisualEmailBuilder: React.FC = () => {
         }
     };
 
-    const generateHTML = (): string => {
-        const { settings, blocks } = doc;
-        const toHtml = (b: EmailBlock): string => {
-            switch (b.type) {
-                case 'heading': return `<${b.level} style="margin:0 0 16px;font-size:${b.level === 'h1' ? '28px' : '20px'};font-weight:bold;text-align:${b.alignment};color:${b.color};">${b.content}</${b.level}>`;
-                case 'text': return `<div style="margin:0 0 16px;text-align:${b.alignment};color:#4b5563;">${b.content}</div>`;
-                case 'image': return `<div style="text-align:${b.alignment};margin:16px 0;"><img src="${b.src}" alt="${b.alt}" style="max-width:100%;border-radius:8px;" /></div>`;
-                case 'button': return `<div style="text-align:${b.alignment};margin:24px 0;"><a href="${b.url}" style="display:inline-block;background:${b.backgroundColor};color:${b.textColor};padding:12px 32px;border-radius:${b.borderRadius}px;text-decoration:none;font-weight:bold;">${b.label}</a></div>`;
-                case 'spacer': return `<div style="height:${b.height}px;"></div>`;
-                case 'divider': return `<hr style="border:none;border-top:1px ${b.style} ${b.color};margin:24px 0;" />`;
-                case 'social': return `<div style="text-align:${b.alignment};margin:24px 0;">${b.platforms.map((p) => `<span style="margin:0 8px;">${p.name}</span>`).join('')}</div>`;
-                case 'link': return `<div style="text-align:${b.alignment};margin:16px 0;"><a href="${b.url}" style="color:${b.color};text-decoration:underline;">${b.text}</a></div>`;
-                case 'row2': return `<table width="100%" cellpadding="0" cellspacing="0" style="margin:16px 0;">${b.children.map(cells => `<tr><td style="padding:12px;background:#f9fafb;border:1px solid #e5e7eb;border-radius:8px;">${cells.map(c => toHtml(c)).join('')}</td></tr>`).join('')}</table>`;
-                case 'row3': return `<table width="100%" cellpadding="0" cellspacing="0" style="margin:16px 0;">${b.children.map(cells => `<tr><td style="padding:12px;background:#f9fafb;border:1px solid #e5e7eb;border-radius:8px;">${cells.map(c => toHtml(c)).join('')}</td></tr>`).join('')}</table>`;
-                case 'column2': return `<table width="100%" cellpadding="0" cellspacing="8" style="margin:16px 0;"><tr>${b.children.map(cells => `<td width="50%" style="padding:12px;background:#f9fafb;border:1px solid #e5e7eb;border-radius:8px;vertical-align:top;">${cells.map(c => toHtml(c)).join('')}</td>`).join('')}</tr></table>`;
-                case 'column3': return `<table width="100%" cellpadding="0" cellspacing="8" style="margin:16px 0;"><tr>${b.children.map(cells => `<td width="33%" style="padding:12px;background:#f9fafb;border:1px solid #e5e7eb;border-radius:8px;vertical-align:top;">${cells.map(c => toHtml(c)).join('')}</td>`).join('')}</tr></table>`;
-                case 'html': return b.content;
-                case 'video': return `<div style="text-align:${b.alignment};margin:16px 0;"><a href="${b.url}" target="_blank"><div style="position:relative;display:inline-block;"><img src="${b.thumbnail || 'https://placehold.co/600x337/333/FFF?text=PLAY+VIDEO'}" alt="${b.alt}" style="max-width:100%;border-radius:8px;" /><div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:48px;height:48px;background:rgba(255,255,255,0.9);border-radius:50%;display:flex;align-items:center;justify-content:center;">▶</div></div></a></div>`;
-                case 'header':
-                    return `<div style="background:${b.colors.background};padding:24px;display:flex;flex-direction:${b.layout === 'stacked' ? 'column' : 'row'};align-items:center;justify-content:${b.layout === 'stacked' ? 'center' : 'space-between'};gap:16px;">
-                        <div style="display:flex;flex-direction:column;align-items:${b.layout === 'stacked' ? 'center' : 'flex-start'};">
-                            ${b.logoSrc ? `<img src="${b.logoSrc}" alt="Logo" style="height:40px;display:block;margin-bottom:4px;" />` : b.companyName ? `<div style="font-size:24px;font-weight:bold;color:${b.colors.companyName};line-height:1;">${b.companyName}</div>` : `<div style="background:#e5e7eb;color:#6b7280;font-size:12px;font-weight:bold;padding:4px 12px;border-radius:4px;">LOGO</div>`}
-                            ${b.tagline ? `<div style="font-size:14px;color:${b.colors.tagline};margin-top:4px;">${b.tagline}</div>` : ''}
-                        </div>
-                        ${b.showMenu ? `<div style="margin-top:${b.layout === 'stacked' ? '16px' : '0'};text-align:${b.layout === 'stacked' ? 'center' : 'right'};">${b.navLinks.map(l => `<a href="${l.url}" style="margin:0 10px;color:${b.colors.menu};text-decoration:none;font-size:14px;font-weight:500;">${l.text}</a>`).join('')}</div>` : ''}
-                    </div>`;
-                case 'footer': return `
-                    <div style="background:${b.backgroundColor};padding:32px 24px;text-align:center;">
-                        ${b.logoUrl ? `<img src="${b.logoUrl}" alt="Company Logo" style="height:32px;margin:0 auto 16px;display:block;" />` : ''}
-                        
-                        <div style="margin-bottom:24px;">
-                            ${b.companyName ? `<div style="font-weight:bold;color:#1f2937;margin-bottom:4px;">${b.companyName}</div>` : ''}
-                            <div style="font-size:12px;color:#6b7280;line-height:1.5;">
-                                ${b.address ? `<div>${b.address}</div>` : ''}
-                                ${b.companyEmail ? `<div>${b.companyEmail}</div>` : ''}
-                                ${b.phone ? `<div>${b.phone}</div>` : ''}
-                            </div>
-                        </div>
-
-                        ${b.socialLinks.length > 0 ? `
-                            <div style="margin-bottom:24px;">
-                                ${b.socialLinks.map(s => {
-                    const sizeMap = { small: '24px', medium: '32px', large: '40px' };
-                    const radMap = { circle: '50%', square: '0', rounded: '8px' };
-                    const size = sizeMap[b.socialIconSize || 'medium'];
-                    const rad = radMap[b.socialIconStyle || 'circle'];
-
-                    // SVG Icons for Email (inline is best for modern clients, fallback is tricky without CDN)
-                    const icons = {
-                        Facebook: '<path d="M18 2h-3a5 5 0 00-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 011-1h3z"></path>',
-                        Twitter: '<path d="M23 3a10.9 10.9 0 01-3.14 1.53 4.48 4.48 0 00-7.86 3v1A10.66 10.66 0 013 4s-4 9 5 13a11.64 11.64 0 01-7 2c9 5 20 0 20-11.5a4.5 4.5 0 00-.08-.83A7.72 7.72 0 0023 3z"></path>',
-                        Instagram: '<rect x="2" y="2" width="20" height="20" rx="5" ry="5"></rect><path d="M16 11.37A4 4 0 1112.63 8 4 4 0 0116 11.37z"></path><line x1="17.5" y1="6.5" x2="17.51" y2="6.5"></line>',
-                        LinkedIn: '<path d="M16 8a6 6 0 016 6v7h-4v-7a2 2 0 00-2-2 2 2 0 00-2 2v7h-4v-7a6 6 0 016-6z"></path><rect x="2" y="9" width="4" height="12"></rect><circle cx="4" cy="4" r="2"></circle>',
-                        YouTube: '<path d="M22.54 6.42a2.78 2.78 0 00-1.94-2C18.88 4 12 4 12 4s-6.88 0-8.6.46a2.78 2.78 0 00-1.94 2A29 29 0 001 11.75a29 29 0 00.46 5.33A2.78 2.78 0 003.4 19c1.72.46 8.6.46 8.6.46s6.88 0 8.6-.46a2.78 2.78 0 001.94-2 29 29 0 00.46-5.33 29 29 0 00-.46-5.33z"></path><polygon points="9.75 15.02 15.5 11.75 9.75 8.48 9.75 15.02"></polygon>',
-                        TikTok: '<path d="M9 12a4 4 0 1 0 4 4V4a5 5 0 0 0 5 5v4a9 9 0 0 1-9-9v17"></path>',
-                        Website: '<circle cx="12" cy="12" r="10"></circle><line x1="2" y1="12" x2="22" y2="12"></line><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"></path>'
-                    };
-                    const content = icons[s.name] || icons['Website'];
-                    const iconSize = parseInt(size) - 12;
-
-                    return `<a href="${s.url}" style="display:inline-block;width:${size};height:${size};line-height:${size};background:#e5e7eb;color:#4b5563;border-radius:${rad};text-align:center;text-decoration:none;margin:0 4px;">
-                                        <svg viewBox="0 0 24 24" width="${iconSize}" height="${iconSize}" style="vertical-align:middle;" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round">
-                                            ${content}
-                                        </svg>
-                                    </a>`;
-                }).join('')}
-                            </div>
-                        ` : ''}
-
-                        <div style="border-top:1px solid #e5e7eb;padding-top:24px;">
-                             <div style="font-size:12px;color:#9ca3af;margin-bottom:12px;">${(b.copyrightText && !b.copyrightText.startsWith('©')) ? '© ' : ''}${b.copyrightText || ''}</div>
-                             <div style="font-size:12px;color:#9ca3af;">
-                                ${b.privacyUrl ? `<a href="${b.privacyUrl}" style="color:#6b7280;text-decoration:underline;margin:0 8px;">Privacy Policy</a>` : ''}
-                                ${b.termsUrl ? `<a href="${b.termsUrl}" style="color:#6b7280;text-decoration:underline;margin:0 8px;">Terms of Service</a>` : ''}
-                                ${b.unsubscribeUrl ? `<a href="${b.unsubscribeUrl}" style="color:#6b7280;text-decoration:underline;margin:0 8px;">${b.unsubscribeText || 'Unsubscribe'}</a>` : ''}
-                             </div>
-                        </div>
-                    </div>`;
-                case 'product': return `
-                    <div style="background:${b.backgroundColor};border:1px solid #e5e7eb;border-radius:12px;overflow:hidden;text-align:center;position:relative;">
-                        ${b.badge ? `<div style="position:absolute;top:16px;left:16px;background:${b.colors?.badge || '#ef4444'};color:#fff;font-size:12px;font-weight:bold;padding:4px 12px;border-radius:999px;z-index:10;">${b.badge}</div>` : ''}
-                        
-                        <div style="position:relative;">
-                            ${b.productImage ?
-                        `<img src="${b.productImage}" alt="${b.title}" style="width:100%;height:224px;object-fit:cover;display:block;" />` :
-                        `<div style="width:100%;height:224px;background:#f3f4f6;display:flex;align-items:center;justify-content:center;color:#9ca3af;">Product Image</div>`
-                    }
-                            ${!b.inStock ? `<div style="position:absolute;top:0;left:0;right:0;bottom:0;background:rgba(255,255,255,0.6);display:flex;align-items:center;justify-content:center;font-weight:bold;color:#6b7280;text-transform:uppercase;letter-spacing:1px;">Out of Stock</div>` : ''}
-                        </div>
-                        
-                        <div style="padding:24px;">
-                            <h3 style="margin:0 0 8px;font-size:${b.titleFontSize || 20}px;color:${b.colors?.text || '#1f2937'};font-weight:bold;line-height:1.25;">${b.title}</h3>
-                            
-                            ${(b.rating !== undefined && !(b.rating === 5 && (!b.reviewCount || b.reviewCount === 0))) ? `
-                                <div style="display:flex;align-items:center;justify-content:center;gap:4px;margin-bottom:12px;">
-                                    <span style="color:#facc15;font-size:14px;">${'★'.repeat(b.rating || 5)}${'☆'.repeat(5 - (b.rating || 5))}</span>
-                                    ${b.reviewCount ? `<span style="font-size:12px;color:#9ca3af;">(${b.reviewCount} reviews)</span>` : ''}
-                                </div>
-                            ` : ''}
-                            
-                            <div style="display:flex;align-items:center;justify-content:center;gap:8px;margin-bottom:16px;">
-                                <span style="font-size:18px;font-weight:bold;color:${b.colors?.price || '#1f2937'};">${b.price}</span>
-                                ${b.originalPrice ? `<span style="font-size:14px;color:#9ca3af;text-decoration:line-through;">${b.originalPrice}</span>` : ''}
-                                ${b.discount ? `<span style="font-size:12px;font-weight:bold;color:#ef4444;background:#fef2f2;padding:2px 6px;border-radius:4px;">-${b.discount}%</span>` : ''}
-                            </div>
-                            
-                            <p style="color:#6b7280;font-size:14px;margin-bottom:16px;line-height:1.5;">${b.description}</p>
-                            
-                            <a href="${b.url}" style="display:block;width:100%;background:${b.buttonColor};color:${b.colors?.buttonText || '#fff'};padding:12px 24px;border-radius:8px;text-decoration:none;font-weight:bold;text-align:center;">
-                                ${b.buttonText}
-                            </a>
-                        </div>
-                    </div>`;
-                case 'unsubscribe': return `
-                    <div style="background:${b.colors?.background || 'transparent'};text-align:${b.alignment};padding:16px;">
-                        <div style="font-size:${b.fontSize || 12}px;color:${b.colors?.text || '#6b7280'};margin-bottom:8px;">${b.text}</div>
-                        <a href="${b.url}" style="display:inline-block;font-size:${b.fontSize || 12}px;color:${b.colors?.link || '#3b82f6'};text-decoration:none;font-weight:500;">
-                            ${b.linkText}
-                        </a>
-                    </div>`;
-
-                // E-commerce
-                // E-commerce
-                case 'product-grid':
-                    const colWidth = b.columns === 3 ? '32%' : '48%';
-                    const gap = '2%';
-                    return `
-                    <div style="padding:16px;">
-                        ${b.title ? `
-                        <div style="text-align:${b.titleAlignment};margin-bottom:16px;">
-                            ${b.titleIcon ? `<img src="${b.titleIcon}" style="height:24px;vertical-align:middle;margin-right:8px;" />` : ''}
-                            <span style="font-size:${b.titleFontSize || 20}px;font-weight:${b.titleFontWeight === 'bold' ? 'bold' : 'normal'};font-family:${b.fontFamily || 'Arial'}, sans-serif;font-style:${b.titleFontStyle || 'normal'};color:${b.titleColors?.text || '#1f2937'};background:${b.titleColors?.background || 'transparent'};padding:${b.titleColors?.background ? '4px 12px' : '0'};border-radius:${b.titleColors?.background ? '8px' : '0'};display:inline-block;">${b.title}</span>
-                        </div>` : ''}
-                        
-                        <div style="font-size:0;text-align:center;">
-                            ${b.products.map((p) => `
-                            <div style="display:inline-block;width:${colWidth};vertical-align:top;background:${b.cardBackgroundColor || '#ffffff'};border:${b.cardBorderWidth || 1}px solid ${b.cardBorderColor || '#e5e7eb'};border-radius:${b.cardBorderRadius || 8}px;padding:${b.cardPadding || 0}px;margin-bottom:16px;margin-left:1%;margin-right:1%;">
-                                <div style="height:${b.imageHeight || 140}px;overflow:hidden;border-radius:${b.imageBorderRadius || 0}px;margin-bottom:8px;">
-                                    ${p.image ? `<img src="${p.image}" style="width:100%;height:100%;object-fit:cover;border-radius:${b.imageShape === 'circle' ? '50%' : (b.imageBorderRadius || 0) + 'px'};display:block;" />` : `<div style="width:100%;height:100%;background:#f3f4f6;display:flex;align-items:center;justify-content:center;color:#9ca3af;font-size:12px;">No Image</div>`}
-                                </div>
-                                <div style="padding:0 8px 8px;text-align:center;font-family:${b.fontFamily || 'Arial'}, sans-serif;">
-                                    <div style="font-size:14px;font-weight:600;color:${b.productNameColor || '#1f2937'};margin-bottom:4px;overflow:hidden;text-overflow:ellipsis;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;">${p.title}</div>
-                                    <div style="color:${b.priceColor || '#2563eb'};font-weight:bold;font-size:16px;">${p.price}</div>
-                                    ${p.originalPrice ? `<div style="color:${b.oldPriceColor || '#9ca3af'};font-size:12px;text-decoration:line-through;">${p.originalPrice}</div>` : ''}
-                                </div>
-                            </div>
-                            `).join('')}
+    const generateHTML = () => generateEmailHTML(doc);
+    /*
+                                    ${ p.originalPrice ? `<div style="color:${b.oldPriceColor || '#9ca3af'};font-size:12px;text-decoration:line-through;">${p.originalPrice}</div>` : '' }
+                                </div >
+                            </div >
+    `).join('')}
                         </div>
                     </div>`;
                 case 'coupon': return `
@@ -2597,8 +2457,8 @@ const VisualEmailBuilder: React.FC = () => {
                 default: return '';
             }
         };
-        return `<!DOCTYPE html><html><head><meta charset="utf-8"><title>${emailTitle}</title></head><body style="margin:0;padding:0;font-family:${settings.fontFamily};background:${settings.backgroundColor};"><div style="max-width:${settings.contentWidth}px;margin:0 auto;padding:40px 20px;"><div style="background:#fff;border-radius:16px;padding:40px;box-shadow:0 4px 6px rgba(0,0,0,0.05);">${blocks.map(b => toHtml(b)).join('\n')}</div></div></body></html>`;
-    };
+return `<!DOCTYPE html><html><head><meta charset="utf-8"><title>${emailTitle}</title></head><body style="margin:0;padding:0;font-family:${settings.fontFamily};background:${settings.backgroundColor};"><div style="max-width:${settings.contentWidth}px;margin:0 auto;padding:40px 20px;"><div style="background:#fff;border-radius:16px;padding:40px;box-shadow:0 4px 6px rgba(0,0,0,0.05);">${blocks.map(b => toHtml(b)).join('\n')}</div></div></body></html>`;
+    }; */
 
     const handleExport = () => { const html = generateHTML(); StorageService.addEmailHistory({ id: Date.now().toString(), timestamp: Date.now(), title: emailTitle, html }); setEmailHistory(StorageService.getEmailHistory()); const blob = new Blob([html], { type: 'text/html' }); const a = window.document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = `email-${Date.now()}.html`; a.click(); showToast('Xuất thành công!', 'success'); };
     const handleCreateNew = () => { setConfirmDialog({ isOpen: true, title: 'Tạo mới?', message: 'Thay đổi chưa lưu sẽ mất.', onConfirm: () => { setDoc(DEFAULT_DOC); setEmailTitle('Email mới'); setSelectedId(null); setCurrentDesignId(null); closeConfirm(); showToast('Đã tạo mới', 'success'); } }); };
