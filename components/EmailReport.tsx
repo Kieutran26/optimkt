@@ -7,6 +7,7 @@ import {
 import { campaignService, EmailCampaign as CampaignType, CampaignAnalytics } from '../services/campaignService';
 import CustomerLists from './EmailMarketing/CustomerLists';
 import CampaignManager from './EmailMarketing/CampaignManager';
+import { ScheduledCampaignsModal } from './EmailMarketing/ScheduledCampaignsModal';
 
 // Types
 interface EmailCampaign {
@@ -300,6 +301,7 @@ const EmailReport: React.FC<{ onBack?: () => void }> = ({ onBack }) => {
     const [loading, setLoading] = useState(true);
     const [analyticsMap, setAnalyticsMap] = useState<Record<string, CampaignAnalytics>>({});
     const [showCampaignManager, setShowCampaignManager] = useState(false);
+    const [showScheduledModal, setShowScheduledModal] = useState(false);
 
     useEffect(() => {
         loadData();
@@ -413,6 +415,15 @@ const EmailReport: React.FC<{ onBack?: () => void }> = ({ onBack }) => {
                             </select>
                             <ChevronDown size={16} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
                         </div>
+
+                        {/* Calendar Button */}
+                        <button
+                            onClick={() => setShowScheduledModal(true)}
+                            className="flex items-center gap-2 bg-white border border-gray-200 text-gray-700 hover:bg-gray-50 px-3 py-2 rounded-lg text-sm font-medium transition-colors"
+                            title="Lịch chiến dịch"
+                        >
+                            <Calendar size={18} />
+                        </button>
 
                         {/* Create Campaign Button */}
                         <button
@@ -577,6 +588,14 @@ const EmailReport: React.FC<{ onBack?: () => void }> = ({ onBack }) => {
                 onClose={() => { setShowCampaignManager(false); loadData(); }}
                 onCreateCampaign={() => { }}
             />
+
+            {/* Scheduled Campaigns Modal */}
+            {showScheduledModal && (
+                <ScheduledCampaignsModal
+                    campaigns={campaigns}
+                    onClose={() => setShowScheduledModal(false)}
+                />
+            )}
         </div>
     );
 };

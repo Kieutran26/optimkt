@@ -81,7 +81,7 @@ export const campaignService = {
             .from('email_campaigns')
             .insert({
                 ...campaign,
-                status: 'draft'
+                status: campaign.scheduled_at ? 'scheduled' : 'draft'
             })
             .select()
             .single();

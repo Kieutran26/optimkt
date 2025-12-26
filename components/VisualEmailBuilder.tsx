@@ -10,7 +10,7 @@ import {
 import { CSS } from '@dnd-kit/utilities';
 import {
     Send, Monitor, Smartphone, LayoutGrid, Type, Image as ImageIcon, CheckSquare, Maximize2, X, Plus, Trash2, Eye, Download, Upload, Save, History, Code, FileJson, Copy, Briefcase, Gift, ShoppingBag, MapPin, Heart, Sparkles, User, Users, Network, Maximize, BarChart2,
-    Mail, MousePointerClick, Link2, Minus, Rows, Columns, PlayCircle, PanelTop, CreditCard, PanelBottom, UserMinus, Grid, Ticket, ShoppingCart, Receipt, Home, List, FileText, ExternalLink, Palette, Circle, Tablet, Check, GripVertical, ChevronUp, ChevronDown, Settings, AlignLeft, AlignCenter, AlignRight, Layers, Square, Bold, Italic, Share2, LayoutTemplate
+    Mail, MousePointerClick, Link2, Minus, Rows, Columns, PlayCircle, PanelTop, CreditCard, PanelBottom, UserMinus, Grid, Ticket, ShoppingCart, Receipt, Home, List, FileText, ExternalLink, Palette, Circle, Tablet, Check, GripVertical, ChevronUp, ChevronDown, Settings, AlignLeft, AlignCenter, AlignRight, Layers, Square, Bold, Italic, Share2, LayoutTemplate, Calendar
 } from 'lucide-react';
 
 
@@ -35,6 +35,8 @@ import { ConfirmDialog } from './ConfirmDialog';
 import { emailDesignService } from '../services/emailDesignService';
 import EmailReport from './EmailReport';
 import CampaignManager from './EmailMarketing/CampaignManager';
+import { ScheduledCampaignsModal } from './EmailMarketing/ScheduledCampaignsModal';
+import { campaignService, EmailCampaign } from '../services/campaignService';
 import { generateEmailHTML } from '../utils/emailRenderer';
 
 // =============================================
@@ -2282,6 +2284,14 @@ const VisualEmailBuilder: React.FC = () => {
     const [confirmDialog, setConfirmDialog] = useState<{ isOpen: boolean; title: string; message: string; onConfirm: () => void; isDestructive?: boolean }>({ isOpen: false, title: '', message: '', onConfirm: () => { } });
     const [showReportModal, setShowReportModal] = useState(false);
     const [showCampaignModal, setShowCampaignModal] = useState(false);
+    const [scheduledData, setScheduledData] = useState<EmailCampaign[]>([]);
+    const [showScheduledModal, setShowScheduledModal] = useState(false);
+
+    const handleOpenScheduledModal = async () => {
+        const campaigns = await campaignService.getAllCampaigns();
+        setScheduledData(campaigns);
+        setShowScheduledModal(true);
+    };
 
     React.useEffect(() => {
         setEmailHistory(StorageService.getEmailHistory());
@@ -2557,7 +2567,7 @@ return `<!DOCTYPE html><html><head><meta charset="utf-8"><title>${emailTitle}</t
         <div className="h-screen flex flex-col bg-gray-50 overflow-hidden">
             <div className="h-14 bg-white border-b border-gray-200 px-4 flex items-center justify-between shrink-0 shadow-sm z-20">
                 <div className="flex items-center gap-3"><div className="bg-pink-100 p-2 rounded-lg text-pink-600"><Mail size={18} /></div><h2 className="text-lg font-bold text-gray-800">Visual Email</h2><span className="text-[10px] bg-blue-100 text-blue-600 px-2 py-0.5 rounded font-semibold">Pro</span></div>
-                <div className="flex gap-2"><button onClick={handleCreateNew} className="bg-white border border-gray-200 text-gray-600 px-3 py-1.5 rounded-lg text-sm font-medium flex items-center gap-1.5 hover:bg-gray-50"><Plus size={16} />Tạo mới</button><button onClick={() => setShowReportModal(true)} className="bg-white border border-gray-200 text-gray-600 px-3 py-1.5 rounded-lg text-sm font-medium flex items-center gap-1.5 hover:bg-gray-50"><BarChart2 size={16} />Report</button><button onClick={() => setShowCampaignModal(true)} className="bg-blue-600 text-white px-4 py-1.5 rounded-lg text-sm font-bold flex items-center gap-1.5 hover:bg-blue-700 shadow-sm"><Send size={16} />Chiến dịch</button></div>
+                <div className="flex gap-2"><button onClick={handleCreateNew} className="bg-white border border-gray-200 text-gray-600 px-3 py-1.5 rounded-lg text-sm font-medium flex items-center gap-1.5 hover:bg-gray-50"><Plus size={16} />Tạo mới</button><button onClick={handleOpenScheduledModal} className="bg-white border border-gray-200 text-gray-600 px-3 py-1.5 rounded-lg text-sm font-medium flex items-center gap-1.5 hover:bg-gray-50"><Calendar size={16} />Lịch</button><button onClick={() => setShowReportModal(true)} className="bg-white border border-gray-200 text-gray-600 px-3 py-1.5 rounded-lg text-sm font-medium flex items-center gap-1.5 hover:bg-gray-50"><BarChart2 size={16} />Report</button><button onClick={() => setShowCampaignModal(true)} className="bg-blue-600 text-white px-4 py-1.5 rounded-lg text-sm font-bold flex items-center gap-1.5 hover:bg-blue-700 shadow-sm"><Send size={16} />Chiến dịch</button></div>
             </div>
 
             <DndContext sensors={sensors} collisionDetection={closestCenter} onDragStart={handleDragStart} onDragOver={handleDragOver} onDragEnd={handleDragEnd}>
@@ -2678,6 +2688,14 @@ return `<!DOCTYPE html><html><head><meta charset="utf-8"><title>${emailTitle}</t
                 onClose={() => setShowCampaignModal(false)}
                 onCreateCampaign={() => { }}
             />
+
+            {/* Scheduled Campaigns Modal */}
+            {showScheduledModal && (
+                <ScheduledCampaignsModal
+                    campaigns={scheduledData}
+                    onClose={() => setShowScheduledModal(false)}
+                />
+            )}
         </div>
     );
 };

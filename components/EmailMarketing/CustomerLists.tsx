@@ -1,17 +1,18 @@
 import React, { useState, useEffect, useRef } from 'react';
 import {
     ArrowLeft, Plus, Users, Upload, FileSpreadsheet, ClipboardList,
-    Trash2, Edit3, Search, CheckCircle, X, Mail, Phone, User,
+    Trash2, Edit3, Search, CheckCircle, X, Mail, Phone, User, UserMinus,
     ChevronDown, ChevronRight, Settings, Info, Link2, Eye, Calendar
 } from 'lucide-react';
 import { customerListService, CustomerList, Subscriber, CustomFieldDefinition } from '../../services/customerListService';
-import { Toast, ToastType } from '../Toast';
+import { Toast, ToastType } from '../Toast'; // Assuming shared Toast component
 
 // =============================================
 // CUSTOMER LISTS COMPONENT
 // =============================================
 
 const CustomerLists: React.FC<{ onBack?: () => void }> = ({ onBack }) => {
+    // ... (state hooks remain same)
     const [lists, setLists] = useState<CustomerList[]>([]);
     const [selectedList, setSelectedList] = useState<CustomerList | null>(null);
     const [subscribers, setSubscribers] = useState<Subscriber[]>([]);
@@ -148,8 +149,8 @@ const CustomerLists: React.FC<{ onBack?: () => void }> = ({ onBack }) => {
                                         key={list.id}
                                         onClick={() => setSelectedList(list)}
                                         className={`p-3 rounded-lg cursor-pointer transition-all ${selectedList?.id === list.id
-                                                ? 'bg-green-50 border border-green-200'
-                                                : 'bg-gray-50 hover:bg-gray-100 border border-transparent'
+                                            ? 'bg-green-50 border border-green-200'
+                                            : 'bg-gray-50 hover:bg-gray-100 border border-transparent'
                                             }`}
                                     >
                                         <div className="flex items-center justify-between">
@@ -194,6 +195,30 @@ const CustomerLists: React.FC<{ onBack?: () => void }> = ({ onBack }) => {
                                     >
                                         <Plus size={14} /> Thêm thủ công
                                     </button>
+                                </div>
+                            </div>
+
+                            {/* Report Stats */}
+                            <div className="px-6 py-4 grid grid-cols-2 gap-4 border-b border-gray-100 bg-gray-50/50">
+                                <div className="bg-white border border-blue-100 p-4 rounded-xl flex items-center gap-4 shadow-sm">
+                                    <div className="p-3 bg-blue-50 rounded-lg text-blue-600">
+                                        <Users size={24} />
+                                    </div>
+                                    <div>
+                                        <div className="text-sm text-gray-500 font-medium">Tổng khách hàng</div>
+                                        <div className="text-2xl font-bold text-gray-800">{subscribers.length}</div>
+                                    </div>
+                                </div>
+                                <div className="bg-white border border-red-100 p-4 rounded-xl flex items-center gap-4 shadow-sm">
+                                    <div className="p-3 bg-red-50 rounded-lg text-red-600">
+                                        <UserMinus size={24} />
+                                    </div>
+                                    <div>
+                                        <div className="text-sm text-gray-500 font-medium">Đã hủy đăng ký</div>
+                                        <div className="text-2xl font-bold text-gray-800">
+                                            {subscribers.filter(s => s.status === 'unsubscribed').length}
+                                        </div>
+                                    </div>
                                 </div>
                             </div>
 
@@ -242,8 +267,8 @@ const CustomerLists: React.FC<{ onBack?: () => void }> = ({ onBack }) => {
                                                     <td className="px-4 py-3 text-sm text-gray-600">{sub.phone || '-'}</td>
                                                     <td className="px-4 py-3">
                                                         <span className={`px-2 py-0.5 text-xs font-medium rounded-full ${sub.status === 'active' ? 'bg-green-100 text-green-700' :
-                                                                sub.status === 'unsubscribed' ? 'bg-red-100 text-red-700' :
-                                                                    'bg-gray-100 text-gray-700'
+                                                            sub.status === 'unsubscribed' ? 'bg-red-100 text-red-700' :
+                                                                'bg-gray-100 text-gray-700'
                                                             }`}>
                                                             {sub.status}
                                                         </span>
