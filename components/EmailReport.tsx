@@ -592,7 +592,7 @@ const EmailReport: React.FC<{ onBack?: () => void }> = ({ onBack }) => {
             {/* Scheduled Campaigns Modal */}
             {showScheduledModal && (
                 <ScheduledCampaignsModal
-                    campaigns={campaigns}
+                    isOpen={showScheduledModal}
                     onClose={() => setShowScheduledModal(false)}
                 />
             )}

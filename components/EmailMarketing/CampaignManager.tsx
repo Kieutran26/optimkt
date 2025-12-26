@@ -127,14 +127,27 @@ const CampaignManager: React.FC<CampaignManagerProps> = ({ isOpen, onClose, onCr
             return;
         }
 
+        // Check if campaign is scheduled for future
+        const isFutureScheduled = campaign.scheduled_at && new Date(campaign.scheduled_at) > new Date();
+
         const confirmed = await confirm({
-            title: 'Gửi chiến dịch',
-            message: 'Gửi chiến dịch này ngay bây giờ?',
+            title: isFutureScheduled ? 'Kích hoạt lịch gửi' : 'Gửi chiến dịch',
+            message: isFutureScheduled
+                ? `Chiến dịch này được lên lịch gửi vào ${new Date(campaign.scheduled_at!).toLocaleString('vi-VN')}. Bạn có muốn kích hoạt để tự động gửi vào lúc đó không?`
+                : 'Gửi chiến dịch này ngay bây giờ?',
             type: 'send',
-            confirmText: 'Gửi ngay',
+            confirmText: isFutureScheduled ? 'Kích hoạt' : 'Gửi ngay',
             cancelText: 'Huỷ'
         });
         if (!confirmed) return;
+
+        // If future scheduled, just ensure status is 'scheduled' and notify user
+        if (isFutureScheduled) {
+            await campaignService.updateCampaign(id, { status: 'scheduled' });
+            await loadData();
+            toast.success('Đã kích hoạt lịch gửi', `Email sẽ được gửi tự động vào ${new Date(campaign.scheduled_at!).toLocaleString('vi-VN')}`);
+            return;
+        }
 
         // Mark as sending
         await campaignService.updateCampaign(id, { status: 'sending' });
@@ -724,6 +737,12 @@ const CampaignManager: React.FC<CampaignManagerProps> = ({ isOpen, onClose, onCr
                     </div>
                 )
             }
+
+
+            <ScheduledCampaignsModal
+                isOpen={showScheduledModal}
+                onClose={() => setShowScheduledModal(false)}
+            />
         </div>
     );
 };

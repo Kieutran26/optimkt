@@ -2692,7 +2692,7 @@ return `<!DOCTYPE html><html><head><meta charset="utf-8"><title>${emailTitle}</t
             {/* Scheduled Campaigns Modal */}
             {showScheduledModal && (
                 <ScheduledCampaignsModal
-                    campaigns={scheduledData}
+                    isOpen={showScheduledModal}
                     onClose={() => setShowScheduledModal(false)}
                 />
             )}
