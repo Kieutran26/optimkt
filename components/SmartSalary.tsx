@@ -251,6 +251,12 @@ const SmartSalary: React.FC = () => {
                 style: { borderRadius: '16px', background: '#fffbeb', color: '#92400e', fontWeight: 'bold' },
                 duration: 5000
             });
+        } else if (newStatus.type === 'HALF') {
+            toast(`Nửa ngày cũng có tiền! +${moneyStr}\nHôm nay bạn kiếm được ${rewardCount} ${rewardName}! 💪`, {
+                icon: '⏳',
+                style: { borderRadius: '16px', background: '#fef9c3', color: '#854d0e', fontWeight: 'bold' },
+                duration: 4000
+            });
         } else if (newStatus.type === 'LEAVE') {
             toast(`Xả hơi thôi! Vẫn nhận đủ ${moneyStr} lương nhé.\nEnjoy!`, {
                 icon: '🏖️',
