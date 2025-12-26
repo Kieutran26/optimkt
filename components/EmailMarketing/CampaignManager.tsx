@@ -149,75 +149,150 @@ const CampaignManager: React.FC<CampaignManagerProps> = ({ isOpen, onClose, onCr
 
             // Get email template HTML
             let emailHtml = '';
-            if (campaign.template_id) {
-                const template = await emailDesignService.getById(campaign.template_id);
-                if (template && template.doc) {
-                    // Generate HTML from template blocks
-                    const blocks = template.doc.blocks || [];
-                    const contentHtml = blocks.map(block => {
-                        // Basic block rendering
-                        let blockHtml = '';
-                        if (block.type === 'text') {
-                            blockHtml = `<div style="font-family: sans-serif; padding: 10px 0;">${block.content}</div>`;
-                        } else if (block.type === 'heading') {
-                            blockHtml = `<h${block.level || 2} style="font-family: sans-serif; margin: 0; padding: 15px 0 10px;">${block.content}</h${block.level || 2}>`;
-                        } else if (block.type === 'image') {
-                            blockHtml = `<img src="${block.src}" alt="${block.alt || ''}" style="max-width: 100%; height: auto; display: block; border-radius: 8px; margin: 10px 0;" />`;
-                        } else if (block.type === 'button') {
-                            blockHtml = `
-                                <table role="presentation" border="0" cellpadding="0" cellspacing="0" style="margin: 15px 0;">
-                                    <tr>
-                                        <td align="center" bgcolor="${block.backgroundColor || '#2563eb'}" style="border-radius: 6px;">
-                                            <a href="${block.url || '#'}" target="_blank" style="font-family: sans-serif; font-size: 16px; font-weight: bold; color: ${block.textColor || '#ffffff'}; text-decoration: none; padding: 12px 24px; border: 1px solid ${block.backgroundColor || '#2563eb'}; display: inline-block; border-radius: 6px;">
-                                                ${block.label || 'Click here'}
-                                            </a>
-                                        </td>
-                                    </tr>
-                                </table>`;
-                        }
-                        return blockHtml;
-                    }).join('');
 
-                    // Wrap in responsive container
-                    emailHtml = `
+            // Fetch template first if ID exists
+            let template = null;
+            if (campaign.template_id) {
+                template = await emailDesignService.getById(campaign.template_id);
+            }
+
+            if (template && template.doc) {
+                const settings = template.doc.settings || {
+                    backgroundColor: '#f3f4f6',
+                    contentWidth: 600,
+                    fontFamily: 'Arial, sans-serif',
+                    primaryColor: '#3b82f6'
+                };
+
+                // Generate HTML from template blocks
+                const blocks = template.doc.blocks || [];
+                const contentHtml = blocks.map(block => {
+                    const align = block.alignment || 'left';
+                    const color = block.color || '#1f2937';
+                    const bg = block.backgroundColor;
+
+                    let blockHtml = '';
+
+                    // Text Block
+                    if (block.type === 'text') {
+                        blockHtml = `
+                                <tr>
+                                    <td align="${align}" style="padding: 10px 0; font-family: ${settings.fontFamily}; font-size: 16px; line-height: 1.5; color: ${color}; text-align: ${align};">
+                                        ${block.content}
+                                    </td>
+                                </tr>`;
+                    }
+                    // Heading Block
+                    else if (block.type === 'heading') {
+                        const level = block.level || 'h2';
+                        const fontSize = level === 'h1' ? '24px' : level === 'h2' ? '20px' : '18px';
+                        blockHtml = `
+                                <tr>
+                                    <td align="${align}" style="padding: 15px 0 10px; font-family: ${settings.fontFamily}; font-size: ${fontSize}; font-weight: bold; line-height: 1.3; color: ${color}; text-align: ${align};">
+                                        ${block.content}
+                                    </td>
+                                </tr>`;
+                    }
+                    // Image Block
+                    else if (block.type === 'image') {
+                        blockHtml = `
+                                <tr>
+                                    <td align="${align}" style="padding: 10px 0;">
+                                        <img src="${block.src}" alt="${block.alt || ''}" width="${block.width === 'full' ? '100%' : 'auto'}" style="max-width: 100%; height: auto; display: block; border-radius: 8px; margin: 0 ${align === 'center' ? 'auto' : '0'};" />
+                                    </td>
+                                </tr>`;
+                    }
+                    // Button Block
+                    else if (block.type === 'button') {
+                        blockHtml = `
+                                <tr>
+                                    <td align="${align}" style="padding: 15px 0;">
+                                        <table role="presentation" border="0" cellpadding="0" cellspacing="0" style="margin: 0 ${align === 'center' ? 'auto' : '0'};">
+                                            <tr>
+                                                <td align="center" bgcolor="${block.backgroundColor || settings.primaryColor}" style="border-radius: ${block.borderRadius || 6}px;">
+                                                    <a href="${block.url || '#'}" target="_blank" style="font-family: ${settings.fontFamily}; font-size: 16px; font-weight: bold; color: ${block.textColor || '#ffffff'}; text-decoration: none; padding: 12px 24px; border: 1px solid ${block.backgroundColor || settings.primaryColor}; display: inline-block; border-radius: ${block.borderRadius || 6}px;">
+                                                        ${block.label || 'Click here'}
+                                                    </a>
+                                                </td>
+                                            </tr>
+                                        </table>
+                                    </td>
+                                </tr>`;
+                    }
+                    // Divider Block
+                    else if (block.type === 'divider') {
+                        blockHtml = `
+                                <tr>
+                                    <td style="padding: 20px 0;">
+                                        <hr style="border: 0; border-top: 1px solid #e5e7eb; margin: 0;" />
+                                    </td>
+                                </tr>`;
+                    }
+
+                    return blockHtml;
+                }).join('');
+
+                // Wrap in responsive container
+                emailHtml = `
 <!DOCTYPE html>
-<html lang="vi">
+<html lang="vi" xmlns:v="urn:schemas-microsoft-com:vml" xmlns:o="urn:schemas-microsoft-com:office:office">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="color-scheme" content="light">
+    <meta name="supported-color-schemes" content="light">
     <title>${campaign.subject}</title>
+    <!--[if gte mso 9]>
+    <xml>
+        <o:OfficeDocumentSettings>
+            <o:AllowPNG/>
+            <o:PixelsPerInch>96</o:PixelsPerInch>
+        </o:OfficeDocumentSettings>
+    </xml>
+    <![endif]-->
     <style>
-        body { margin: 0; padding: 0; width: 100% !important; -webkit-text-size-adjust: 100%; -ms-text-size-adjust: 100%; }
+        :root { color-scheme: light; supported-color-schemes: light; }
+        body { margin: 0; padding: 0; width: 100% !important; -webkit-text-size-adjust: 100%; -ms-text-size-adjust: 100%; background-color: ${settings.backgroundColor}; }
         img { border: 0; outline: none; text-decoration: none; display: block; }
         table { border-collapse: collapse; mso-table-lspace: 0pt; mso-table-rspace: 0pt; }
+        a { color: ${settings.primaryColor}; text-decoration: underline; }
+        /* Mobile Styles */
         @media only screen and (max-width: 600px) {
-            .container { width: 100% !important; padding: 20px !important; }
+            .container { width: 100% !important; padding: 15px !important; }
+            .mobile-padding { padding: 10px !important; }
         }
     </style>
 </head>
-<body style="margin: 0; padding: 0; background-color: #f3f4f6;">
-    <table role="presentation" border="0" cellpadding="0" cellspacing="0" width="100%" style="background-color: #f3f4f6;">
+<body style="margin: 0; padding: 0; background-color: ${settings.backgroundColor};">
+    <table role="presentation" border="0" cellpadding="0" cellspacing="0" width="100%" style="background-color: ${settings.backgroundColor};">
         <tr>
-            <td align="center" style="padding: 40px 0;">
-                <table role="presentation" class="container" border="0" cellpadding="0" cellspacing="0" width="600" style="background-color: #ffffff; border-radius: 8px; overflow: hidden; box-shadow: 0 1px 3px rgba(0,0,0,0.1);">
+            <td align="center" style="padding: 40px 0;" class="mobile-padding">
+                <!--[if gte mso 9]>
+                <table role="presentation" border="0" cellpadding="0" cellspacing="0" width="${settings.contentWidth}"><tr><td valign="top">
+                <![endif]-->
+                <table role="presentation" class="container" border="0" cellpadding="0" cellspacing="0" width="${settings.contentWidth}" style="width: ${settings.contentWidth}px; background-color: #ffffff; border-radius: 8px; overflow: hidden; box-shadow: 0 1px 3px rgba(0,0,0,0.1); margin: 0 auto;">
                     <tr>
-                        <td style="padding: 40px;">
-                            ${contentHtml}
+                        <td style="padding: 40px;" class="mobile-padding">
+                            <table role="presentation" border="0" cellpadding="0" cellspacing="0" width="100%">
+                                ${contentHtml}
+                            </table>
                         </td>
                     </tr>
                     <tr>
-                         <td style="background-color: #f9fafb; padding: 20px 40px; text-align: center; color: #6b7280; font-size: 12px; font-family: sans-serif;">
+                         <td style="background-color: #f9fafb; padding: 20px 40px; text-align: center; color: #6b7280; font-size: 12px; font-family: ${settings.fontFamily};" class="mobile-padding">
                             <p style="margin: 0;">Email này được gửi từ <strong>${campaign.sender_name}</strong></p>
                             <p style="margin: 5px 0 0;">Bạn có thể <a href="#" style="color: #6b7280; text-decoration: underline;">hủy đăng ký</a> bất cứ lúc nào.</p>
                         </td>
                     </tr>
                 </table>
+                <!--[if gte mso 9]>
+                </td></tr></table>
+                <![endif]-->
             </td>
         </tr>
     </table>
 </body>
 </html>`;
-                }
             }
 
             // Fallback to simple template if no template selected
