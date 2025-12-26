@@ -42,7 +42,9 @@ import MarketingKnowledge from './components/MarketingKnowledge';
 import PESTELBuilder from './components/PESTELBuilder';
 import PorterAnalyzer from './components/PorterAnalyzer';
 import HomePage from './components/HomePage';
-import FeaturesGuide from './components/FeaturesGuide';
+import NewsPage from './components/News/NewsPage';
+
+
 import { ViewState, StudyMode, Word, MastermindStrategy } from './types';
 import { BrandProvider } from './components/BrandContext';
 import { TaskProvider } from './components/TaskContext';
@@ -194,6 +196,8 @@ function AppContent() {
         return <AudienceEmotionMap isActive={true} />;
       case 'IMC_PLANNER':
         return <IMCPlanner />;
+      case 'NEWS_AGGREGATOR':
+        return <NewsPage />;
       case 'MARKETING_KNOWLEDGE':
         return <MarketingKnowledge />;
       case 'PESTEL_BUILDER':

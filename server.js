@@ -380,6 +380,12 @@ if (process.env.NODE_ENV !== 'production' && !process.env.NETLIFY) {
         console.log(`   Supabase: ${process.env.VITE_SUPABASE_URL ? '✓ Configured' : '✗ Missing'}`);
         console.log(`   Tracking Base URL: ${BASE_URL}`);
 
+        // ================== NEWS SCHEDULER ==================
+        import('./server-news-aggregator.js').then(({ startNewsScheduler }) => {
+            startNewsScheduler(supabase);
+        }).catch(err => console.error('Failed to start News Scheduler:', err));
+
+
         // ================== AUTOMATED SCHEDULER ==================
         // Poll for scheduled campaigns every 60 seconds
         let isProcessing = false;

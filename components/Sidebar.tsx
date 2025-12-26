@@ -232,6 +232,27 @@ const Sidebar: React.FC<SidebarProps> = ({ currentView, setView }) => {
           </button>
         </div>
 
+        {/* Single Item: Tin Tức Tổng Hợp */}
+        <div className="px-2 mb-1">
+          <button
+            onClick={() => setView('NEWS_AGGREGATOR')}
+            className={`w-full flex items-center justify-between px-4 py-3 rounded-xl font-medium transition-all duration-200
+                  ${currentView === 'NEWS_AGGREGATOR'
+                ? 'bg-white shadow-soft text-indigo-700 border border-indigo-50'
+                : 'text-slate-600 hover:bg-slate-50'
+              }`}
+          >
+            <div className="flex items-center gap-3">
+              <div className={`p-1.5 rounded-lg ${currentView === 'NEWS_AGGREGATOR' ? 'bg-indigo-50 text-indigo-600' : 'bg-transparent text-slate-400'}`}>
+                <Globe size={18} strokeWidth={1.5} />
+              </div>
+              <span className="text-xs font-semibold">Tin Tức Tổng Hợp</span>
+            </div>
+            {/* Optional "New" Badge */}
+            <span className="text-[10px] font-bold bg-rose-100 text-rose-600 px-1.5 py-0.5 rounded">Mới</span>
+          </button>
+        </div>
+
         {/* Single Item: Kho Kiến Thức */}
         <div className="px-2">
           <button
