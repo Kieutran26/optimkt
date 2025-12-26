@@ -243,6 +243,232 @@ export interface EmailHistoryRecord {
   html: string;
 }
 
+// --- Email Builder V2: Block-based Drag-and-Drop Types ---
+export type EmailBlockType = 'heading' | 'text' | 'image' | 'button' | 'spacer' | 'divider' | 'social' | 'link' | 'row2' | 'row3' | 'column2' | 'column3' | 'html' | 'video' | 'header' | 'footer' | 'product' | 'unsubscribe' | 'product-grid' | 'coupon' | 'cart-reminder' | 'order-summary' | 'property-card' | 'features' | 'location' | 'job-listing' | 'benefits';
+
+export interface EmailBlockBase {
+  id: string;
+  type: EmailBlockType;
+}
+
+export interface HeadingBlock extends EmailBlockBase {
+  type: 'heading';
+  content: string;
+  level: 'h1' | 'h2' | 'h3';
+  alignment: 'left' | 'center' | 'right';
+  color: string;
+}
+
+export interface TextBlock extends EmailBlockBase {
+  type: 'text';
+  content: string;
+  alignment: 'left' | 'center' | 'right';
+}
+
+export interface ImageBlock extends EmailBlockBase {
+  type: 'image';
+  src: string;
+  alt: string;
+  width: 'full' | 'medium' | 'small';
+  alignment: 'left' | 'center' | 'right';
+  link?: string;
+}
+
+export interface ButtonBlock extends EmailBlockBase {
+  type: 'button';
+  label: string;
+  url: string;
+  backgroundColor: string;
+  textColor: string;
+  borderRadius: number;
+  alignment: 'left' | 'center' | 'right';
+}
+
+export interface SpacerBlock extends EmailBlockBase {
+  type: 'spacer';
+  height: number;
+}
+
+export interface DividerBlock extends EmailBlockBase {
+  type: 'divider';
+  style: 'solid' | 'dashed' | 'dotted';
+  color: string;
+}
+
+export interface SocialPlatform {
+  name: string;
+  url: string;
+}
+
+export interface SocialBlock extends EmailBlockBase {
+  type: 'social';
+  platforms: SocialPlatform[];
+  alignment: 'left' | 'center' | 'right';
+}
+
+export interface LinkBlock extends EmailBlockBase {
+  type: 'link';
+  text: string;
+  url: string;
+  alignment: 'left' | 'center' | 'right';
+  color: string;
+}
+
+export interface Row2Block extends EmailBlockBase {
+  type: 'row2';
+  children: [EmailBlock[], EmailBlock[]];
+}
+
+export interface Row3Block extends EmailBlockBase {
+  type: 'row3';
+  children: [EmailBlock[], EmailBlock[], EmailBlock[]];
+}
+
+export interface Column2Block extends EmailBlockBase {
+  type: 'column2';
+  children: [EmailBlock[], EmailBlock[]];
+}
+
+export interface Column3Block extends EmailBlockBase {
+  type: 'column3';
+  children: [EmailBlock[], EmailBlock[], EmailBlock[]];
+}
+
+export interface HtmlBlock extends EmailBlockBase {
+  type: 'html';
+  content: string;
+}
+
+export interface VideoBlock extends EmailBlockBase {
+  type: 'video';
+  url: string;
+  thumbnail?: string;
+  alt: string;
+  alignment: 'left' | 'center' | 'right';
+}
+
+export interface HeaderBlock extends EmailBlockBase {
+  type: 'header';
+  logoSrc: string;
+  navLinks: { text: string; url: string }[];
+  backgroundColor: string;
+  alignment: 'left' | 'center' | 'right';
+}
+
+export interface FooterBlock extends EmailBlockBase {
+  type: 'footer';
+  content: string;
+  address: string;
+  socialLinks: SocialPlatform[];
+  backgroundColor: string;
+  alignment: 'left' | 'center' | 'right';
+}
+
+export interface ProductBlock extends EmailBlockBase {
+  type: 'product';
+  productImage: string;
+  title: string;
+  price: string;
+  description: string;
+  url: string;
+  buttonText: string;
+  buttonColor: string;
+  backgroundColor: string;
+}
+
+export interface UnsubscribeBlock extends EmailBlockBase {
+  type: 'unsubscribe';
+  text: string;
+  alignment: 'left' | 'center' | 'right';
+}
+
+// E-commerce
+export interface ProductGridBlock extends EmailBlockBase {
+  type: 'product-grid';
+  products: { id: string; image: string; title: string; price: string; url: string }[];
+  backgroundColor: string;
+}
+
+export interface CouponBlock extends EmailBlockBase {
+  type: 'coupon';
+  code: string;
+  discount: string;
+  description: string;
+  backgroundColor: string;
+  borderColor: string;
+  alignment: 'center';
+}
+
+export interface CartReminderBlock extends EmailBlockBase {
+  type: 'cart-reminder';
+  itemsCount: number;
+  totalPrice: string;
+  itemImages: string[];
+  checkoutUrl: string;
+}
+
+export interface OrderSummaryBlock extends EmailBlockBase {
+  type: 'order-summary';
+  orderId: string;
+  items: { name: string; qty: number; price: string }[];
+  total: string;
+  shippingAddress: string;
+}
+
+// Real Estate
+export interface PropertyCardBlock extends EmailBlockBase {
+  type: 'property-card';
+  image: string;
+  title: string;
+  price: string;
+  address: string;
+  specs: { beds: number; baths: number; area: string };
+  url: string;
+}
+
+export interface FeaturesBlock extends EmailBlockBase {
+  type: 'features';
+  features: { icon: string; text: string }[]; // icon name or url
+  columns: 2 | 3;
+}
+
+export interface LocationBlock extends EmailBlockBase {
+  type: 'location';
+  mapImage: string;
+  address: string;
+  url: string;
+}
+
+// Recruitment
+export interface JobListingBlock extends EmailBlockBase {
+  type: 'job-listing';
+  title: string;
+  department: string;
+  location: string;
+  salary: string;
+  url: string;
+  tags: string[];
+}
+
+export interface BenefitsBlock extends EmailBlockBase {
+  type: 'benefits';
+  benefits: { title: string; description: string }[];
+}
+
+export type EmailBlock = HeadingBlock | TextBlock | ImageBlock | ButtonBlock | SpacerBlock | DividerBlock | SocialBlock | LinkBlock | Row2Block | Row3Block | Column2Block | Column3Block | HtmlBlock | VideoBlock | HeaderBlock | FooterBlock | ProductBlock | UnsubscribeBlock | ProductGridBlock | CouponBlock | CartReminderBlock | OrderSummaryBlock | PropertyCardBlock | FeaturesBlock | LocationBlock | JobListingBlock | BenefitsBlock;
+
+export interface EmailDocumentSettings {
+  backgroundColor: string;
+  contentWidth: number;
+  fontFamily: string;
+  primaryColor: string;
+}
+
+export interface EmailDocument {
+  blocks: EmailBlock[];
+  settings: EmailDocumentSettings;
+}
+
 // --- UTM Builder Types ---
 export interface UtmRecord {
   id: string;
