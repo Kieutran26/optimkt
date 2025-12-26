@@ -200,7 +200,7 @@ export const ScheduledCampaignsModal: React.FC<ScheduledCampaignsModalProps> = (
                                                         'bg-gray-100 text-gray-700'}`}>
                                                 {c.status === 'scheduled' ? 'Đã lên lịch' : c.status === 'sent' ? 'Đã gửi' : 'Bản nháp'}
                                             </div>
-                                            {(c.status === 'scheduled' || c.status === 'draft') && (
+                                            {c.status === 'draft' && (
                                                 <button
                                                     onClick={(e) => { e.stopPropagation(); handleSendNow(c.id); }}
                                                     className="text-gray-400 hover:text-green-600 transition-colors"
