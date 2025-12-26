@@ -379,5 +379,143 @@ if (process.env.NODE_ENV !== 'production' && !process.env.NETLIFY) {
         console.log(`   Resend API Key: ${process.env.VITE_RESEND_API_KEY ? '✓ Configured' : '✗ Missing'}`);
         console.log(`   Supabase: ${process.env.VITE_SUPABASE_URL ? '✓ Configured' : '✗ Missing'}`);
         console.log(`   Tracking Base URL: ${BASE_URL}`);
+
+        // ================== AUTOMATED SCHEDULER ==================
+        // Poll for scheduled campaigns every 60 seconds
+        let isProcessing = false;
+        setInterval(async () => {
+            if (isProcessing) return;
+            isProcessing = true;
+            try {
+                // 1. Find due campaigns
+                const now = new Date().toISOString();
+                const { data: dueCampaigns, error } = await supabase
+                    .from('email_campaigns')
+                    .select('*')
+                    .eq('status', 'scheduled')
+                    .lte('scheduled_at', now);
+
+                if (error) throw error;
+
+                if (dueCampaigns && dueCampaigns.length > 0) {
+                    console.log(`⏰ Found ${dueCampaigns.length} due campaigns.`);
+
+                    // Import server-side renderer dynamically
+                    const { generateEmailHTML } = await import('./server-email-renderer.js');
+
+                    for (const campaign of dueCampaigns) {
+                        try {
+                            console.log(`🚀 Starting processing for campaign: ${campaign.name} (${campaign.id})`);
+
+                            // 2. Mark as sending
+                            await supabase
+                                .from('email_campaigns')
+                                .update({ status: 'sending' })
+                                .eq('id', campaign.id);
+
+                            // 3. Get Template & Generate HTML
+                            // Note: We need to handle case where no template_id (manual html?) - simplified for now
+                            let htmlContent = '';
+                            if (campaign.template_id) {
+                                const { data: template } = await supabase
+                                    .from('email_designs')
+                                    .select('doc')
+                                    .eq('id', campaign.template_id)
+                                    .single();
+
+                                if (template && template.doc) {
+                                    htmlContent = generateEmailHTML(template.doc);
+                                }
+                            }
+
+                            if (!htmlContent) {
+                                console.error(`❌ No HTML content generated for campaign ${campaign.id}`);
+                                await supabase
+                                    .from('email_campaigns')
+                                    .update({ status: 'paused' }) // Pause if error
+                                    .eq('id', campaign.id);
+                                continue;
+                            }
+
+                            // 4. Get Subscribers
+                            if (!campaign.list_id) {
+                                console.error(`❌ No list_id for campaign ${campaign.id}`);
+                                continue;
+                            }
+
+                            const { data: subscribers } = await supabase
+                                .from('subscribers')
+                                .select('*')
+                                .eq('list_id', campaign.list_id)
+                                .eq('status', 'active');
+
+                            if (!subscribers || subscribers.length === 0) {
+                                console.log(`⚠️ No active subscribers for campaign ${campaign.id}`);
+                                await supabase
+                                    .from('email_campaigns')
+                                    .update({ status: 'sent', sent_at: new Date().toISOString() })
+                                    .eq('id', campaign.id);
+                                continue;
+                            }
+
+                            // 5. Send Batch (Reusing the API logic by calling internal function or just fetch API?
+                            // Since we are IN the server, we should call internal logic. 
+                            // Duplicating the core loop for simplicity and robustness in this context.
+
+                            let sentCount = 0;
+
+                            for (const sub of subscribers) {
+                                // Personalize
+                                let personalizedHtml = htmlContent
+                                    .replace(/\{\{firstName\}\}/g, sub.firstName || '')
+                                    .replace(/\{\{lastName\}\}/g, sub.lastName || '')
+                                    .replace(/\{\{email\}\}/g, sub.email);
+
+                                // Add Tracking (Simplified manual version of what the API does)
+                                const trackingPixel = `<img src="${BASE_URL}/api/track/open/${campaign.id}/${sub.id}" width="1" height="1" style="display:none" alt="" />`;
+                                personalizedHtml = personalizedHtml.replace('</body>', `${trackingPixel}</body>`);
+
+                                // Send
+                                await resend.emails.send({
+                                    from: `${campaign.sender_name} <${campaign.sender_email}>`,
+                                    to: sub.email,
+                                    subject: campaign.subject,
+                                    html: personalizedHtml,
+                                    replyTo: campaign.reply_to
+                                });
+                                sentCount++;
+                                await new Promise(r => setTimeout(r, 100)); // Rate limit
+                            }
+
+                            // 6. Mark as Sent
+                            await supabase
+                                .from('email_campaigns')
+                                .update({ status: 'sent', sent_at: new Date().toISOString() })
+                                .eq('id', campaign.id);
+
+                            // Initialize Analytics
+                            await supabase.from('campaign_analytics').insert({
+                                campaign_id: campaign.id,
+                                total_sent: sentCount
+                            }).select(); // insert if not exists logic might be needed but campaign_id is unique
+
+                            console.log(`✅ Automatically sent campaign ${campaign.name} to ${sentCount} subscribers.`);
+
+                        } catch (err) {
+                            console.error(`❌ Failed to auto-send campaign ${campaign.id}:`, err);
+                            // Set back to scheduled? or paused?
+                            await supabase
+                                .from('email_campaigns')
+                                .update({ status: 'paused' })
+                                .eq('id', campaign.id);
+                        }
+                    }
+                }
+            } catch (err) {
+                console.error('Error in campaign scheduler:', err);
+            } finally {
+                isProcessing = false;
+            }
+        }, 60000); // Check every 60 seconds
     });
 }

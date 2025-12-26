@@ -419,11 +419,11 @@ const CampaignManager: React.FC<CampaignManagerProps> = ({ isOpen, onClose, onCr
                                         )}
 
                                         <div className="flex items-center gap-2 ml-4">
-                                            {campaign.status === 'draft' && (
+                                            {(campaign.status === 'draft' || campaign.status === 'scheduled') && (
                                                 <button
                                                     onClick={() => handleSendCampaign(campaign.id)}
                                                     className="p-2 text-green-600 hover:bg-green-50 rounded-lg"
-                                                    title="Gửi ngay"
+                                                    title={campaign.status === 'scheduled' ? "Gửi ngay (Bỏ qua lịch)" : "Gửi ngay"}
                                                 >
                                                     <Play size={16} />
                                                 </button>
