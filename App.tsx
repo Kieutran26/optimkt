@@ -43,6 +43,7 @@ import PESTELBuilder from './components/PESTELBuilder';
 import PorterAnalyzer from './components/PorterAnalyzer';
 import HomePage from './components/HomePage';
 import NewsPage from './components/News/NewsPage';
+import ToolkitPage from './components/Toolkit/ToolkitPage';
 
 
 import { ViewState, StudyMode, Word, MastermindStrategy } from './types';
@@ -204,6 +205,8 @@ function AppContent() {
         return <PESTELBuilder />;
       case 'PORTER_ANALYZER':
         return <PorterAnalyzer />;
+      case 'TOOLKIT':
+        return <ToolkitPage />;
       default:
         return <TranslationView />;
     }

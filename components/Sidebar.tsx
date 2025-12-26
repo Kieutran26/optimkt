@@ -272,6 +272,26 @@ const Sidebar: React.FC<SidebarProps> = ({ currentView, setView }) => {
           </button>
         </div>
 
+        {/* Single Item: Bộ Công Cụ */}
+        <div className="px-2">
+          <button
+            onClick={() => setView('TOOLKIT')}
+            className={`w-full flex items-center justify-between px-4 py-3 rounded-xl font-medium transition-all duration-200
+                  ${currentView === 'TOOLKIT'
+                ? 'bg-white shadow-soft text-indigo-700 border border-indigo-50'
+                : 'text-slate-600 hover:bg-slate-50'
+              }`}
+          >
+            <div className="flex items-center gap-3">
+              <div className={`p-1.5 rounded-lg ${currentView === 'TOOLKIT' ? 'bg-indigo-50 text-indigo-600' : 'bg-transparent text-slate-400'}`}>
+                <Zap size={18} strokeWidth={1.5} />
+              </div>
+              <span className="text-xs font-semibold">Bộ Công Cụ</span>
+            </div>
+            <span className="text-[10px] font-bold bg-emerald-100 text-emerald-600 px-1.5 py-0.5 rounded">Mới</span>
+          </button>
+        </div>
+
       </nav>
 
       <div className="p-4 border-t border-slate-50 bg-slate-50/50">
