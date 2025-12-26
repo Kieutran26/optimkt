@@ -1,10 +1,12 @@
 import React, { useState } from 'react';
-import { Wrench, Type, Ratio, GitCompare, ChevronDown, ArrowLeft } from 'lucide-react';
+import { Wrench, Type, Ratio, GitCompare, Terminal, Banknote, ChevronDown, ArrowLeft } from 'lucide-react';
 import WordCounter from './WordCounter';
 import AspectRatioCalculator from './AspectRatioCalculator';
 import TextCompare from './TextCompare';
+import PromptManager from '../PromptManager';
+import SmartSalary from '../SmartSalary';
 
-type ToolType = 'menu' | 'word-counter' | 'aspect-ratio' | 'text-compare';
+type ToolType = 'menu' | 'word-counter' | 'aspect-ratio' | 'text-compare' | 'prompt-manager' | 'smart-salary';
 
 interface Tool {
     id: ToolType;
@@ -36,6 +38,20 @@ const tools: Tool[] = [
         icon: <GitCompare size={24} />,
         color: 'bg-purple-50 text-purple-600 border-purple-100'
     },
+    {
+        id: 'prompt-manager',
+        name: 'Kho Prompt',
+        description: 'Lưu trữ và quản lý các prompt cho AI models',
+        icon: <Terminal size={24} />,
+        color: 'bg-slate-50 text-slate-600 border-slate-100'
+    },
+    {
+        id: 'smart-salary',
+        name: 'Theo Dõi Lương',
+        description: 'Quản lý và theo dõi lương, thu nhập hàng tháng',
+        icon: <Banknote size={24} />,
+        color: 'bg-emerald-50 text-emerald-600 border-emerald-100'
+    },
 ];
 
 const ToolkitPage: React.FC = () => {
@@ -50,6 +66,10 @@ const ToolkitPage: React.FC = () => {
                 return <AspectRatioCalculator />;
             case 'text-compare':
                 return <TextCompare />;
+            case 'prompt-manager':
+                return <PromptManager />;
+            case 'smart-salary':
+                return <SmartSalary />;
             default:
                 return null;
         }

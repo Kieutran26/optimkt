@@ -110,7 +110,6 @@ const Sidebar: React.FC<SidebarProps> = ({ currentView, setView }) => {
     { id: 'AUTO_BRIEF', label: 'Auto Brief', icon: FileText, color: 'text-violet-600' },
     { id: 'SOP_BUILDER', label: 'SOP Builder', icon: FileCheck, color: 'text-emerald-600' },
     { id: 'CREATIVE_ANGLE_EXPLORER', label: 'Creative Angle Explorer', icon: Lightbulb, color: 'text-amber-600' },
-    { id: 'PROMPTS', label: 'Kho Prompt', icon: Terminal, color: 'text-slate-600' },
   ];
 
   // 3. Design & Visuals
@@ -129,7 +128,6 @@ const Sidebar: React.FC<SidebarProps> = ({ currentView, setView }) => {
     { id: 'AB_TESTING', label: 'A/B Testing Calc', icon: Calculator, color: 'text-teal-600' },
     { id: 'ROAS_FORECASTER', label: 'ROAS Forecaster', icon: TrendingUp, color: 'text-green-600' },
     { id: 'ADS_HEALTH_CHECKER', label: 'Ads Health Checker', icon: Activity, color: 'text-rose-500' },
-    { id: 'SMART_SALARY', label: 'Theo dõi Lương', icon: Banknote, color: 'text-emerald-500' },
   ];
 
   return (

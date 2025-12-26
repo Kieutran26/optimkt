@@ -1,5 +1,5 @@
 import React from 'react';
-import { ExternalLink, Calendar, Tag } from 'lucide-react';
+import { ExternalLink, Calendar, Tag, CheckCircle } from 'lucide-react';
 
 export interface NewsArticle {
     id: string;
@@ -17,8 +17,27 @@ interface NewsCardProps {
     index?: number;
 }
 
+// Helper to get/set read articles from localStorage
+const READ_ARTICLES_KEY = 'optimkt_read_articles';
+const getReadArticles = (): Set<string> => {
+    try {
+        const stored = localStorage.getItem(READ_ARTICLES_KEY);
+        return stored ? new Set(JSON.parse(stored)) : new Set();
+    } catch {
+        return new Set();
+    }
+};
+const markAsRead = (id: string) => {
+    const read = getReadArticles();
+    read.add(id);
+    // Keep only last 500 to prevent localStorage bloat
+    const arr = Array.from(read).slice(-500);
+    localStorage.setItem(READ_ARTICLES_KEY, JSON.stringify(arr));
+};
+
 export const NewsCard: React.FC<NewsCardProps> = ({ article, index = 10 }) => {
     const [imageLoaded, setImageLoaded] = React.useState(false);
+    const [isRead, setIsRead] = React.useState(() => getReadArticles().has(article.id));
 
     // Format date nicely (e.g., "14:30 25/12")
     const date = new Date(article.pub_date);
@@ -45,10 +64,20 @@ export const NewsCard: React.FC<NewsCardProps> = ({ article, index = 10 }) => {
 
 
 
-    // Helper to decode HTML entities
-    const decodeHtml = (html: string) => {
-        const txt = document.createElement("textarea");
-        txt.innerHTML = html;
+    // Helper to decode HTML entities (including numeric entities like &#xxx;)
+    const decodeHtml = (html: string): string => {
+        if (!html) return '';
+        // First, fix malformed entities like "d#242;" -> "&#242;"
+        // This handles cases where & was stripped but # remains
+        let fixed = html.replace(/(\s|^)#(\d+);/g, '$1&#$2;');
+        // Also handle cases like "d#242" without semicolon
+        fixed = fixed.replace(/([a-zA-Z])#(\d+);/g, (match, letter, num) => {
+            // Check if it's a split entity like "d" + "#242;" (should be "&#242;" = ò)
+            return letter + String.fromCharCode(parseInt(num, 10));
+        });
+        // Use textarea trick for remaining entities
+        const txt = document.createElement('textarea');
+        txt.innerHTML = fixed;
         return txt.value;
     };
 
@@ -63,12 +92,18 @@ export const NewsCard: React.FC<NewsCardProps> = ({ article, index = 10 }) => {
     const summary = decodeHtml(article.summary.replace(/<[^>]*>?/gm, ''));
     const displayImage = getOptimizedImageUrl(article.image_url);
 
+    const handleClick = () => {
+        markAsRead(article.id);
+        setIsRead(true);
+    };
+
     return (
         <a
             href={article.link}
             target="_blank"
             rel="noopener noreferrer"
             className="group block h-full"
+            onClick={handleClick}
         >
             <div className="bg-white rounded-2xl p-6 h-full flex flex-col transition-all duration-300 hover:-translate-y-1 hover:shadow-lg shadow-[0_2px_15px_-3px_rgba(0,0,0,0.07),0_10px_20px_-2px_rgba(0,0,0,0.04)] border border-transparent hover:border-gray-50">
 
@@ -78,6 +113,11 @@ export const NewsCard: React.FC<NewsCardProps> = ({ article, index = 10 }) => {
                         <span className={`px-3 py-1 rounded-full text-xs font-semibold tracking-wide ${getCategoryColor(article.category)}`}>
                             {article.category || 'News'}
                         </span>
+                        {isRead && (
+                            <span className="flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium bg-red-50 text-red-500">
+                                <CheckCircle size={10} /> Đã đọc
+                            </span>
+                        )}
                         <span className="text-xs font-medium text-gray-400 uppercase tracking-wider pl-2 border-l border-gray-100">
                             {article.source}
                         </span>
