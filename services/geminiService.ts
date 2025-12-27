@@ -3248,3 +3248,189 @@ YÊU CẦU:
     }
 };
 
+// --- STP MODEL GENERATOR ---
+import { STPInput, STPResult } from "../types";
+
+export const generateSTPAnalysis = async (
+    input: STPInput,
+    onProgress?: (step: string) => void
+): Promise<STPResult | null> => {
+
+    // Phase 1: Input Sanity Check
+    onProgress?.('🔍 Đang kiểm tra tính hợp lệ của input...');
+
+    const sanityPrompt = `### ROLE: Senior Marketing Auditor
+Bạn là một Senior Marketing Auditor có nhiệm vụ kiểm tra tính hợp lệ của input trước khi tiến hành phân tích STP.
+
+### INPUT DATA:
+- Sản phẩm/Thương hiệu: "${input.productBrand}"
+- Ngành hàng: "${input.industry}"
+- Mô tả sản phẩm: "${input.productDescription}"
+- Khoảng giá: "${input.priceRange}"
+- Thị trường: "${input.targetMarket}"
+- Đối thủ: "${input.competitorNames || 'Không có'}"
+- Khách hàng hiện tại: "${input.currentCustomers || 'Không có'}"
+
+### KIỂM TRA (Trả về JSON):
+1. **Kiểm tra chi tiết**: Input có đủ CHI TIẾT để phân tích không?
+   - SAI: "sản phẩm tốt", "khách hàng trẻ", "giá hợp lý"
+   - ĐÚNG: "Cà phê rang xay Highlands", "nữ 25-35 tuổi TP.HCM", "40.000-80.000 VNĐ"
+
+2. **Kiểm tra logic**: Sản phẩm có khớp với ngành hàng không?
+
+3. **Kiểm tra thực tế**: Thông tin có hợp lý, không mâu thuẫn?
+
+### OUTPUT FORMAT (STRICT JSON):
+{
+  "status": "PASS" | "FAIL" | "WARNING",
+  "message": "Lý do cụ thể nếu FAIL/WARNING, hoặc xác nhận nếu PASS",
+  "missing_fields": ["field1", "field2"] // Nếu có
+}`;
+
+    try {
+        const sanityResponse = await ai.models.generateContent({
+            model: 'gemini-2.5-flash',
+            contents: 'Validate this STP input',
+            config: {
+                systemInstruction: sanityPrompt,
+                responseMimeType: "application/json",
+                safetySettings: SAFETY_SETTINGS,
+                temperature: 0.2
+            },
+        });
+
+        const sanityText = sanityResponse.text || "{}";
+        const sanityResult = JSON.parse(sanityText);
+
+        if (sanityResult.status === 'FAIL') {
+            return {
+                validationStatus: 'FAIL',
+                clarificationMessage: sanityResult.message,
+                segmentation: { analysis_approach: '', segments: [] },
+                targeting: { primary_segment: '', selection_rationale: '', market_fit_score: 0, growth_potential: '', accessibility: '', risks: [] },
+                positioning: { positioning_statement: '', unique_value_proposition: '', key_differentiators: [], brand_essence: '', competitive_frame: '', reasons_to_believe: [] },
+                actionPlan: { immediate_actions: [], marketing_channels: [], messaging_hooks: [] }
+            };
+        }
+
+        // Phase 2: STP Analysis
+        onProgress?.('📊 Đang phân tích Segmentation...');
+        await new Promise(r => setTimeout(r, 800));
+
+        onProgress?.('🎯 Đang phân tích Targeting...');
+        await new Promise(r => setTimeout(r, 800));
+
+        onProgress?.('🏆 Đang xây dựng Positioning...');
+        await new Promise(r => setTimeout(r, 800));
+
+        onProgress?.('📋 Đang tạo Action Plan...');
+
+        const stpPrompt = `### ROLE: Senior Marketing Strategist
+Bạn là một Senior Marketing Strategist chuyên về STP Framework (Segmentation - Targeting - Positioning).
+Bạn CHỈ đưa ra phân tích dựa trên DỮ LIỆU THỰC TẾ người dùng cung cấp.
+TUYỆT ĐỐI KHÔNG bịa đặt hoặc thêm thông tin không có cơ sở.
+
+### INPUT DATA:
+- Sản phẩm/Thương hiệu: "${input.productBrand}"
+- Ngành hàng: "${input.industry}"
+- Mô tả sản phẩm: "${input.productDescription}"
+- Khoảng giá: "${input.priceRange}"
+- Thị trường mục tiêu: "${input.targetMarket}"
+- Đối thủ cạnh tranh: "${input.competitorNames || 'Không xác định'}"
+- Khách hàng hiện tại: "${input.currentCustomers || 'Chưa có dữ liệu'}"
+
+### FRAMEWORK STP - PHÂN TÍCH CHUYÊN SÂU:
+
+**1. SEGMENTATION (Phân khúc thị trường):**
+- Dựa vào ngành "${input.industry}" và thị trường "${input.targetMarket}"
+- Phân khúc theo: Demographics, Psychographics, Behavioral, Geographic
+- Mỗi segment phải có SIZE ESTIMATE dựa trên thị trường
+
+**2. TARGETING (Chọn thị trường mục tiêu):**
+- Chọn 1 segment PHÙ HỢP NHẤT với "${input.productBrand}"
+- Giải thích lý do chọn dựa trên: Market Fit, Growth Potential, Accessibility
+- Nêu rõ RỦI RO của lựa chọn này
+
+**3. POSITIONING (Định vị thương hiệu):**
+- Viết POSITIONING STATEMENT theo format chuẩn:
+  "Dành cho [target segment] những người [need/want], [Brand] là [category] mang lại [key benefit] vì [reason to believe]"
+- Xác định COMPETITIVE FRAME: So với ai? Khác biệt gì?
+- Key Differentiators: Những điểm khác biệt CÓ THỂ CHỨNG MINH
+
+**4. ACTION PLAN (Kế hoạch hành động):**
+- immediate_actions: 3-5 việc làm NGAY được trong 1-2 tuần
+- marketing_channels: Kênh phù hợp với segment đã chọn
+- messaging_hooks: 3-5 câu hook cho content marketing
+
+### OUTPUT FORMAT (STRICT JSON, TIẾNG VIỆT):
+{
+  "validationStatus": "PASS",
+  "segmentation": {
+    "analysis_approach": "Mô tả ngắn phương pháp phân khúc được sử dụng",
+    "segments": [
+      {
+        "name": "Tên segment",
+        "description": "Mô tả segment",
+        "demographics": "Nhân khẩu học",
+        "psychographics": "Tâm lý học",
+        "size_estimate": "Ước tính quy mô (VD: 2-3 triệu người tại Việt Nam)",
+        "needs": ["Nhu cầu 1", "Nhu cầu 2"],
+        "behaviors": ["Hành vi 1", "Hành vi 2"]
+      }
+    ]
+  },
+  "targeting": {
+    "primary_segment": "Tên segment được chọn",
+    "selection_rationale": "Lý do chọn segment này",
+    "market_fit_score": 85,
+    "growth_potential": "Tiềm năng tăng trưởng",
+    "accessibility": "Khả năng tiếp cận",
+    "risks": ["Rủi ro 1", "Rủi ro 2"]
+  },
+  "positioning": {
+    "positioning_statement": "Câu định vị hoàn chỉnh",
+    "unique_value_proposition": "Giá trị độc nhất",
+    "key_differentiators": ["Điểm khác biệt 1", "Điểm khác biệt 2"],
+    "brand_essence": "Tinh chất thương hiệu (1-2 từ)",
+    "competitive_frame": "Khung cạnh tranh (so với ai)",
+    "reasons_to_believe": ["RTB 1", "RTB 2"]
+  },
+  "actionPlan": {
+    "immediate_actions": ["Hành động 1", "Hành động 2", "Hành động 3"],
+    "marketing_channels": ["Kênh 1", "Kênh 2"],
+    "messaging_hooks": ["Hook 1", "Hook 2", "Hook 3"]
+  }
+}
+
+### QUALITY RULES:
+1. Segments: Tạo 3-4 segments phù hợp với ngành
+2. Size estimates phải THỰC TẾ với thị trường "${input.targetMarket}"
+3. Positioning Statement phải theo format chuẩn
+4. Action Plan phải KHẢ THI, làm được NGAY`;
+
+        const response = await ai.models.generateContent({
+            model: 'gemini-2.5-flash',
+            contents: `Phân tích STP cho "${input.productBrand}" trong ngành "${input.industry}"`,
+            config: {
+                systemInstruction: stpPrompt,
+                responseMimeType: "application/json",
+                safetySettings: SAFETY_SETTINGS,
+                temperature: 0.6
+            },
+        });
+
+        const text = response.text || "{}";
+        const result = JSON.parse(text) as STPResult;
+
+        // Add warning status if sanity check returned warning
+        if (sanityResult.status === 'WARNING') {
+            result.validationStatus = 'WARNING';
+            result.clarificationMessage = sanityResult.message;
+        }
+
+        return result;
+    } catch (error) {
+        console.error("STP Analysis Error:", error);
+        return null;
+    }
+};

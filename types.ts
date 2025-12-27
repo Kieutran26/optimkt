@@ -753,7 +753,66 @@ export interface MastermindStrategy {
   createdAt: number;
 }
 
-export type ViewState = 'HOME' | 'HOME_DASHBOARD' | 'FEATURES_GUIDE' | 'LEARN_SELECT' | 'LEARN_SESSION' | 'VOCAB_MANAGER' | 'STARRED' | 'PLAN_CALENDAR' | 'PLAN_LIST' | 'PROMPTS' | 'TODO' | 'CONTENT_WRITER' | 'VISUAL_EMAIL' | 'KEY_VISUALS_LIST' | 'KEY_VISUALS_CREATE' | 'FRAME_VISUAL' | 'UTM_BUILDER' | 'MOCKUP_GENERATOR' | 'AB_TESTING' | 'ROAS_FORECASTER' | 'BRAND_VAULT' | 'RIVAL_RADAR' | 'PERSONA_BUILDER' | 'MINDMAP_GENERATOR' | 'SCAMPER_TOOL' | 'STRATEGIC_MODELS' | 'SMART_CALENDAR' | 'MASTERMIND_STRATEGY' | 'SMART_SALARY' | 'AUTO_BRIEF' | 'SOP_BUILDER' | 'HOOK_GENERATOR' | 'CUSTOMER_JOURNEY_MAPPER' | 'BUDGET_ALLOCATOR' | 'INSIGHT_FINDER' | 'CREATIVE_ANGLE_EXPLORER' | 'ADS_HEALTH_CHECKER' | 'BRAND_POSITIONING_BUILDER' | 'PRICING_ANALYZER' | 'AUDIENCE_EMOTION_MAP' | 'IMC_PLANNER' | 'MARKETING_KNOWLEDGE' | 'PESTEL_BUILDER' | 'PORTER_ANALYZER' | 'NEWS_AGGREGATOR' | 'TOOLKIT';
+export type ViewState = 'HOME' | 'HOME_DASHBOARD' | 'FEATURES_GUIDE' | 'LEARN_SELECT' | 'LEARN_SESSION' | 'VOCAB_MANAGER' | 'STARRED' | 'PLAN_CALENDAR' | 'PLAN_LIST' | 'PROMPTS' | 'TODO' | 'CONTENT_WRITER' | 'VISUAL_EMAIL' | 'KEY_VISUALS_LIST' | 'KEY_VISUALS_CREATE' | 'FRAME_VISUAL' | 'UTM_BUILDER' | 'MOCKUP_GENERATOR' | 'AB_TESTING' | 'ROAS_FORECASTER' | 'BRAND_VAULT' | 'RIVAL_RADAR' | 'PERSONA_BUILDER' | 'MINDMAP_GENERATOR' | 'SCAMPER_TOOL' | 'STRATEGIC_MODELS' | 'SMART_CALENDAR' | 'MASTERMIND_STRATEGY' | 'SMART_SALARY' | 'AUTO_BRIEF' | 'SOP_BUILDER' | 'HOOK_GENERATOR' | 'CUSTOMER_JOURNEY_MAPPER' | 'BUDGET_ALLOCATOR' | 'INSIGHT_FINDER' | 'CREATIVE_ANGLE_EXPLORER' | 'ADS_HEALTH_CHECKER' | 'BRAND_POSITIONING_BUILDER' | 'PRICING_ANALYZER' | 'AUDIENCE_EMOTION_MAP' | 'IMC_PLANNER' | 'MARKETING_KNOWLEDGE' | 'PESTEL_BUILDER' | 'PORTER_ANALYZER' | 'NEWS_AGGREGATOR' | 'TOOLKIT' | 'STP_MODEL';
+
+// --- STP MODEL GENERATOR ---
+export interface STPInput {
+  productBrand: string;
+  industry: string;
+  productDescription: string;
+  priceRange: string;
+  targetMarket: string;
+  competitorNames?: string;
+  currentCustomers?: string;
+}
+
+export interface STPSegment {
+  name: string;
+  description: string;
+  demographics: string;
+  psychographics: string;
+  size_estimate: string;
+  needs: string[];
+  behaviors: string[];
+}
+
+export interface STPTarget {
+  primary_segment: string;
+  selection_rationale: string;
+  market_fit_score: number;
+  growth_potential: string;
+  accessibility: string;
+  risks: string[];
+}
+
+export interface STPPosition {
+  positioning_statement: string;
+  unique_value_proposition: string;
+  key_differentiators: string[];
+  brand_essence: string;
+  competitive_frame: string;
+  reasons_to_believe: string[];
+}
+
+export interface STPResult {
+  validationStatus: 'PASS' | 'FAIL' | 'WARNING';
+  clarificationMessage?: string;
+
+  segmentation: {
+    analysis_approach: string;
+    segments: STPSegment[];
+  };
+  targeting: STPTarget;
+  positioning: STPPosition;
+
+  actionPlan: {
+    immediate_actions: string[];
+    marketing_channels: string[];
+    messaging_hooks: string[];
+  };
+}
+
+
 
 
 // --- AUTO BRIEF GENERATOR ---

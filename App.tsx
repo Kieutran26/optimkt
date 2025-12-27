@@ -41,6 +41,7 @@ import IMCPlanner from './components/IMCPlanner';
 import MarketingKnowledge from './components/MarketingKnowledge';
 import PESTELBuilder from './components/PESTELBuilder';
 import PorterAnalyzer from './components/PorterAnalyzer';
+import STPModelGenerator from './components/STPModelGenerator';
 import HomePage from './components/HomePage';
 import NewsPage from './components/News/NewsPage';
 import ToolkitPage from './components/Toolkit/ToolkitPage';
@@ -207,6 +208,8 @@ function AppContent() {
         return <PorterAnalyzer />;
       case 'TOOLKIT':
         return <ToolkitPage />;
+      case 'STP_MODEL':
+        return <STPModelGenerator />;
       default:
         return <TranslationView />;
     }
