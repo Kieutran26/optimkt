@@ -1,12 +1,14 @@
 import React, { useState } from 'react';
-import { Wrench, Type, Ratio, GitCompare, Terminal, Banknote, ChevronDown, ArrowLeft } from 'lucide-react';
+import { Wrench, Type, Ratio, GitCompare, Terminal, Banknote, ChevronDown, ArrowLeft, FileText, Bell } from 'lucide-react';
 import WordCounter from './WordCounter';
 import AspectRatioCalculator from './AspectRatioCalculator';
 import TextCompare from './TextCompare';
+import LoremIpsumGenerator from './LoremIpsumGenerator';
+import OneTimeReminder from './OneTimeReminder';
 import PromptManager from '../PromptManager';
 import SmartSalary from '../SmartSalary';
 
-type ToolType = 'menu' | 'word-counter' | 'aspect-ratio' | 'text-compare' | 'prompt-manager' | 'smart-salary';
+type ToolType = 'menu' | 'word-counter' | 'aspect-ratio' | 'text-compare' | 'lorem-ipsum' | 'one-time-reminder' | 'prompt-manager' | 'smart-salary';
 
 interface Tool {
     id: ToolType;
@@ -39,6 +41,20 @@ const tools: Tool[] = [
         color: 'bg-purple-50 text-purple-600 border-purple-100'
     },
     {
+        id: 'lorem-ipsum',
+        name: 'Tạo Văn Bản Giả',
+        description: 'Tạo Lorem Ipsum bằng tiếng Việt hoặc Latin cho thiết kế',
+        icon: <FileText size={24} />,
+        color: 'bg-amber-50 text-amber-600 border-amber-100'
+    },
+    {
+        id: 'one-time-reminder',
+        name: 'Nhắc Việc Một Lần',
+        description: 'Tạo nhắc việc và nhận thông báo trên trình duyệt',
+        icon: <Bell size={24} />,
+        color: 'bg-rose-50 text-rose-600 border-rose-100'
+    },
+    {
         id: 'prompt-manager',
         name: 'Kho Prompt',
         description: 'Lưu trữ và quản lý các prompt cho AI models',
@@ -66,6 +82,10 @@ const ToolkitPage: React.FC = () => {
                 return <AspectRatioCalculator />;
             case 'text-compare':
                 return <TextCompare />;
+            case 'lorem-ipsum':
+                return <LoremIpsumGenerator />;
+            case 'one-time-reminder':
+                return <OneTimeReminder />;
             case 'prompt-manager':
                 return <PromptManager />;
             case 'smart-salary':
