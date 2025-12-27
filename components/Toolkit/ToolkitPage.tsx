@@ -1,14 +1,15 @@
 import React, { useState } from 'react';
-import { Wrench, Type, Ratio, GitCompare, Terminal, Banknote, ChevronDown, ArrowLeft, FileText, Bell } from 'lucide-react';
+import { Wrench, Type, Ratio, GitCompare, Terminal, Banknote, ChevronDown, ArrowLeft, FileText, Bell, HelpCircle } from 'lucide-react';
 import WordCounter from './WordCounter';
 import AspectRatioCalculator from './AspectRatioCalculator';
 import TextCompare from './TextCompare';
 import LoremIpsumGenerator from './LoremIpsumGenerator';
 import OneTimeReminder from './OneTimeReminder';
+import ProblemToQuestion from './ProblemToQuestion';
 import PromptManager from '../PromptManager';
 import SmartSalary from '../SmartSalary';
 
-type ToolType = 'menu' | 'word-counter' | 'aspect-ratio' | 'text-compare' | 'lorem-ipsum' | 'one-time-reminder' | 'prompt-manager' | 'smart-salary';
+type ToolType = 'menu' | 'word-counter' | 'aspect-ratio' | 'text-compare' | 'lorem-ipsum' | 'one-time-reminder' | 'problem-to-question' | 'prompt-manager' | 'smart-salary';
 
 interface Tool {
     id: ToolType;
@@ -55,6 +56,13 @@ const tools: Tool[] = [
         color: 'bg-rose-50 text-rose-600 border-rose-100'
     },
     {
+        id: 'problem-to-question',
+        name: 'Vấn Đề → Câu Hỏi',
+        description: 'Chuyển vấn đề/than phiền thành câu hỏi có thể hành động',
+        icon: <HelpCircle size={24} />,
+        color: 'bg-indigo-50 text-indigo-600 border-indigo-100'
+    },
+    {
         id: 'prompt-manager',
         name: 'Kho Prompt',
         description: 'Lưu trữ và quản lý các prompt cho AI models',
@@ -86,6 +94,8 @@ const ToolkitPage: React.FC = () => {
                 return <LoremIpsumGenerator />;
             case 'one-time-reminder':
                 return <OneTimeReminder />;
+            case 'problem-to-question':
+                return <ProblemToQuestion />;
             case 'prompt-manager':
                 return <PromptManager />;
             case 'smart-salary':
