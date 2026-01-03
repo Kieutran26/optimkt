@@ -171,10 +171,26 @@ export const handler = async (event, context) => {
 
     console.log('📰 Manual news fetch triggered!');
 
-    const supabase = createClient(
-        process.env.VITE_SUPABASE_URL,
-        process.env.VITE_SUPABASE_ANON_KEY
-    );
+    // Try both VITE_ and non-VITE_ env vars (Netlify functions may not have VITE_ prefix)
+    const supabaseUrl = process.env.VITE_SUPABASE_URL || process.env.SUPABASE_URL;
+    const supabaseKey = process.env.VITE_SUPABASE_ANON_KEY || process.env.SUPABASE_ANON_KEY;
+
+    console.log('🔑 Supabase URL exists:', !!supabaseUrl);
+    console.log('🔑 Supabase Key exists:', !!supabaseKey);
+
+    if (!supabaseUrl || !supabaseKey) {
+        console.error('❌ Missing Supabase credentials!');
+        return {
+            statusCode: 500,
+            headers,
+            body: JSON.stringify({
+                success: false,
+                error: 'Missing Supabase credentials. Please add SUPABASE_URL and SUPABASE_ANON_KEY to Netlify environment variables.'
+            })
+        };
+    }
+
+    const supabase = createClient(supabaseUrl, supabaseKey);
 
     try {
         const newArticles = await fetchAndStoreNews(supabase);
