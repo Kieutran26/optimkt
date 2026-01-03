@@ -35,51 +35,92 @@ const FEED_SOURCES = [
     { url: 'https://feeds.feedburner.com/entrepreneur/latest', source: 'Entrepreneur', category: 'Business' }
 ];
 
+// Fetch with timeout
+async function fetchWithTimeout(url, timeoutMs = 5000) {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), timeoutMs);
+    try {
+        const feed = await parser.parseURL(url);
+        clearTimeout(timeout);
+        return feed;
+    } catch (err) {
+        clearTimeout(timeout);
+        throw err;
+    }
+}
+
 async function fetchAndStoreNews(supabase) {
-    console.log('📰 Starting News Aggregation...');
+    console.log('📰 Starting News Aggregation (Optimized)...');
     let totalNew = 0;
 
-    for (const feed of FEED_SOURCES) {
+    // Fetch all feeds in PARALLEL with timeout
+    const feedPromises = FEED_SOURCES.map(async (feed) => {
         try {
             console.log(`   Fetching ${feed.source}...`);
-            const feedData = await parser.parseURL(feed.url);
-            const items = feedData.items.slice(0, 50);
+            const feedData = await fetchWithTimeout(feed.url, 5000);
+            // Only take top 10 items per feed to speed up
+            return { feed, items: feedData.items.slice(0, 10) };
+        } catch (err) {
+            console.error(`❌ Error fetching ${feed.source}:`, err.message);
+            return { feed, items: [] };
+        }
+    });
 
-            for (const item of items) {
-                const { data: existing } = await supabase
-                    .from('news_articles')
-                    .select('id')
-                    .eq('link', item.link)
-                    .single();
+    const results = await Promise.all(feedPromises);
 
-                if (!existing) {
-                    const pubDate = item.pubDate ? new Date(item.pubDate) : new Date();
+    // Collect all articles to insert
+    const articlesToInsert = [];
 
-                    let imageUrl = null;
-                    if (item.enclosure && item.enclosure.url) {
-                        imageUrl = item.enclosure.url;
-                    } else if (item['content:encoded'] && item['content:encoded'].match(/src="([^"]+)"/)) {
-                        imageUrl = item['content:encoded'].match(/src="([^"]+)"/)[1];
-                    } else if (item.content && item.content.match(/src="([^"]+)"/)) {
-                        imageUrl = item.content.match(/src="([^"]+)"/)[1];
-                    } else if (item.description && item.description.match(/src="([^"]+)"/)) {
-                        imageUrl = item.description.match(/src="([^"]+)"/)[1];
-                    }
+    // Get existing links first (batch check)
+    const allLinks = results.flatMap(r => r.items.map(item => item.link)).filter(Boolean);
 
-                    const { error } = await supabase.from('news_articles').insert({
-                        title: item.title,
-                        link: item.link,
-                        pub_date: pubDate.toISOString(),
-                        source: feed.source,
-                        category: feed.category,
-                        summary: item.contentSnippet || item.content?.substring(0, 200) + '...',
-                        image_url: imageUrl
-                    });
-                    if (!error) totalNew++;
-                }
+    const { data: existingArticles } = await supabase
+        .from('news_articles')
+        .select('link')
+        .in('link', allLinks.slice(0, 100)); // Limit check to 100
+
+    const existingLinks = new Set(existingArticles?.map(a => a.link) || []);
+
+    // Process results
+    for (const { feed, items } of results) {
+        for (const item of items) {
+            if (!item.link || existingLinks.has(item.link)) continue;
+
+            const pubDate = item.pubDate ? new Date(item.pubDate) : new Date();
+
+            let imageUrl = null;
+            if (item.enclosure?.url) {
+                imageUrl = item.enclosure.url;
+            } else if (item['content:encoded']?.match(/src="([^"]+)"/)) {
+                imageUrl = item['content:encoded'].match(/src="([^"]+)"/)[1];
+            } else if (item.content?.match(/src="([^"]+)"/)) {
+                imageUrl = item.content.match(/src="([^"]+)"/)[1];
+            } else if (item.description?.match(/src="([^"]+)"/)) {
+                imageUrl = item.description.match(/src="([^"]+)"/)[1];
             }
-        } catch (error) {
-            console.error(`❌ Error fetching ${feed.source}:`, error.message);
+
+            articlesToInsert.push({
+                title: item.title,
+                link: item.link,
+                pub_date: pubDate.toISOString(),
+                source: feed.source,
+                category: feed.category,
+                summary: item.contentSnippet || item.content?.substring(0, 200) + '...',
+                image_url: imageUrl
+            });
+        }
+    }
+
+    // Batch insert all at once
+    if (articlesToInsert.length > 0) {
+        const { error, count } = await supabase
+            .from('news_articles')
+            .insert(articlesToInsert);
+
+        if (!error) {
+            totalNew = articlesToInsert.length;
+        } else {
+            console.error('Insert error:', error.message);
         }
     }
 
