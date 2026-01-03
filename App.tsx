@@ -43,6 +43,7 @@ import PESTELBuilder from './components/PESTELBuilder';
 import PorterAnalyzer from './components/PorterAnalyzer';
 import STPModelGenerator from './components/STPModelGenerator';
 import HomePage from './components/HomePage';
+import FeaturesGuide from './components/FeaturesGuide';
 import NewsPage from './components/News/NewsPage';
 import ToolkitPage from './components/Toolkit/ToolkitPage';
 
