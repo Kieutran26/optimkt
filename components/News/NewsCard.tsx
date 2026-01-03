@@ -15,6 +15,7 @@ export interface NewsArticle {
 interface NewsCardProps {
     article: NewsArticle;
     index?: number;
+    isNew?: boolean;
 }
 
 // Helper to get/set read articles from localStorage
@@ -35,7 +36,7 @@ const markAsRead = (id: string) => {
     localStorage.setItem(READ_ARTICLES_KEY, JSON.stringify(arr));
 };
 
-export const NewsCard: React.FC<NewsCardProps> = ({ article, index = 10 }) => {
+export const NewsCard: React.FC<NewsCardProps> = ({ article, index = 10, isNew = false }) => {
     const [imageLoaded, setImageLoaded] = React.useState(false);
     const [isRead, setIsRead] = React.useState(() => getReadArticles().has(article.id));
 
@@ -105,7 +106,14 @@ export const NewsCard: React.FC<NewsCardProps> = ({ article, index = 10 }) => {
             className="group block h-full"
             onClick={handleClick}
         >
-            <div className="bg-white rounded-2xl p-6 h-full flex flex-col transition-all duration-300 hover:-translate-y-1 hover:shadow-lg shadow-[0_2px_15px_-3px_rgba(0,0,0,0.07),0_10px_20px_-2px_rgba(0,0,0,0.04)] border border-transparent hover:border-gray-50">
+            <div className="bg-white rounded-2xl p-6 h-full flex flex-col transition-all duration-300 hover:-translate-y-1 hover:shadow-lg shadow-[0_2px_15px_-3px_rgba(0,0,0,0.07),0_10px_20px_-2px_rgba(0,0,0,0.04)] border border-transparent hover:border-gray-50 relative">
+
+                {/* NEW Badge - top right corner */}
+                {isNew && (
+                    <span className="absolute top-3 right-3 px-2 py-0.5 rounded text-[9px] font-bold bg-amber-400 text-amber-900 uppercase tracking-wider shadow-sm">
+                        Mới
+                    </span>
+                )}
 
                 {/* Header: Source & Date */}
                 <div className="flex items-center justify-between mb-4">

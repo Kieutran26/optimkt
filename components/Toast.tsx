@@ -11,12 +11,21 @@ interface Toast {
   duration?: number;
 }
 
+interface ConfirmOptions {
+  title: string;
+  message: string;
+  confirmText?: string;
+  cancelText?: string;
+  type?: 'danger' | 'warning' | 'info';
+}
+
 interface ToastContextType {
   showToast: (toast: Omit<Toast, 'id'>) => void;
   success: (title: string, message?: string) => void;
   error: (title: string, message?: string) => void;
   warning: (title: string, message?: string) => void;
   info: (title: string, message?: string) => void;
+  showConfirm: (options: ConfirmOptions) => Promise<boolean>;
 }
 
 const ToastContext = createContext<ToastContextType | null>(null);
@@ -30,7 +39,8 @@ export const useToast = () => {
       success: () => { },
       error: () => { },
       warning: () => { },
-      info: () => { }
+      info: () => { },
+      showConfirm: async () => false
     };
   }
   return context;
@@ -113,8 +123,61 @@ const ToastItem: React.FC<{ toast: Toast; onClose: () => void }> = ({ toast, onC
   );
 };
 
+// Confirm Modal Component
+const ConfirmModal: React.FC<{
+  options: ConfirmOptions;
+  onConfirm: () => void;
+  onCancel: () => void;
+}> = ({ options, onConfirm, onCancel }) => {
+  const typeColors = {
+    danger: { bg: 'bg-red-500 hover:bg-red-600', iconBg: 'bg-red-50', icon: 'text-red-500' },
+    warning: { bg: 'bg-amber-500 hover:bg-amber-600', iconBg: 'bg-amber-50', icon: 'text-amber-500' },
+    info: { bg: 'bg-blue-500 hover:bg-blue-600', iconBg: 'bg-blue-50', icon: 'text-blue-500' }
+  };
+
+  const colors = typeColors[options.type || 'info'];
+
+  return (
+    <div className="fixed inset-0 bg-black/20 backdrop-blur-sm flex items-center justify-center z-[9999] p-4">
+      <div className="bg-white rounded-2xl shadow-xl w-full max-w-sm overflow-hidden animate-[scale-in_0.2s_ease-out]">
+        <div className="p-6">
+          <div className={`w-12 h-12 rounded-xl ${colors.iconBg} flex items-center justify-center mb-4`}>
+            {options.type === 'danger' ? (
+              <AlertTriangle size={24} className={colors.icon} />
+            ) : options.type === 'warning' ? (
+              <AlertTriangle size={24} className={colors.icon} />
+            ) : (
+              <Info size={24} className={colors.icon} />
+            )}
+          </div>
+          <h3 className="text-lg font-semibold text-gray-900 mb-2">{options.title}</h3>
+          <p className="text-gray-500 text-sm leading-relaxed">{options.message}</p>
+        </div>
+        <div className="flex gap-3 px-6 pb-6">
+          <button
+            onClick={onCancel}
+            className="flex-1 px-4 py-2.5 text-sm font-medium text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-xl transition-colors"
+          >
+            {options.cancelText || 'Hủy'}
+          </button>
+          <button
+            onClick={onConfirm}
+            className={`flex-1 px-4 py-2.5 text-sm font-medium text-white rounded-xl transition-colors ${colors.bg}`}
+          >
+            {options.confirmText || 'Xác nhận'}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+};
+
 export const ToastProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [toasts, setToasts] = useState<Toast[]>([]);
+  const [confirmState, setConfirmState] = useState<{
+    options: ConfirmOptions;
+    resolve: (value: boolean) => void;
+  } | null>(null);
 
   const removeToast = useCallback((id: string) => {
     setToasts(prev => prev.filter(t => t.id !== id));
@@ -141,8 +204,24 @@ export const ToastProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     showToast({ type: 'info', title, message });
   }, [showToast]);
 
+  const showConfirm = useCallback((options: ConfirmOptions): Promise<boolean> => {
+    return new Promise((resolve) => {
+      setConfirmState({ options, resolve });
+    });
+  }, []);
+
+  const handleConfirm = () => {
+    confirmState?.resolve(true);
+    setConfirmState(null);
+  };
+
+  const handleCancel = () => {
+    confirmState?.resolve(false);
+    setConfirmState(null);
+  };
+
   return (
-    <ToastContext.Provider value={{ showToast, success, error, warning, info }}>
+    <ToastContext.Provider value={{ showToast, success, error, warning, info, showConfirm }}>
       {children}
 
       {/* Toast Container */}
@@ -155,6 +234,15 @@ export const ToastProvider: React.FC<{ children: React.ReactNode }> = ({ childre
           />
         ))}
       </div>
+
+      {/* Confirm Modal */}
+      {confirmState && (
+        <ConfirmModal
+          options={confirmState.options}
+          onConfirm={handleConfirm}
+          onCancel={handleCancel}
+        />
+      )}
     </ToastContext.Provider>
   );
 };

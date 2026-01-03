@@ -1,7 +1,8 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import { supabase } from '../../lib/supabase';
 import { NewsCard, NewsArticle } from './NewsCard';
-import { RefreshCw, Filter, Trash2, Calendar, X } from 'lucide-react';
+import { RefreshCw, Filter, Trash2, Calendar, X, Wifi, WifiOff, Download } from 'lucide-react';
+import { useToast } from '../Toast';
 
 const NewsPage: React.FC = () => {
     const [articles, setArticles] = useState<NewsArticle[]>([]);
@@ -10,13 +11,22 @@ const NewsPage: React.FC = () => {
     const [showDeleteModal, setShowDeleteModal] = useState(false);
     const [customDate, setCustomDate] = useState('');
     const [deleting, setDeleting] = useState(false);
+    const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
+    const [isRealtimeConnected, setIsRealtimeConnected] = useState(false);
+    const [crawling, setCrawling] = useState(false);
+    const [lastCrawlTime, setLastCrawlTime] = useState<string | null>(() => {
+        try {
+            return localStorage.getItem('optimkt_last_crawl_time');
+        } catch {
+            return null;
+        }
+    });
 
-    useEffect(() => {
-        fetchNews();
-    }, []);
+    const toast = useToast();
 
-    const fetchNews = async () => {
-        setLoading(true);
+    // Memoized fetchNews to avoid recreation on every render
+    const fetchNews = useCallback(async (showLoadingState = true) => {
+        if (showLoadingState) setLoading(true);
         try {
             const { data, error } = await supabase
                 .from('news_articles')
@@ -26,12 +36,115 @@ const NewsPage: React.FC = () => {
 
             if (data) {
                 setArticles(data);
+                setLastUpdated(new Date());
             }
         } catch (err) {
             console.error('Error fetching news:', err);
         } finally {
-            setLoading(false);
+            if (showLoadingState) setLoading(false);
         }
+    }, []);
+
+    useEffect(() => {
+        // Initial fetch
+        fetchNews();
+
+        // Set up Supabase Realtime subscription for live updates
+        const channel = supabase
+            .channel('news_realtime')
+            .on(
+                'postgres_changes',
+                {
+                    event: 'INSERT',
+                    schema: 'public',
+                    table: 'news_articles'
+                },
+                (payload) => {
+                    console.log('📰 New article received:', payload.new);
+                    // Add new article to the top of the list
+                    setArticles(prev => {
+                        // Avoid duplicates
+                        if (prev.some(a => a.id === (payload.new as NewsArticle).id)) {
+                            return prev;
+                        }
+                        return [payload.new as NewsArticle, ...prev];
+                    });
+                    setLastUpdated(new Date());
+                }
+            )
+            .on(
+                'postgres_changes',
+                {
+                    event: 'DELETE',
+                    schema: 'public',
+                    table: 'news_articles'
+                },
+                (payload) => {
+                    console.log('🗑️ Article deleted:', payload.old);
+                    setArticles(prev => prev.filter(a => a.id !== (payload.old as any).id));
+                    setLastUpdated(new Date());
+                }
+            )
+            .subscribe((status) => {
+                console.log('Realtime subscription status:', status);
+                setIsRealtimeConnected(status === 'SUBSCRIBED');
+            });
+
+        // Auto-refresh every 5 minutes as fallback
+        const refreshInterval = setInterval(() => {
+            fetchNews(false); // Silent refresh
+        }, 5 * 60 * 1000);
+
+        // Cleanup on unmount
+        return () => {
+            channel.unsubscribe();
+            clearInterval(refreshInterval);
+        };
+    }, [fetchNews]);
+
+    // Crawl new articles from RSS feeds
+    const crawlNews = async () => {
+        setCrawling(true);
+
+        // Save current time as the threshold for "new" articles
+        const crawlStartTime = new Date().toISOString();
+
+        try {
+            // Use local server in development, Netlify function in production
+            const isDev = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+            const apiUrl = isDev
+                ? 'http://localhost:3001/api/news/fetch'
+                : '/.netlify/functions/news-fetch';
+
+            const response = await fetch(apiUrl, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' }
+            });
+            const data = await response.json();
+            if (data.success) {
+                // Update the last crawl time AFTER successful crawl
+                localStorage.setItem('optimkt_last_crawl_time', crawlStartTime);
+                setLastCrawlTime(crawlStartTime);
+
+                toast.success('Thu thập thành công', data.message);
+                fetchNews();
+            } else {
+                toast.error('Lỗi', data.error);
+            }
+        } catch (err) {
+            toast.error('Lỗi kết nối', 'Không thể thu thập tin. Vui lòng thử lại sau.');
+            console.error('Crawl error:', err);
+        } finally {
+            setCrawling(false);
+        }
+    };
+
+    // Check if an article is "new" (added after last crawl time)
+    const isArticleNew = (article: NewsArticle): boolean => {
+        if (!lastCrawlTime) return false;
+        // Use created_at if available, otherwise pub_date
+        const articleTime = (article as any).created_at || article.pub_date;
+        return new Date(articleTime) > new Date(lastCrawlTime);
     };
 
     // Delete articles before a specific date
@@ -44,10 +157,10 @@ const NewsPage: React.FC = () => {
                 .lt('pub_date', beforeDate.toISOString());
 
             if (error) {
-                alert(`Lỗi khi xóa: ${error.message}`);
+                toast.error('Lỗi', error.message);
             } else {
-                alert(`Đã xóa ${count || 0} bài viết!`);
-                fetchNews(); // Refresh
+                toast.success('Xóa thành công', `Đã xóa ${count || 0} bài viết`);
+                fetchNews();
             }
         } catch (err) {
             console.error('Delete error:', err);
@@ -60,10 +173,11 @@ const NewsPage: React.FC = () => {
     // Delete articles from a specific date range
     const deleteArticlesOnDate = async (date: Date) => {
         setDeleting(true);
-        const startOfDay = new Date(date);
-        startOfDay.setHours(0, 0, 0, 0);
-        const endOfDay = new Date(date);
-        endOfDay.setHours(23, 59, 59, 999);
+        const year = date.getFullYear();
+        const month = date.getMonth();
+        const day = date.getDate();
+        const startOfDay = new Date(year, month, day, 0, 0, 0, 0);
+        const endOfDay = new Date(year, month, day, 23, 59, 59, 999);
 
         try {
             const { error, count } = await supabase
@@ -73,9 +187,9 @@ const NewsPage: React.FC = () => {
                 .lte('pub_date', endOfDay.toISOString());
 
             if (error) {
-                alert(`Lỗi khi xóa: ${error.message}`);
+                toast.error('Lỗi', error.message);
             } else {
-                alert(`Đã xóa ${count || 0} bài viết ngày ${date.toLocaleDateString('vi-VN')}!`);
+                toast.success('Xóa thành công', `Đã xóa ${count || 0} bài viết ngày ${date.toLocaleDateString('vi-VN')}`);
                 fetchNews();
             }
         } catch (err) {
@@ -86,43 +200,68 @@ const NewsPage: React.FC = () => {
         }
     };
 
-    const handleDeleteYesterday = () => {
-        if (!confirm('Bạn có chắc muốn xóa tất cả bài viết của ngày hôm qua?')) return;
+    const handleDeleteYesterday = async () => {
+        const confirmed = await toast.showConfirm({
+            title: 'Xóa bài viết hôm qua',
+            message: 'Bạn có chắc muốn xóa tất cả bài viết của ngày hôm qua?',
+            confirmText: 'Xóa',
+            type: 'warning'
+        });
+        if (!confirmed) return;
         const yesterday = new Date();
         yesterday.setDate(yesterday.getDate() - 1);
         deleteArticlesOnDate(yesterday);
     };
 
-    const handleDeleteLastWeek = () => {
-        if (!confirm('Bạn có chắc muốn xóa tất cả bài viết từ tuần trước?')) return;
+    const handleDeleteLastWeek = async () => {
+        const confirmed = await toast.showConfirm({
+            title: 'Xóa bài viết tuần trước',
+            message: 'Bạn có chắc muốn xóa tất cả bài viết cũ hơn 7 ngày?',
+            confirmText: 'Xóa',
+            type: 'warning'
+        });
+        if (!confirmed) return;
         const oneWeekAgo = new Date();
         oneWeekAgo.setDate(oneWeekAgo.getDate() - 7);
         deleteArticlesBefore(oneWeekAgo);
     };
 
-    const handleDeleteCustomDate = () => {
+    const handleDeleteCustomDate = async () => {
         if (!customDate) {
-            alert('Vui lòng chọn ngày!');
+            toast.warning('Chưa chọn ngày', 'Vui lòng chọn ngày cần xóa');
             return;
         }
         const selectedDate = new Date(customDate);
-        if (!confirm(`Bạn có chắc muốn xóa tất cả bài viết ngày ${selectedDate.toLocaleDateString('vi-VN')}?`)) return;
+        const confirmed = await toast.showConfirm({
+            title: 'Xóa bài viết',
+            message: `Bạn có chắc muốn xóa tất cả bài viết ngày ${selectedDate.toLocaleDateString('vi-VN')}?`,
+            confirmText: 'Xóa',
+            type: 'warning'
+        });
+        if (!confirmed) return;
         deleteArticlesOnDate(selectedDate);
     };
 
     const handleDeleteAll = async () => {
-        if (!confirm('⚠️ BẠN CÓ CHẮC MUỐN XÓA TẤT CẢ BÀI VIẾT? Hành động này không thể hoàn tác!')) return;
+        const confirmed = await toast.showConfirm({
+            title: 'Xóa tất cả bài viết',
+            message: 'Hành động này không thể hoàn tác! Bạn có chắc chắn muốn xóa TẤT CẢ bài viết?',
+            confirmText: 'Xóa tất cả',
+            type: 'danger'
+        });
+        if (!confirmed) return;
+
         setDeleting(true);
         try {
             const { error } = await supabase
                 .from('news_articles')
                 .delete()
-                .neq('id', '00000000-0000-0000-0000-000000000000'); // Delete all
+                .neq('id', '00000000-0000-0000-0000-000000000000');
 
             if (error) {
-                alert(`Lỗi: ${error.message}`);
+                toast.error('Lỗi', error.message);
             } else {
-                alert('Đã xóa tất cả bài viết!');
+                toast.success('Hoàn tất', 'Đã xóa tất cả bài viết');
                 fetchNews();
             }
         } catch (err) {
@@ -134,9 +273,59 @@ const NewsPage: React.FC = () => {
     };
 
     const categories = ['All', 'Finance', 'Marketing', 'Tech', 'Lifestyle'];
-    const filteredArticles = filter === 'All'
-        ? articles
-        : articles.filter(a => a.category === filter);
+    const [dateFilter, setDateFilter] = useState<'all' | 'new' | 'today' | 'yesterday' | 'custom'>('all');
+    const [filterDate, setFilterDate] = useState('');
+    const [sourceFilter, setSourceFilter] = useState('all');
+
+    // Get unique sources from articles
+    const uniqueSources = [...new Set(articles.map(a => a.source))].sort();
+
+    // Helper functions for date filtering
+    const isToday = (dateStr: string) => {
+        const date = new Date(dateStr);
+        const today = new Date();
+        return date.toDateString() === today.toDateString();
+    };
+
+    const isYesterday = (dateStr: string) => {
+        const date = new Date(dateStr);
+        const yesterday = new Date();
+        yesterday.setDate(yesterday.getDate() - 1);
+        return date.toDateString() === yesterday.toDateString();
+    };
+
+    const isOnDate = (dateStr: string, targetDate: string) => {
+        const date = new Date(dateStr);
+        const target = new Date(targetDate);
+        return date.toDateString() === target.toDateString();
+    };
+
+    // Combined filter logic
+    const filteredArticles = articles.filter(article => {
+        // Category filter
+        if (filter !== 'All' && article.category !== filter) return false;
+
+        // Source filter
+        if (sourceFilter !== 'all' && article.source !== sourceFilter) return false;
+
+        // Date filter
+        switch (dateFilter) {
+            case 'new':
+                if (!isArticleNew(article)) return false;
+                break;
+            case 'today':
+                if (!isToday(article.pub_date)) return false;
+                break;
+            case 'yesterday':
+                if (!isYesterday(article.pub_date)) return false;
+                break;
+            case 'custom':
+                if (filterDate && !isOnDate(article.pub_date, filterDate)) return false;
+                break;
+        }
+
+        return true;
+    });
 
     const getCategoryCount = (cat: string) => {
         if (cat === 'All') return articles.length;
@@ -152,38 +341,134 @@ const NewsPage: React.FC = () => {
                     <p className="text-gray-500">Cập nhật tin tức mới nhất về Tài chính, Marketing & Công nghệ</p>
                 </div>
 
-                <div className="flex items-center gap-3 bg-white p-1.5 rounded-xl shadow-sm border border-gray-100 overflow-x-auto">
-                    {categories.map(cat => (
-                        <button
-                            key={cat}
-                            onClick={() => setFilter(cat)}
-                            className={`px-4 py-2 rounded-lg text-sm font-medium transition-all whitespace-nowrap flex items-center gap-2
-                                ${filter === cat
-                                    ? 'bg-gray-900 text-white shadow-md'
-                                    : 'text-gray-500 hover:bg-gray-50 hover:text-gray-900'
-                                }`}
-                        >
-                            <span>{cat === 'All' ? 'Tất cả' : cat}</span>
-                            <span className={`text-[10px] px-1.5 py-0.5 rounded-full ${filter === cat ? 'bg-gray-700 text-white' : 'bg-gray-100 text-gray-500'}`}>
-                                {getCategoryCount(cat)}
+                <div className="flex flex-col items-end gap-2">
+                    {/* Realtime Status */}
+                    <div className="flex items-center gap-2">
+                        {isRealtimeConnected ? (
+                            <div className="flex items-center gap-1.5 px-2.5 py-1 bg-green-50 text-green-600 rounded-full text-xs font-medium">
+                                <Wifi size={12} />
+                                <span>Realtime</span>
+                            </div>
+                        ) : (
+                            <div className="flex items-center gap-1.5 px-2.5 py-1 bg-gray-100 text-gray-500 rounded-full text-xs font-medium">
+                                <WifiOff size={12} />
+                                <span>Đang kết nối...</span>
+                            </div>
+                        )}
+                        {lastUpdated && (
+                            <span className="text-xs text-gray-400">
+                                Cập nhật: {lastUpdated.toLocaleTimeString('vi-VN')}
                             </span>
+                        )}
+                    </div>
+
+                    {/* Action Buttons Row */}
+                    <div className="flex items-center gap-3">
+                        {/* Category Filter */}
+                        <div className="flex items-center gap-1 bg-white p-1.5 rounded-xl shadow-sm border border-gray-100">
+                            {categories.map(cat => (
+                                <button
+                                    key={cat}
+                                    onClick={() => setFilter(cat)}
+                                    className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-all whitespace-nowrap flex items-center gap-1.5
+                                        ${filter === cat
+                                            ? 'bg-gray-900 text-white shadow-md'
+                                            : 'text-gray-500 hover:bg-gray-50 hover:text-gray-900'
+                                        }`}
+                                >
+                                    <span>{cat === 'All' ? 'Tất cả' : cat}</span>
+                                    <span className={`text-[10px] px-1.5 py-0.5 rounded-full ${filter === cat ? 'bg-gray-700 text-white' : 'bg-gray-100 text-gray-500'}`}>
+                                        {getCategoryCount(cat)}
+                                    </span>
+                                </button>
+                            ))}
+                        </div>
+
+                        {/* Action Buttons */}
+                        <button
+                            onClick={() => fetchNews()}
+                            className="p-2 text-gray-400 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-colors"
+                            title="Làm mới"
+                        >
+                            <RefreshCw size={18} className={loading ? 'animate-spin' : ''} />
                         </button>
-                    ))}
-                    <div className="w-px h-6 bg-gray-200 mx-1"></div>
-                    <button
-                        onClick={fetchNews}
-                        className="p-2 text-gray-400 hover:text-gray-900 hover:bg-gray-50 rounded-lg transition-colors"
-                        title="Làm mới"
-                    >
-                        <RefreshCw size={18} className={loading ? 'animate-spin' : ''} />
-                    </button>
-                    <button
-                        onClick={() => setShowDeleteModal(true)}
-                        className="p-2 text-red-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
-                        title="Quản lý xóa bài"
-                    >
-                        <Trash2 size={18} />
-                    </button>
+                        <button
+                            onClick={crawlNews}
+                            disabled={crawling}
+                            className="flex items-center gap-1.5 px-3 py-2 bg-indigo-500 text-white rounded-lg hover:bg-indigo-600 transition-colors disabled:opacity-50 text-sm font-medium"
+                            title="Thu thập tin mới từ các nguồn RSS"
+                        >
+                            <Download size={16} className={crawling ? 'animate-bounce' : ''} />
+                            <span>{crawling ? 'Đang crawl...' : 'Crawl'}</span>
+                        </button>
+                        <button
+                            onClick={() => setShowDeleteModal(true)}
+                            className="p-2 text-red-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                            title="Quản lý xóa bài"
+                        >
+                            <Trash2 size={18} />
+                        </button>
+                    </div>
+
+                    {/* Advanced Filters Row */}
+                    <div className="flex items-center gap-3 flex-wrap">
+                        {/* Source Dropdown */}
+                        <select
+                            value={sourceFilter}
+                            onChange={(e) => setSourceFilter(e.target.value)}
+                            className="px-3 py-1.5 text-sm border border-gray-200 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-indigo-200 cursor-pointer"
+                        >
+                            <option value="all">Tất cả nguồn</option>
+                            {uniqueSources.map(source => (
+                                <option key={source} value={source}>{source}</option>
+                            ))}
+                        </select>
+
+                        {/* Date Filters */}
+                        <div className="flex items-center gap-1 bg-white p-1 rounded-lg border border-gray-100">
+                            {[
+                                { key: 'all', label: 'Tất cả' },
+                                { key: 'new', label: 'Mới' },
+                                { key: 'today', label: 'Hôm nay' },
+                                { key: 'yesterday', label: 'Hôm qua' },
+                            ].map(item => (
+                                <button
+                                    key={item.key}
+                                    onClick={() => { setDateFilter(item.key as any); setFilterDate(''); }}
+                                    className={`px-2.5 py-1 rounded text-xs font-medium transition-all
+                                        ${dateFilter === item.key
+                                            ? 'bg-indigo-500 text-white'
+                                            : 'text-gray-500 hover:bg-gray-50'
+                                        }`}
+                                >
+                                    {item.label}
+                                </button>
+                            ))}
+                        </div>
+
+                        {/* Custom Date Picker */}
+                        <div className="flex items-center gap-1">
+                            <input
+                                type="date"
+                                value={filterDate}
+                                onChange={(e) => { setFilterDate(e.target.value); setDateFilter('custom'); }}
+                                className="px-2 py-1 text-xs border border-gray-200 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-indigo-200"
+                            />
+                            {filterDate && (
+                                <button
+                                    onClick={() => { setFilterDate(''); setDateFilter('all'); }}
+                                    className="p-1 text-gray-400 hover:text-gray-600"
+                                >
+                                    <X size={14} />
+                                </button>
+                            )}
+                        </div>
+
+                        {/* Filter Count */}
+                        <span className="text-xs text-gray-400">
+                            {filteredArticles.length} / {articles.length} tin
+                        </span>
+                    </div>
                 </div>
             </div>
 
@@ -290,7 +575,12 @@ const NewsPage: React.FC = () => {
                 ) : (
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
                         {filteredArticles.map((article, index) => (
-                            <NewsCard key={article.id} article={article} index={index} />
+                            <NewsCard
+                                key={article.id}
+                                article={article}
+                                index={index}
+                                isNew={isArticleNew(article)}
+                            />
                         ))}
                     </div>
                 )}

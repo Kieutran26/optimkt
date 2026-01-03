@@ -29,6 +29,25 @@ app.get('/api/health', (req, res) => {
     res.json({ status: 'ok' });
 });
 
+// ================== NEWS ENDPOINTS ==================
+
+// Manual trigger for news fetching
+app.post('/api/news/fetch', async (req, res) => {
+    try {
+        console.log('📰 Manual news fetch triggered...');
+        const { fetchAndStoreNews } = await import('./server-news-aggregator.js');
+        const newArticlesCount = await fetchAndStoreNews(supabase);
+        res.json({
+            success: true,
+            message: `Đã thu thập ${newArticlesCount} bài viết mới!`,
+            newArticlesCount
+        });
+    } catch (err) {
+        console.error('Error fetching news:', err);
+        res.status(500).json({ success: false, error: err.message });
+    }
+});
+
 // ================== TRACKING ENDPOINTS ==================
 
 // 1x1 transparent pixel for email open tracking

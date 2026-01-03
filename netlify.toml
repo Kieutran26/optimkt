@@ -5,7 +5,7 @@
 
 [functions]
   node_bundler = "esbuild"
-  external_node_modules = ["@supabase/supabase-js", "dotenv", "resend", "cors", "express"]
+  external_node_modules = ["@supabase/supabase-js", "dotenv", "resend", "cors", "express", "rss-parser"]
 
 [[redirects]]
   from = "/api/*"
