@@ -111,17 +111,36 @@ async function fetchAndStoreNews(supabase) {
         }
     }
 
-    // Batch insert all at once
+    console.log(`📦 Articles to insert: ${articlesToInsert.length}`);
+
+    // Batch insert all at once with upsert to handle duplicates
     if (articlesToInsert.length > 0) {
-        const { error, count } = await supabase
+        // Use upsert to ignore duplicates based on link
+        const { data, error } = await supabase
             .from('news_articles')
-            .insert(articlesToInsert);
+            .upsert(articlesToInsert, {
+                onConflict: 'link',
+                ignoreDuplicates: true
+            })
+            .select();
 
         if (!error) {
-            totalNew = articlesToInsert.length;
+            totalNew = data?.length || articlesToInsert.length;
+            console.log(`📥 Inserted ${totalNew} articles`);
         } else {
-            console.error('Insert error:', error.message);
+            console.error('Insert error:', error.message, error.details);
+
+            // Fallback: try inserting one by one
+            console.log('🔄 Trying individual inserts...');
+            for (const article of articlesToInsert) {
+                const { error: singleError } = await supabase
+                    .from('news_articles')
+                    .insert(article);
+                if (!singleError) totalNew++;
+            }
         }
+    } else {
+        console.log('ℹ️ No new articles to insert (all already exist)');
     }
 
     console.log(`✅ News Aggregation Complete. Added ${totalNew} new articles.`);
