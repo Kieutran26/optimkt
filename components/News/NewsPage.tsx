@@ -139,12 +139,23 @@ const NewsPage: React.FC = () => {
         }
     };
 
-    // Check if an article is "new" (added after last crawl time)
+    // Check if an article is "new" (created within last 1 hour OR after last crawl)
     const isArticleNew = (article: NewsArticle): boolean => {
-        if (!lastCrawlTime) return false;
-        // Use created_at if available, otherwise pub_date
-        const articleTime = (article as any).created_at || article.pub_date;
-        return new Date(articleTime) > new Date(lastCrawlTime);
+        const articleCreatedAt = (article as any).created_at;
+        if (!articleCreatedAt) return false;
+
+        const articleTime = new Date(articleCreatedAt).getTime();
+        const oneHourAgo = Date.now() - (60 * 60 * 1000); // 1 hour in ms
+
+        // Article is "new" if created within last hour
+        if (articleTime > oneHourAgo) return true;
+
+        // Or if created after last crawl time
+        if (lastCrawlTime) {
+            return articleTime > new Date(lastCrawlTime).getTime();
+        }
+
+        return false;
     };
 
     // Delete articles before a specific date
