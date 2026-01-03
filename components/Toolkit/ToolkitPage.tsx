@@ -1,15 +1,16 @@
 import React, { useState } from 'react';
-import { Wrench, Type, Ratio, GitCompare, Terminal, Banknote, ChevronDown, ArrowLeft, FileText, Bell, HelpCircle } from 'lucide-react';
+import { Wrench, Type, Ratio, GitCompare, Terminal, Banknote, ChevronDown, ArrowLeft, FileText, Bell, HelpCircle, Link } from 'lucide-react';
 import WordCounter from './WordCounter';
 import AspectRatioCalculator from './AspectRatioCalculator';
 import TextCompare from './TextCompare';
 import LoremIpsumGenerator from './LoremIpsumGenerator';
 import OneTimeReminder from './OneTimeReminder';
 import ProblemToQuestion from './ProblemToQuestion';
+import UnsplashLinkConverter from './UnsplashLinkConverter';
 import PromptManager from '../PromptManager';
 import SmartSalary from '../SmartSalary';
 
-type ToolType = 'menu' | 'word-counter' | 'aspect-ratio' | 'text-compare' | 'lorem-ipsum' | 'one-time-reminder' | 'problem-to-question' | 'prompt-manager' | 'smart-salary';
+type ToolType = 'menu' | 'word-counter' | 'aspect-ratio' | 'text-compare' | 'lorem-ipsum' | 'one-time-reminder' | 'problem-to-question' | 'prompt-manager' | 'smart-salary' | 'unsplash-link';
 
 interface Tool {
     id: ToolType;
@@ -76,6 +77,13 @@ const tools: Tool[] = [
         icon: <Banknote size={24} />,
         color: 'bg-emerald-50 text-emerald-600 border-emerald-100'
     },
+    {
+        id: 'unsplash-link',
+        name: 'Chuyển Đổi Link Unsplash',
+        description: 'Làm sạch và tối ưu link ảnh Unsplash',
+        icon: <Link size={24} />,
+        color: 'bg-pink-50 text-pink-600 border-pink-100'
+    },
 ];
 
 const ToolkitPage: React.FC = () => {
@@ -100,6 +108,8 @@ const ToolkitPage: React.FC = () => {
                 return <PromptManager />;
             case 'smart-salary':
                 return <SmartSalary />;
+            case 'unsplash-link':
+                return <UnsplashLinkConverter />;
             default:
                 return null;
         }
