@@ -661,8 +661,8 @@ const AccordionItem: React.FC<{
     );
 };
 
-// Analysis Section Component
-const AnalysisSection: React.FC<{ result: BrandSpyResult }> = ({ result }) => {
+// TikTok Analysis Section (Pro UI - Accordion Style)
+const TikTokAnalysisSection: React.FC<{ result: BrandSpyResult }> = ({ result }) => {
     const { analysis, brandName, profile } = result;
 
     // Safely access new metrics with fallbacks for old analyses
@@ -686,9 +686,9 @@ const AnalysisSection: React.FC<{ result: BrandSpyResult }> = ({ result }) => {
         <div className="space-y-8 animate-in fade-in duration-500">
             {/* Header */}
             <div className="bg-white p-6 rounded-2xl border border-slate-100 shadow-sm">
-                <h3 className="text-xl font-bold text-slate-900 mb-2">Phân tích chuyên sâu</h3>
+                <h3 className="text-xl font-bold text-slate-900 mb-2">Phân tích chuyên sâu (TikTok Pro)</h3>
                 <p className="text-slate-500 text-sm">
-                    Phân tích kênh <span className="font-bold text-slate-800">{brandName}</span> trên nền tảng {result.platform === 'tiktok' ? 'TikTok' : 'Facebook'}.
+                    Phân tích kênh <span className="font-bold text-slate-800">{brandName}</span> trên nền tảng TikTok.
                 </p>
             </div>
 
@@ -911,12 +911,220 @@ const AnalysisSection: React.FC<{ result: BrandSpyResult }> = ({ result }) => {
                 {/* Engagement Strategy */}
                 <AccordionItem title="Chiến lược Tương tác" defaultOpen={false}>
                     <div className="text-sm text-slate-600 leading-relaxed py-2">
+                        {analysis.strategy.engagementStrategy || "Chưa có dữ liệu."}
+                    </div>
+                </AccordionItem>
+            </div>
+        </div>
+    );
+};
+
+// Facebook Analysis Section (Classic UI - Stable)
+const FacebookAnalysisSection: React.FC<{ result: BrandSpyResult }> = ({ result }) => {
+    const { analysis, brandName } = result;
+
+    return (
+        <div className="space-y-8 animate-in fade-in duration-500">
+            {/* Header */}
+            <div className="bg-white p-6 rounded-2xl border border-slate-100 shadow-sm">
+                <h3 className="text-xl font-bold text-slate-900 mb-2">Phân tích</h3>
+                <p className="text-slate-500 text-sm">
+                    Phân tích thương hiệu <span className="font-bold text-slate-800">{brandName}</span> trên Facebook.
+                </p>
+            </div>
+
+            {/* PART A: DATA SUMMARY */}
+            <div className="space-y-4">
+                <h3 className="text-base font-bold text-slate-900 uppercase tracking-wide px-1">PHẦN A: TỔNG HỢP SỐ LIỆU</h3>
+
+                {/* Channel Health */}
+                <AccordionItem title="Sức khỏe Kênh" defaultOpen={true}>
+                    <div className="space-y-3 py-2 text-sm">
+                        <div className="flex justify-between items-center border-b border-slate-50 pb-2">
+                            <span className="font-medium text-slate-600">Tổng lượt thích:</span>
+                            <span className="font-bold text-slate-900">{analysis.channelHealth.totalLikes.toLocaleString()}</span>
+                        </div>
+                        <div className="flex justify-between items-center border-b border-slate-50 pb-2">
+                            <span className="font-medium text-slate-600">Đánh giá:</span>
+                            <span className="font-bold text-slate-900">{analysis.channelHealth.totalReviews > 0 ? analysis.channelHealth.totalReviews.toLocaleString() : 'N/A'}</span>
+                        </div>
+                        <div className="flex justify-between items-center border-b border-slate-50 pb-2">
+                            <span className="font-medium text-slate-600">Tổng lượt theo dõi:</span>
+                            <span className="font-bold text-slate-900">{analysis.channelHealth.totalFollowers.toLocaleString()}</span>
+                        </div>
+                        <div className="flex justify-between items-center">
+                            <span className="font-medium text-slate-600">Tỷ lệ L/F:</span>
+                            <span className="font-bold text-slate-900">{(analysis.channelHealth.likeFollowerRatio * 100).toFixed(2)}%</span>
+                        </div>
+                    </div>
+                </AccordionItem>
+
+                {/* Natural Content */}
+                <AccordionItem title="Nội dung Tự nhiên" defaultOpen={true}>
+                    <div className="space-y-4 py-2 text-sm">
+                        <div>
+                            <div className="font-bold text-slate-800 mb-2">Định dạng bài đăng:</div>
+                            <div className="pl-4 space-y-1">
+                                <div className="flex justify-between text-slate-600">
+                                    <span>Reels:</span>
+                                    <span className="font-medium text-slate-900">{analysis.naturalContent.postFormats.reels}</span>
+                                </div>
+                                <div className="flex justify-between text-slate-600">
+                                    <span>Images:</span>
+                                    <span className="font-medium text-slate-900">{analysis.naturalContent.postFormats.images}</span>
+                                </div>
+                            </div>
+                        </div>
+                        <div className="flex justify-between items-center border-t border-slate-50 pt-3">
+                            <span className="font-medium text-slate-600">Tổng số bài đăng:</span>
+                            <span className="font-bold text-slate-900">{analysis.naturalContent.postFormats.total}</span>
+                        </div>
+                        <div className="flex justify-between items-center border-t border-slate-50 pt-3">
+                            <span className="font-medium text-slate-600">Comment trung bình/bài:</span>
+                            <span className="font-bold text-slate-900">{analysis.naturalContent.avgCommentsPerPost.toFixed(1)}</span>
+                        </div>
+                        <div className="flex justify-between items-center border-t border-slate-50 pt-3">
+                            <span className="font-medium text-slate-600">Reaction trung bình/bài:</span>
+                            <span className="font-bold text-slate-900">{analysis.naturalContent.avgReactionsPerPost.toFixed(1)}</span>
+                        </div>
+                    </div>
+                </AccordionItem>
+
+                {/* Ads Activity */}
+                <AccordionItem title="Hoạt động Quảng cáo" defaultOpen={false}>
+                    <div className="space-y-4 py-2 text-sm">
+                        <div className="flex justify-between items-center">
+                            <span className="font-medium text-slate-600">Tổng số quảng cáo đang chạy:</span>
+                            <span className="font-bold text-slate-900">{analysis.adActivity.totalActiveAds}</span>
+                        </div>
+
+                        <div>
+                            <div className="font-bold text-slate-800 mb-2">Phân bố định dạng (Quảng cáo):</div>
+                            <div className="pl-4 space-y-1">
+                                {Object.entries(analysis.adActivity.formatDistribution).map(([format, count]) => (
+                                    <div key={format} className="flex justify-between text-slate-600">
+                                        <span>{format}:</span>
+                                        <span className="font-medium text-slate-900">{count} (Chiếm {analysis.adActivity.totalActiveAds > 0 ? (((count as number) / (analysis.adActivity.totalActiveAds as number)) * 100).toFixed(0) : 0}%)</span>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+
+                        <div>
+                            <div className="font-bold text-slate-800 mb-2">Phân bố CTA:</div>
+                            <div className="pl-4 space-y-1">
+                                {Object.entries(analysis.adActivity.ctaDistribution).map(([cta, count]) => (
+                                    <div key={cta} className="flex justify-between text-slate-600">
+                                        <span>{cta}:</span>
+                                        <span className="font-medium text-slate-900">{count} (Chiếm {analysis.adActivity.totalActiveAds > 0 ? (((count as number) / (analysis.adActivity.totalActiveAds as number)) * 100).toFixed(0) : 0}%)</span>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                    </div>
+                </AccordionItem>
+
+                {/* Comments */}
+                <AccordionItem title="Bình luận" defaultOpen={false}>
+                    <div className="space-y-3 py-2 text-sm">
+                        <div className="flex justify-between items-center border-b border-slate-50 pb-2">
+                            <span className="font-medium text-slate-600">Tổng Comment từ người dùng:</span>
+                            <span className="font-bold text-slate-900">{analysis.comments?.totalUserComments?.toLocaleString() || 'N/A'}</span>
+                        </div>
+                        <div className="flex justify-between items-center border-b border-slate-50 pb-2">
+                            <span className="font-medium text-slate-600">Tổng Comment từ thương hiệu:</span>
+                            <span className="font-bold text-slate-900">{analysis.comments?.totalBrandComments?.toLocaleString() || 0}</span>
+                        </div>
+                        <div className="text-xs text-slate-400 italic pt-2">
+                            Số liệu bình luận có thể sai số do chính sách nghiêm ngặt của Facebook.
+                        </div>
+                    </div>
+                </AccordionItem>
+            </div>
+
+            {/* PART B: STRATEGIC ANALYSIS */}
+            <div className="space-y-4">
+                <h3 className="text-base font-bold text-slate-900 uppercase tracking-wide px-1">PHẦN B: PHÂN TÍCH CHIẾN LƯỢC</h3>
+
+                {/* Brand Positioning */}
+                <AccordionItem title="Định vị Thương hiệu" defaultOpen={true}>
+                    <div className="text-sm text-slate-600 leading-relaxed py-2">
+                        {analysis.strategy.brandPositioning}
+                    </div>
+                </AccordionItem>
+
+                {/* Language & Message */}
+                <AccordionItem title="Ngôn ngữ & Thông điệp" defaultOpen={false}>
+                    <div className="text-sm text-slate-600 leading-relaxed py-2">
+                        {analysis.strategy.messageLanguage}
+                    </div>
+                </AccordionItem>
+
+                {/* Content Structure */}
+                <AccordionItem title="Cấu trúc & Công thức Nội dung" defaultOpen={false}>
+                    <div className="space-y-3 py-2">
+                        <div className="text-sm text-slate-600 leading-relaxed">
+                            {analysis.strategy.contentStructure}
+                        </div>
+                        {Array.isArray(analysis.strategy.contentPillars) && analysis.strategy.contentPillars.length > 0 && typeof analysis.strategy.contentPillars[0] === 'string' && (
+                            <div className="mt-2">
+                                <div className="text-xs font-bold text-slate-500 uppercase mb-2">Các tuyến nội dung chính:</div>
+                                <div className="flex flex-wrap gap-2">
+                                    {(analysis.strategy.contentPillars as string[]).map((pillar, idx) => (
+                                        <span key={idx} className="px-3 py-1 bg-slate-100 text-slate-700 rounded-full text-xs font-medium border border-slate-200">
+                                            {pillar}
+                                        </span>
+                                    ))}
+                                </div>
+                            </div>
+                        )}
+                    </div>
+                </AccordionItem>
+
+                {/* Reel Transcript Analysis */}
+                <AccordionItem title="Phân tích Reel Transcript" defaultOpen={false}>
+                    <div className="text-sm text-slate-600 leading-relaxed py-2">
+                        {analysis.strategy.reelsTranscriptAnalysis || 'Chưa có phân tích Transcript cho Reel.'}
+                    </div>
+                </AccordionItem>
+
+                {/* Marketing Funnel */}
+                <AccordionItem title="Phễu Marketing" defaultOpen={false}>
+                    <div className="space-y-4 py-2 text-sm">
+                        <div>
+                            <div className="font-bold text-slate-700 mb-1">TOFU (Top of Funnel)</div>
+                            <div className="text-slate-600 leading-relaxed">{analysis.strategy.marketingFunnel.tofu}</div>
+                        </div>
+                        <div>
+                            <div className="font-bold text-slate-700 mb-1">MOFU (Middle of Funnel)</div>
+                            <div className="text-slate-600 leading-relaxed">{analysis.strategy.marketingFunnel.mofu}</div>
+                        </div>
+                        <div>
+                            <div className="font-bold text-slate-700 mb-1">BOFU (Bottom of Funnel)</div>
+                            <div className="text-slate-600 leading-relaxed">{analysis.strategy.marketingFunnel.bofu}</div>
+                        </div>
+                    </div>
+                </AccordionItem>
+
+                {/* Engagement Strategy */}
+                <AccordionItem title="Chiến lược Tương tác & Bình luận" defaultOpen={false}>
+                    <div className="text-sm text-slate-600 leading-relaxed py-2 whitespace-pre-line">
                         {analysis.strategy.engagementStrategy}
                     </div>
                 </AccordionItem>
             </div>
         </div>
     );
+};
+
+// Analysis Section Wrapper
+const AnalysisSection: React.FC<{ result: BrandSpyResult }> = ({ result }) => {
+    // Render different UI based on platform
+    if (result.platform === 'tiktok') {
+        return <TikTokAnalysisSection result={result} />;
+    }
+    // Default to Facebook/Classic layout for others for now
+    return <FacebookAnalysisSection result={result} />;
 };
 
 // Evaluation Section Component
