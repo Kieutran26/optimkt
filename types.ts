@@ -753,7 +753,7 @@ export interface MastermindStrategy {
   createdAt: number;
 }
 
-export type ViewState = 'HOME' | 'HOME_DASHBOARD' | 'FEATURES_GUIDE' | 'LEARN_SELECT' | 'LEARN_SESSION' | 'VOCAB_MANAGER' | 'STARRED' | 'PLAN_CALENDAR' | 'PLAN_LIST' | 'PROMPTS' | 'TODO' | 'CONTENT_WRITER' | 'VISUAL_EMAIL' | 'KEY_VISUALS_LIST' | 'KEY_VISUALS_CREATE' | 'FRAME_VISUAL' | 'UTM_BUILDER' | 'MOCKUP_GENERATOR' | 'AB_TESTING' | 'ROAS_FORECASTER' | 'BRAND_VAULT' | 'RIVAL_RADAR' | 'PERSONA_BUILDER' | 'MINDMAP_GENERATOR' | 'SCAMPER_TOOL' | 'STRATEGIC_MODELS' | 'SMART_CALENDAR' | 'MASTERMIND_STRATEGY' | 'SMART_SALARY' | 'AUTO_BRIEF' | 'SOP_BUILDER' | 'HOOK_GENERATOR' | 'CUSTOMER_JOURNEY_MAPPER' | 'BUDGET_ALLOCATOR' | 'INSIGHT_FINDER' | 'CREATIVE_ANGLE_EXPLORER' | 'ADS_HEALTH_CHECKER' | 'BRAND_POSITIONING_BUILDER' | 'PRICING_ANALYZER' | 'AUDIENCE_EMOTION_MAP' | 'IMC_PLANNER' | 'MARKETING_KNOWLEDGE' | 'PESTEL_BUILDER' | 'PORTER_ANALYZER' | 'NEWS_AGGREGATOR' | 'TOOLKIT' | 'STP_MODEL';
+export type ViewState = 'HOME' | 'HOME_DASHBOARD' | 'FEATURES_GUIDE' | 'LEARN_SELECT' | 'LEARN_SESSION' | 'VOCAB_MANAGER' | 'STARRED' | 'PLAN_CALENDAR' | 'PLAN_LIST' | 'PROMPTS' | 'TODO' | 'CONTENT_WRITER' | 'VISUAL_EMAIL' | 'KEY_VISUALS_LIST' | 'KEY_VISUALS_CREATE' | 'FRAME_VISUAL' | 'UTM_BUILDER' | 'MOCKUP_GENERATOR' | 'AB_TESTING' | 'ROAS_FORECASTER' | 'BRAND_VAULT' | 'RIVAL_RADAR' | 'PERSONA_BUILDER' | 'MINDMAP_GENERATOR' | 'SCAMPER_TOOL' | 'STRATEGIC_MODELS' | 'SMART_CALENDAR' | 'MASTERMIND_STRATEGY' | 'SMART_SALARY' | 'AUTO_BRIEF' | 'SOP_BUILDER' | 'HOOK_GENERATOR' | 'CUSTOMER_JOURNEY_MAPPER' | 'BUDGET_ALLOCATOR' | 'INSIGHT_FINDER' | 'CREATIVE_ANGLE_EXPLORER' | 'ADS_HEALTH_CHECKER' | 'BRAND_POSITIONING_BUILDER' | 'PRICING_ANALYZER' | 'AUDIENCE_EMOTION_MAP' | 'IMC_PLANNER' | 'MARKETING_KNOWLEDGE' | 'PESTEL_BUILDER' | 'PORTER_ANALYZER' | 'NEWS_AGGREGATOR' | 'TOOLKIT' | 'STP_MODEL' | 'BRAND_SPY_FACEBOOK' | 'BRAND_SPY_TIKTOK' | 'BRAND_SPY_GOOGLE_ADS' | 'BRAND_SPY_LINKEDIN' | 'BRAND_SPY_WEBSITE';
 
 // --- STP MODEL GENERATOR ---
 export interface STPInput {
@@ -1337,5 +1337,121 @@ export interface PorterAnalysisResult {
   total_threat_score: number; // Tổng điểm / 50
   forces: PorterForce[];
   generated_at: string;
+}
+
+// --- BRAND SPY / SOI BRAND ---
+export type BrandSpyPlatform = 'facebook' | 'tiktok' | 'google_ads' | 'linkedin' | 'website';
+
+// Profile Data
+export interface BrandProfile {
+  id: string;
+  url: string;
+  name: string;
+  email?: string;
+  link?: string;
+  phone?: string;
+  website?: string;
+  category?: string;
+  pageIntro?: string;
+  creationDate?: string;
+  followerCount: number;
+  isBusinessPageActive: boolean;
+  pageId: string;
+  adStatus?: string;
+}
+
+// Post Data
+export interface BrandPost {
+  id: string;
+  description: string;
+  time: string;
+  reactions: number;
+  comments: number;
+  url: string;
+  media?: string[]; // URLs to media
+  isReel?: boolean;
+  thumbnail?: string;
+  transcript?: string;
+}
+
+// Ad Data
+export interface BrandAd {
+  id: string;
+  content: string;
+  cta?: string;
+  platform: string;
+  media?: string[];
+  isActive: boolean;
+  adArchiveId: string;
+}
+
+// Analysis Results
+export interface BrandAnalysis {
+  channelHealth: {
+    totalLikes: number;
+    totalReviews: number;
+    totalFollowers: number;
+    likeFollowerRatio: number;
+  };
+  naturalContent: {
+    postFormats: {
+      reels: number;
+      images: number;
+      total: number;
+    };
+    avgCommentsPerPost: number;
+    avgReactionsPerPost: number;
+  };
+  adActivity: {
+    totalActiveAds: number;
+    formatDistribution: Record<string, number>;
+    ctaDistribution: Record<string, number>;
+  };
+  comments: {
+    totalUserComments: number;
+    totalBrandComments: number;
+  };
+  strategy: {
+    brandPositioning: string;
+    messageLanguage: string;
+    contentStructure: string;
+    reelsTranscriptAnalysis: string;
+    contentPillars: string[];
+    adStrategy: {
+      campaignObjectives: string[];
+      creativeAnalysis: string;
+      adAngles: string[];
+    };
+    marketingFunnel: {
+      tofu: string;
+      mofu: string;
+      bofu: string;
+    };
+    engagementStrategy: string;
+  };
+}
+
+// Evaluation Results
+export interface BrandEvaluation {
+  strategySummary: string;
+  strengths: string[];
+  weaknesses: string[];
+  opportunities: string[];
+  actionRecommendations: string[];
+}
+
+// Complete Brand Spy Result
+export interface BrandSpyResult {
+  id: string;
+  platform: BrandSpyPlatform;
+  targetUrl: string;
+  brandName: string;
+  profile: BrandProfile;
+  posts: BrandPost[];
+  ads: BrandAd[];
+  analysis: BrandAnalysis;
+  evaluation: BrandEvaluation;
+  createdAt: number;
+  updatedAt: number;
 }
 

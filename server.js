@@ -3,6 +3,7 @@ import cors from 'cors';
 import { Resend } from 'resend';
 import dotenv from 'dotenv';
 import { createClient } from '@supabase/supabase-js';
+import { ApifyClient } from 'apify-client';
 
 // Load environment variables
 dotenv.config({ path: '.env.local' });
@@ -381,6 +382,81 @@ app.post('/api/email/campaign', async (req, res) => {
     } catch (err) {
         console.error('Campaign send error:', err);
         res.status(500).json({ success: false, error: err.message });
+    }
+});
+
+// ================== APIFY FACEBOOK SCRAPER ENDPOINT ==================
+
+app.post('/api/analyze-facebook', async (req, res) => {
+    console.log('🔥 Apify endpoint called:', req.body);
+
+    try {
+        const { pageUrl, maxPosts = 30 } = req.body;
+
+        if (!pageUrl) {
+            return res.status(400).json({ error: 'pageUrl is required' });
+        }
+
+        const apifyToken = process.env.VITE_APIFY_API_TOKEN || process.env.APIFY_API_TOKEN;
+        if (!apifyToken) {
+            console.error('❌ APIFY_API_TOKEN missing');
+            return res.status(500).json({ error: 'APIFY_API_TOKEN not configured' });
+        }
+
+        // Initialize Apify Client
+        const client = new ApifyClient({
+            token: apifyToken,
+        });
+
+        // NOTE: 'apify/facebook-pages-scraper' is extremely slow and often hangs.
+        // We will rely ONLY on 'apify/facebook-posts-scraper' and extract page info from the posts
+        // using the fallback logic in the frontend `apifyService.ts`.
+
+        /*
+        const runPagePromise = client.actor('apify/facebook-pages-scraper').call({
+            startUrls: [{ url: pageUrl }]
+        });
+        */
+
+        const runPostsPromise = client.actor('apify/facebook-posts-scraper').call({
+            startUrls: [{ url: pageUrl }],
+            resultsLimit: parseInt(maxPosts)
+        });
+
+        console.log('⏳ Waiting for Apify actors...');
+        // const [pageRun, postsRun] = await Promise.all([runPagePromise, runPostsPromise]);
+        const postsRun = await runPostsPromise;
+
+        console.log('✅ Apify runs finished. Fetching datasets...');
+
+        // Fetch Page Info
+        // const pageDataset = await client.dataset(pageRun.defaultDatasetId).listItems();
+        // const pageData = pageDataset.items[0];
+        const pageData = null; // Disabled
+
+        // Fetch Posts
+        const postsDataset = await client.dataset(postsRun.defaultDatasetId).listItems();
+        const postsData = postsDataset.items;
+
+        if (!pageData && postsData.length === 0) {
+            console.warn('⚠️ No data returned from Apify');
+            return res.status(404).json({ error: 'No data returned from Apify' });
+        }
+
+        // Combine into one array: [PageInfo, ...Posts]
+        const combinedItems = [];
+        if (pageData) combinedItems.push(pageData);
+        if (postsData.length > 0) combinedItems.push(...postsData);
+
+        console.log(`✅ Returning ${combinedItems.length} items (${postsData.length} posts)`);
+        res.json(combinedItems);
+
+    } catch (error) {
+        console.error('❌ Apify endpoint error:', error.message);
+        res.status(500).json({
+            error: 'Internal server error',
+            message: error.message
+        });
     }
 });
 

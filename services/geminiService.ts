@@ -3434,3 +3434,257 @@ TUYỆT ĐỐI KHÔNG bịa đặt hoặc thêm thông tin không có cơ sở.
         return null;
     }
 };
+
+// --- BRAND SPY / SOI BRAND ---
+import { BrandSpyPlatform, BrandProfile, BrandPost, BrandAd, BrandAnalysis, BrandEvaluation } from '../types';
+
+export const analyzeBrandStrategy = async (
+    platform: BrandSpyPlatform,
+    profile: BrandProfile,
+    posts: BrandPost[],
+    ads: BrandAd[]
+): Promise<BrandAnalysis | null> => {
+    // Calculate actual metrics from provided data
+    const totalReactions = posts.reduce((sum, post) => sum + post.reactions, 0);
+    const totalComments = posts.reduce((sum, post) => sum + post.comments, 0);
+    const reelsCount = posts.filter(p => p.isReel).length;
+    const imagesCount = posts.length - reelsCount;
+    const activeAdsCount = ads.filter(a => a.isActive).length;
+    const avgReactions = posts.length > 0 ? Math.round(totalReactions / posts.length) : 0;
+    const avgComments = posts.length > 0 ? Math.round(totalComments / posts.length) : 0;
+
+    const systemPrompt = `### CRITICAL ANTI-HALLUCINATION RULES:
+1. **ONLY** analyze data explicitly provided below
+2. **NEVER** invent, assume, or fabricate any numbers, metrics, or facts
+3. All numerical values MUST come from the provided data
+4. If information is not in the data, mark as "Không có dữ liệu" or leave blank
+5. Focus on PATTERNS and OBSERVATIONS from actual data, not speculation
+
+### ROLE & CONTEXT:
+Bạn là Senior Brand Strategist phân tích DỮ LIỆU THỰC TẾ (không được bịa đặt).
+
+### INPUT DATA (GROUND TRUTH):
+**Platform**: ${platform}
+**Brand Profile**: ${JSON.stringify(profile, null, 2)}
+**Total Posts Analyzed**: ${posts.length}
+**Total Ads Analyzed**: ${ads.length}
+
+**Calculated Metrics** (use these exact numbers):
+- Total Reactions: ${totalReactions}
+- Total Comments: ${totalComments}
+- Avg Reactions/Post: ${avgReactions}
+- Avg Comments/Post: ${avgComments}
+- Reels: ${reelsCount}
+- Images: ${imagesCount}
+- Active Ads: ${activeAdsCount}
+
+**Sample Posts** (first 5 for pattern analysis):
+${posts.slice(0, 5).map(p => `- "${p.description}" (${p.reactions} reactions, ${p.comments} comments, ${p.isReel ? 'Reel' : 'Image'})`).join('\n')}
+
+**Sample Ads** (first 3):
+${ads.slice(0, 3).map(a => `- "${a.content}" (CTA: ${a.cta}, Active: ${a.isActive})`).join('\n')}
+
+### ANALYSIS FRAMEWORK (DATA-DRIVEN ONLY):
+
+**1. CHANNEL HEALTH** - Use EXACT numbers from profile:
+- totalLikes: ${profile.followerCount || 0} (from profile.followerCount)
+- totalReviews: 0 (no review data provided)
+- totalFollowers: ${profile.followerCount || 0}
+- likeFollowerRatio: Calculate from above if possible, else 1.0
+
+**2. NATURAL CONTENT** - Use CALCULATED metrics:
+- reels: ${reelsCount}
+- images: ${imagesCount}
+- total: ${posts.length}
+- avgCommentsPerPost: ${avgComments}
+- avgReactionsPerPost: ${avgReactions}
+
+**3. AD ACTIVITY** - Count from provided ads array:
+- totalActiveAds: ${activeAdsCount}
+- formatDistribution: Count video vs image from ads data
+- ctaDistribution: Count different CTAs from ads data
+
+**4. STRATEGIC INSIGHTS** - Based ONLY on patterns you observe:
+- Brand Positioning: Infer from language/tone in ACTUAL post descriptions
+- Message Language: Analyze ACTUAL post content (formal/casual, emotional/rational)
+- Content Pillars: Extract 3-4 themes from ACTUAL post topics (not generic categories)
+- Ad Strategy: Based on ACTUAL CTA types and ad content patterns
+
+### OUTPUT FORMAT (STRICT JSON):
+Return ONLY valid JSON matching this structure. Use actual calculated values:
+
+{
+  "channelHealth": {
+    "totalLikes": ${profile.followerCount || 0},
+    "totalReviews": 0,
+    "totalFollowers": ${profile.followerCount || 0},
+    "likeFollowerRatio": 1.0
+  },
+  "naturalContent": {
+    "postFormats": {
+      "reels": ${reelsCount},
+      "images": ${imagesCount},
+      "total": ${posts.length}
+    },
+    "avgCommentsPerPost": ${avgComments},
+    "avgReactionsPerPost": ${avgReactions}
+  },
+  "adActivity": {
+    "totalActiveAds": ${activeAdsCount},
+    "formatDistribution": {"Video": 0, "Image": 0},
+    "ctaDistribution": {"Shop Now": 0, "Learn More": 0}
+  },
+  "comments": {
+    "totalUserComments": ${totalComments},
+    "totalBrandComments": 0
+  },
+  "strategy": {
+    "brandPositioning": "BASED ON ACTUAL POST CONTENT ANALYSIS",
+    "messageLanguage": "BASED ON ACTUAL LANGUAGE USED",
+    "contentStructure": "BASED ON OBSERVED POST PATTERNS",
+    "reelsTranscriptAnalysis": "BASED ON ACTUAL REEL TRANSCRIPTS IF PROVIDED",
+    "contentPillars": ["Theme 1 from posts", "Theme 2 from posts", "Theme 3 from posts"],
+    "adStrategy": {
+      "campaignObjectives": ["Based on actual CTA patterns"],
+      "creativeAnalysis": "Based on actual ad content",
+      "adAngles": ["Angle 1 from ads", "Angle 2 from ads"]
+    },
+    "marketingFunnel": {
+      "tofu": "Based on actual content types",
+      "mofu": "Based on actual content types",
+      "bofu": "Based on actual content types"
+    },
+    "engagementStrategy": "Based on comment/reaction patterns"
+  }
+}
+
+**CRITICAL**: Do NOT make up numbers. Only report what exists in the data.`;
+
+    try {
+        const response = await ai.models.generateContent({
+            model: 'gemini-1.5-flash',
+            contents: `Analyze brand strategy on ${platform}`,
+            config: {
+                systemInstruction: systemPrompt,
+                responseMimeType: "application/json",
+                safetySettings: SAFETY_SETTINGS,
+                temperature: 0.5
+            },
+        });
+
+        const text = response.text || "{}";
+        const parsed = JSON.parse(text);
+
+        // Validate the response has required fields
+        if (!parsed.channelHealth || !parsed.naturalContent || !parsed.adActivity || !parsed.strategy) {
+            console.error("Invalid analysis response structure");
+            return null;
+        }
+
+        return parsed;
+    } catch (error) {
+        console.error("Brand Strategy Analysis Error:", error);
+        return null;
+    }
+};
+
+export const evaluateBrandPerformance = async (
+    platform: BrandSpyPlatform,
+    brandName: string,
+    analysis: BrandAnalysis
+): Promise<BrandEvaluation | null> => {
+    const systemPrompt = `### CRITICAL ANTI-HALLUCINATION RULES:
+1. **ONLY** evaluate based on analysis data provided below
+2. **NEVER** invent facts, statistics, or claims not in the data
+3. Every strength/weakness/opportunity MUST reference specific data points
+4. If you cannot find evidence, DO NOT include that point
+5. Be SPECIFIC - no generic marketing advice
+
+### ROLE & CONTEXT:
+Bạn là Marketing Consultant đưa ra đánh giá DỰA TRÊN BẰNG CHỨNG (evidence-based).
+
+### INPUT DATA (GROUND TRUTH):
+**Platform**: ${platform}
+**Brand**: ${brandName}
+
+**Analysis Data** (your only source of truth):
+${JSON.stringify(analysis, null, 2)}
+
+### EVALUATION RULES:
+
+**1. STRATEGY SUMMARY:**
+- Summarize ONLY what you observe in the analysis data
+- Focus on key numbers and patterns actually present
+- Do NOT add assumptions
+
+**2. STRENGTHS (3-5 points):**
+Each strength MUST:
+- Reference a specific metric from analysis data
+- Use format: "[Observation] - [Evidence from data]"
+- Example: "Tương tác cao trên Reels - Trung bình ${analysis.naturalContent?.avgReactionsPerPost || 0} reactions/bài"
+
+**3. WEAKNESSES (3-5 points):**
+Each weakness MUST:
+- Point to a gap or low metric in the data
+- Use format: "[Issue] - [Evidence from data]"
+- Example: "Thiếu đa dạng định dạng - Chỉ ${analysis.naturalContent?.postFormats?.reels || 0} reels trong ${analysis.naturalContent?.postFormats?.total || 0} bài"
+
+**4. OPPORTUNITIES (3-5 points):**
+- Based ONLY on gaps visible in the data
+- NO generic "tăng engagement" - be specific about WHAT to increase
+- Reference actual numbers
+
+**5. ACTION RECOMMENDATIONS (5-7 points):**
+Each action MUST:
+- Address a specific weakness or opportunity from above
+- Be CONCRETE and ACTIONABLE (not vague)
+- Include "why" based on data
+- Format: "Hành động cụ thể + lý do dựa trên data"
+
+### OUTPUT FORMAT (STRICT JSON):
+{
+  "strategySummary": "Concise summary citing key metrics from analysis",
+  "strengths": [
+    "Strength 1 with specific evidence",
+    "Strength 2 with numbers",
+    "..."
+  ],
+  "weaknesses": [
+    "Weakness 1 with data point",
+    "..."
+  ],
+  "opportunities": [
+    "Opportunity 1 based on gap in data",
+    "..."
+  ],
+  "actionRecommendations": [
+    "Action 1: [Specific task] để [specific goal based on weakness/opportunity]",
+    "..."
+  ]
+}
+
+**EXAMPLE of GOOD vs BAD**:
+❌ BAD: "Tăng engagement" (vague, no evidence)
+✅ GOOD: "Tăng tần suất Reels từ ${analysis.naturalContent?.postFormats?.reels || 0} lên 15/tháng để tận dụng avg reactions cao (${analysis.naturalContent?.avgReactionsPerPost || 0}/bài)"
+
+**CRITICAL**: If analysis data is incomplete, evaluation should reflect that limitation.`;
+
+    try {
+        const response = await ai.models.generateContent({
+            model: 'gemini-1.5-flash',
+            contents: `Evaluate brand performance for ${brandName} on ${platform}`,
+            config: {
+                systemInstruction: systemPrompt,
+                responseMimeType: "application/json",
+                safetySettings: SAFETY_SETTINGS,
+                temperature: 0.6
+            },
+        });
+
+        const text = response.text || "{}";
+        return JSON.parse(text);
+    } catch (error) {
+        console.error("Brand Evaluation Error:", error);
+        return null;
+    }
+};

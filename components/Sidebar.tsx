@@ -5,7 +5,7 @@ import {
   Terminal, CheckSquare, Megaphone, PenTool, Image as ImageIcon, PlusSquare, Briefcase, Mail, Film, Link2,
   MonitorPlay, Calculator, TrendingUp, ShieldCheck, Radar, Users, BrainCircuit, Lightbulb, Target,
   CalendarDays, Brain, Banknote, FileText, FileCheck, Zap, Map, PieChart, Activity, Compass, DollarSign, Heart,
-  HelpCircle, Globe, Layers
+  HelpCircle, Globe, Layers, Search
 } from 'lucide-react';
 
 
@@ -68,6 +68,7 @@ const Sidebar: React.FC<SidebarProps> = ({ currentView, setView }) => {
 
   // New Categories State
   const [strategyExpanded, setStrategyExpanded] = useState(true);
+  const [brandSpyExpanded, setBrandSpyExpanded] = useState(false);
   const [ideationExpanded, setIdeationExpanded] = useState(false);
   const [designExpanded, setDesignExpanded] = useState(false);
   const [adsExpanded, setAdsExpanded] = useState(false);
@@ -100,6 +101,15 @@ const Sidebar: React.FC<SidebarProps> = ({ currentView, setView }) => {
     { id: 'BRAND_POSITIONING_BUILDER', label: 'Brand Positioning', icon: Compass, color: 'text-teal-600' },
     { id: 'PRICING_ANALYZER', label: 'Pricing Analyzer', icon: DollarSign, color: 'text-emerald-600' },
     { id: 'AUDIENCE_EMOTION_MAP', label: 'Audience Emotion Map', icon: Heart, color: 'text-pink-600' },
+  ];
+
+  // 2. Soi Brand
+  const brandSpyItems = [
+    { id: 'BRAND_SPY_FACEBOOK', label: 'Soi Facebook Page', icon: Search, color: 'text-slate-700' },
+    { id: 'BRAND_SPY_TIKTOK', label: 'Soi TikTok', icon: Search, color: 'text-slate-700' },
+    { id: 'BRAND_SPY_GOOGLE_ADS', label: 'Soi Google Ads', icon: Search, color: 'text-slate-700' },
+    { id: 'BRAND_SPY_LINKEDIN', label: 'Soi LinkedIn', icon: Search, color: 'text-slate-700' },
+    { id: 'BRAND_SPY_WEBSITE', label: 'Soi Website', icon: Search, color: 'text-slate-700' },
   ];
 
 
@@ -157,6 +167,16 @@ const Sidebar: React.FC<SidebarProps> = ({ currentView, setView }) => {
           expanded={strategyExpanded}
           setExpanded={setStrategyExpanded}
           items={strategyItems}
+          setView={setView}
+          currentView={currentView}
+        />
+
+        <NavGroup
+          title="Soi Brand"
+          icon={Search}
+          expanded={brandSpyExpanded}
+          setExpanded={setBrandSpyExpanded}
+          items={brandSpyItems}
           setView={setView}
           currentView={currentView}
         />

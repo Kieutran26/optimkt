@@ -46,6 +46,7 @@ import HomePage from './components/HomePage';
 import FeaturesGuide from './components/FeaturesGuide';
 import NewsPage from './components/News/NewsPage';
 import ToolkitPage from './components/Toolkit/ToolkitPage';
+import BrandSpy from './components/BrandSpy';
 
 
 import { ViewState, StudyMode, Word, MastermindStrategy } from './types';
@@ -211,6 +212,16 @@ function AppContent() {
         return <ToolkitPage />;
       case 'STP_MODEL':
         return <STPModelGenerator />;
+      case 'BRAND_SPY_FACEBOOK':
+        return <BrandSpy platform="facebook" platformLabel="Soi Facebook Page" />;
+      case 'BRAND_SPY_TIKTOK':
+        return <BrandSpy platform="tiktok" platformLabel="Soi TikTok" />;
+      case 'BRAND_SPY_GOOGLE_ADS':
+        return <BrandSpy platform="google_ads" platformLabel="Soi Google Ads" />;
+      case 'BRAND_SPY_LINKEDIN':
+        return <BrandSpy platform="linkedin" platformLabel="Soi LinkedIn" />;
+      case 'BRAND_SPY_WEBSITE':
+        return <BrandSpy platform="website" platformLabel="Soi Website" />;
       default:
         return <TranslationView />;
     }
