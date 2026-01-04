@@ -32,7 +32,8 @@ interface ApifyPageResult {
 
 export class ApifyService {
     private static readonly APIFY_API_BASE = 'https://api.apify.com/v2';
-    private static readonly ACTOR_ID = 'apify/facebook-pages-scraper';
+    // private static readonly ACTOR_ID = 'apify/facebook-pages-scraper'; // Deprecated
+    private static readonly ACTOR_ID = 'apify/facebook-posts-scraper';
 
     private static getApiToken(): string {
         const token = import.meta.env.VITE_APIFY_API_TOKEN;
@@ -43,8 +44,7 @@ export class ApifyService {
     }
 
     /**
-     * Scrape Facebook Page using backend proxy
-     * Calls our Express server which handles Apify API server-side
+     * Scrape Facebook Page using direct Apify REST API (No Backend Required)
      */
     static async scrapeFacebookPage(
         pageUrl: string,
@@ -54,28 +54,79 @@ export class ApifyService {
     ): Promise<ApifyPageResult | null> {
         try {
             const { maxPosts = 30 } = options;
+            const token = this.getApiToken();
 
-            console.log('🔍 Calling backend proxy for:', pageUrl);
+            console.log(`🔍 Starting Apify Actor for: ${pageUrl} (Limit: ${maxPosts} posts)`);
 
-            // Call our backend proxy (Express server)
-            const response = await fetch('http://localhost:3001/api/analyze-facebook', {
+            // 1. Start the Actor Run (apify/facebook-posts-scraper)
+            // We use posts scraper as it's faster and we can extract page info from it
+            const startUrl = `${this.APIFY_API_BASE}/acts/apify~facebook-posts-scraper/runs?token=${token}`;
+
+            const runResponse = await fetch(startUrl, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ pageUrl, maxPosts })
+                body: JSON.stringify({
+                    startUrls: [{ url: pageUrl }],
+                    resultsLimit: maxPosts,
+                    view: 'Detailed' // Request detailed view for better metadata
+                })
             });
 
-            if (!response.ok) {
-                const errorData = await response.json();
-                throw new Error(errorData.error || `Backend error: ${response.status}`);
+            if (!runResponse.ok) {
+                const err = await runResponse.json();
+                // Handle credit limits or other API errors
+                throw new Error(`Failed to start Apify run: ${err.error?.message || runResponse.statusText}`);
             }
 
-            // Apify returns an ARRAY of items (each item is a post)
-            const items = await response.json();
+            const runData = await runResponse.json();
+            const runId = runData.data.id;
+            const defaultDatasetId = runData.data.defaultDatasetId;
+
+            console.log(`🚀 Apify Run Started. ID: ${runId}`);
+
+            // 2. Poll for completion
+            // We'll check every 3 seconds
+            let isRunning = true;
+            let attempts = 0;
+            const MAX_ATTEMPTS = 100; // 5 minutes max (3s interval)
+
+            while (isRunning && attempts < MAX_ATTEMPTS) {
+                await new Promise(resolve => setTimeout(resolve, 3000)); // Wait 3s
+                attempts++;
+
+                const statusUrl = `${this.APIFY_API_BASE}/actor-runs/${runId}?token=${token}`;
+                const statusRes = await fetch(statusUrl);
+                if (!statusRes.ok) continue; // Skip error in polling
+
+                const statusData = await statusRes.json();
+                const status = statusData.data.status;
+
+                console.log(`⏳ Run Status (${attempts}/${MAX_ATTEMPTS}): ${status}`);
+
+                if (status === 'SUCCEEDED') {
+                    isRunning = false;
+                } else if (status === 'FAILED' || status === 'ABORTED' || status === 'TIMED-OUT') {
+                    throw new Error(`Apify run failed with status: ${status}`);
+                }
+            }
+
+            if (isRunning) {
+                throw new Error('Apify run timed out after 5 minutes');
+            }
+
+            console.log('✅ Run Succeeded. Fetching dataset...');
+
+            // 3. Fetch Results from Dataset
+            const datasetUrl = `${this.APIFY_API_BASE}/datasets/${defaultDatasetId}/items?token=${token}`;
+            const datasetRes = await fetch(datasetUrl);
+            const items = await datasetRes.json();
 
             if (!Array.isArray(items) || items.length === 0) {
-                console.warn('⚠️ No items returned from backend');
+                console.warn('⚠️ No items returned from Apify');
                 return null;
             }
+
+            // --- DATA MAPPING (Same logic as before) ---
 
             // Try to find the Page Info object (usually has 'categories' or 'followers' at top level)
             // If not found, fall back to extracting from the first post
@@ -121,7 +172,7 @@ export class ApifyService {
             };
 
         } catch (error: any) {
-            console.error('Backend proxy error:', error);
+            console.error('Apify direct API error:', error);
             throw error;
         }
     }
