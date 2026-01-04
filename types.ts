@@ -1358,6 +1358,13 @@ export interface BrandProfile {
   isBusinessPageActive: boolean;
   pageId: string;
   adStatus?: string;
+  // TikTok specific
+  uniqueId?: string;
+  signature?: string;
+  bioLink?: string;
+  followingCount?: number;
+  videoCount?: number;
+  heartCount?: number;
 }
 
 // Post Data
@@ -1372,6 +1379,13 @@ export interface BrandPost {
   isReel?: boolean;
   thumbnail?: string;
   transcript?: string;
+  // TikTok specific
+  isPinned?: boolean;
+  type?: 'video' | 'photo' | 'carousel';
+  aiDescription?: string; // AI generated description of the visual content
+  viewCount?: number;
+  shareCount?: number;
+  saveCount?: number;
 }
 
 // Ad Data
@@ -1386,6 +1400,13 @@ export interface BrandAd {
 }
 
 // Analysis Results
+// New Interface for Content Pillars
+export interface ContentPillar {
+  title: string;
+  objective: string;
+  execution: string;
+}
+
 export interface BrandAnalysis {
   channelHealth: {
     totalLikes: number;
@@ -1411,12 +1432,30 @@ export interface BrandAnalysis {
     totalUserComments: number;
     totalBrandComments: number;
   };
+  contentMetrics?: {
+    totalViews: number;
+    totalLikes: number;
+    totalShares: number;
+    totalSaves: number;
+  };
+  interactionMetrics?: {
+    engagementRate: number;
+    postingFrequency: string;
+    avgViewsPerPost: number;
+    valueScore: number;
+    viralScore: number;
+    adRatio: string;
+  };
   strategy: {
     brandPositioning: string;
+    brandVoice: string;
+    shootingStyle: string;
     messageLanguage: string;
     contentStructure: string;
     reelsTranscriptAnalysis: string;
-    contentPillars: string[];
+    contentPillars: ContentPillar[]; // Updated to structured object
+    hashtags: string[]; // New
+    topContent: string;
     adStrategy: {
       campaignObjectives: string[];
       creativeAnalysis: string;

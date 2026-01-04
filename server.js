@@ -469,6 +469,29 @@ export const handler = serverless(app);
 
 // Only listen if running locally (not in Netlify)
 if (process.env.NODE_ENV !== 'production' && !process.env.NETLIFY) {
+    // ================== UTILS ENDPOINTS ==================
+
+    // Proxy image to base64 (for Gemini AI analysis)
+    app.get('/api/proxy-image', async (req, res) => {
+        const { url } = req.query;
+        if (!url) return res.status(400).json({ error: 'Missing url param' });
+
+        try {
+            const response = await fetch(url);
+            if (!response.ok) throw new Error(`Failed to fetch image: ${response.statusText}`);
+
+            const arrayBuffer = await response.arrayBuffer();
+            const buffer = Buffer.from(arrayBuffer);
+            const base64 = buffer.toString('base64');
+            const mimeType = response.headers.get('content-type') || 'image/jpeg';
+
+            res.json({ base64, mimeType });
+        } catch (err) {
+            console.error('Proxy image error:', err);
+            res.status(500).json({ error: err.message });
+        }
+    });
+
     app.listen(PORT, () => {
         console.log(`📧 Email API server running on http://localhost:${PORT}`);
         console.log(`   Resend API Key: ${process.env.VITE_RESEND_API_KEY ? '✓ Configured' : '✗ Missing'}`);

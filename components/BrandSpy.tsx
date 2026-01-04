@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { BrandSpyPlatform, BrandSpyResult } from '../types';
+import { BrandSpyPlatform, BrandSpyResult, BrandPost } from '../types';
 import { BrandSpyService } from '../services/brandSpyService';
 import { analyzeBrandStrategy, evaluateBrandPerformance } from '../services/geminiService';
 import { Search, Loader2, Save, History, X, Trash2, ExternalLink } from 'lucide-react';
@@ -23,6 +23,34 @@ const BrandSpy: React.FC<BrandSpyProps> = ({ platform, platformLabel }) => {
     const [showHistory, setShowHistory] = useState(false);
     const [savedAnalyses, setSavedAnalyses] = useState<BrandSpyResult[]>([]);
     const [toast, setToast] = useState<{ message: string; type: ToastType } | null>(null);
+    const [analyzingPosts, setAnalyzingPosts] = useState<Set<string>>(new Set());
+
+    const handleAnalyzePost = async (post: BrandPost) => {
+        if (!result) return;
+
+        // Add to analyzing set
+        setAnalyzingPosts(prev => {
+            const next = new Set(prev);
+            next.add(post.id);
+            return next;
+        });
+
+        const description = await BrandSpyService.analyzePostMedia(post);
+
+        // Update post in result
+        const updatedPosts = result.posts.map(p =>
+            p.id === post.id ? { ...p, aiDescription: description } : p
+        );
+
+        setResult({ ...result, posts: updatedPosts });
+
+        // Remove from analyzing set
+        setAnalyzingPosts(prev => {
+            const next = new Set(prev);
+            next.delete(post.id);
+            return next;
+        });
+    };
 
     React.useEffect(() => {
         loadHistory();
@@ -60,14 +88,28 @@ const BrandSpy: React.FC<BrandSpyProps> = ({ platform, platformLabel }) => {
                 ads = realData.ads;
 
                 // If brand name was empty, use the one from profile
-                if (!brandName && profile.name) {
-                    setBrandName(profile.name);
-                }
+                if (!brandName && profile.name) setBrandName(profile.name);
 
                 setProgress(`✅ Đã lấy ${posts.length} posts và ${ads.length} ads thực tế`);
-
-                // Wait a bit to show success message
                 await new Promise(resolve => setTimeout(resolve, 1000));
+
+            } else if (platform === 'tiktok') {
+                // For TikTok: Use REAL API data
+                setProgress(`Đang kết nối TikTok API (Lấy ${postLimit} video)...`);
+                const realData = await BrandSpyService.fetchRealTikTokData(targetUrl, {
+                    brandName: brandName || undefined,
+                    maxPosts: postLimit
+                });
+
+                profile = realData.profile;
+                posts = realData.posts;
+                ads = realData.ads;
+
+                if (!brandName && profile.name) setBrandName(profile.name);
+
+                setProgress(`✅ Đã lấy ${posts.length} video từ TikTok`);
+                await new Promise(resolve => setTimeout(resolve, 1000));
+
             } else {
                 // For other platforms: Use mock data (for now)
                 setProgress('Đang tạo dữ liệu demo...');
@@ -112,8 +154,8 @@ const BrandSpy: React.FC<BrandSpyProps> = ({ platform, platformLabel }) => {
             setResult(newResult);
             setSelectedSection('data');
             setToast({
-                message: platform === 'facebook'
-                    ? `✅ Phân tích hoàn tất với dữ liệu THẬT từ Facebook!`
+                message: (platform === 'facebook' || platform === 'tiktok')
+                    ? `✅ Phân tích hoàn tất với dữ liệu THẬT từ ${platform === 'facebook' ? 'Facebook' : 'TikTok'}!`
                     : 'Phân tích hoàn tất!',
                 type: 'success'
             });
@@ -217,7 +259,11 @@ const BrandSpy: React.FC<BrandSpyProps> = ({ platform, platformLabel }) => {
                                     value={targetUrl}
                                     onChange={(e) => setTargetUrl(e.target.value)}
                                     className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-medium text-slate-700 placeholder:text-slate-400 focus:border-slate-400 focus:bg-white focus:ring-4 focus:ring-slate-400/10 transition-all outline-none"
-                                    placeholder="VD: https://facebook.com/highlands hoặc Page ID"
+                                    placeholder={
+                                        platform === 'tiktok'
+                                            ? "VD: https://www.tiktok.com/@username hoặc @username"
+                                            : "VD: https://facebook.com/highlands hoặc Page ID"
+                                    }
                                 />
                             </div>
 
@@ -303,7 +349,227 @@ const BrandSpy: React.FC<BrandSpyProps> = ({ platform, platformLabel }) => {
                         {/* Main Content Area */}
                         <div className="flex-1">
                             {selectedSection === 'data' && (
-                                <DataSection result={result} />
+                                <div className="space-y-8 animate-in fade-in duration-500">
+                                    <div className="flex justify-between items-center">
+                                        <h3 className="text-2xl font-bold text-slate-900 tracking-tight">Dữ liệu</h3>
+                                        <div className="text-sm text-slate-500">
+                                            Dữ liệu {result.metadata?.isRealData ? 'thực tế' : 'demo'} từ {platformLabel} của kênh <span className="font-bold text-slate-900">{result.brandName}</span> với {result.posts.length} {platform === 'tiktok' ? 'video' : 'bài đăng'} gần nhất.
+                                        </div>
+                                    </div>
+
+                                    {/* Channel Profile Accordion */}
+                                    <div className="space-y-4">
+                                        <h4 className="text-xl font-bold text-slate-800">Dữ liệu Kênh</h4>
+                                        <details className="group bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden" open>
+                                            <summary className="flex items-center justify-between p-5 cursor-pointer list-none hover:bg-slate-50 transition-colors">
+                                                <span className="font-bold text-slate-700">Hồ sơ Kênh</span>
+                                                <span className="transform group-open:rotate-180 transition-transform duration-200">
+                                                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                                        <path d="M6 9L12 15L18 9" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                                                    </svg>
+                                                </span>
+                                            </summary>
+                                            <div className="p-5 pt-0 border-t border-slate-100 mt-2">
+                                                <div className="space-y-4">
+                                                    {/* Avatar */}
+                                                    <div>
+                                                        <span className="font-bold text-slate-900 block mb-2">Avatar:</span>
+                                                        <img
+                                                            src={result.profile.url || "https://via.placeholder.com/150"}
+                                                            alt={result.profile.name}
+                                                            className="w-24 h-24 rounded-full border-4 border-slate-100 object-cover shadow-sm"
+                                                            onError={(e) => {
+                                                                (e.target as HTMLImageElement).src = `https://ui-avatars.com/api/?name=${encodeURIComponent(result.profile.name)}&background=random`;
+                                                            }}
+                                                        />
+                                                    </div>
+
+                                                    {/* Profile Stats Grid */}
+                                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-y-3 gap-x-8">
+                                                        <div className="flex items-baseline gap-2">
+                                                            <span className="font-bold text-slate-900 min-w-[120px]">Nickname:</span>
+                                                            <span className="text-slate-700">{result.profile.name}</span>
+                                                        </div>
+
+                                                        {result.platform === 'tiktok' && (
+                                                            <div className="flex items-baseline gap-2">
+                                                                <span className="font-bold text-slate-900 min-w-[120px]">UniqueId:</span>
+                                                                <span className="text-slate-700">{result.profile.uniqueId || result.profile.id}</span>
+                                                            </div>
+                                                        )}
+
+                                                        <div className="flex items-baseline gap-2">
+                                                            <span className="font-bold text-slate-900 min-w-[120px]">Signature:</span>
+                                                            <span className="text-slate-700">{result.profile.signature || result.profile.pageIntro || 'Không có'}</span>
+                                                        </div>
+
+                                                        {result.platform === 'tiktok' && (
+                                                            <div className="flex items-baseline gap-2">
+                                                                <span className="font-bold text-slate-900 min-w-[120px]">BioLink:</span>
+                                                                <a href={result.profile.bioLink || '#'} target="_blank" rel="noreferrer" className="text-blue-600 hover:underline truncate max-w-[200px]">
+                                                                    {result.profile.bioLink || 'Không có'}
+                                                                </a>
+                                                            </div>
+                                                        )}
+
+                                                        <div className="flex items-baseline gap-2">
+                                                            <span className="font-bold text-slate-900 min-w-[120px]">Follower Count:</span>
+                                                            <span className="text-slate-700 font-medium">{result.profile.followerCount.toLocaleString('vi-VN')}</span>
+                                                        </div>
+
+                                                        {result.platform === 'tiktok' && (
+                                                            <>
+                                                                <div className="flex items-baseline gap-2">
+                                                                    <span className="font-bold text-slate-900 min-w-[120px]">Following Count:</span>
+                                                                    <span className="text-slate-700 font-medium">{result.profile.followingCount?.toLocaleString('vi-VN') || 0}</span>
+                                                                </div>
+                                                                <div className="flex items-baseline gap-2">
+                                                                    <span className="font-bold text-slate-900 min-w-[120px]">Video Count:</span>
+                                                                    <span className="text-slate-700 font-medium">{result.profile.videoCount?.toLocaleString('vi-VN') || 0}</span>
+                                                                </div>
+                                                                <div className="flex items-baseline gap-2">
+                                                                    <span className="font-bold text-slate-900 min-w-[120px]">Heart Count:</span>
+                                                                    <span className="text-slate-700 font-medium">{result.profile.heartCount?.toLocaleString('vi-VN') || 0}</span>
+                                                                </div>
+                                                            </>
+                                                        )}
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </details>
+                                    </div>
+
+                                    {/* Posts Accordion List */}
+                                    <div className="space-y-4">
+                                        <h4 className="text-xl font-bold text-slate-800">Dữ liệu Bài đăng</h4>
+                                        <div className="space-y-3">
+                                            {result.posts.map((post, index) => (
+                                                <details key={post.id} className="group bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+                                                    <summary className="flex items-center justify-between p-5 cursor-pointer list-none hover:bg-slate-50 transition-colors">
+                                                        <div className="flex items-center gap-3">
+                                                            <span className="font-bold text-slate-700">
+                                                                Bài đăng {index + 1}
+                                                                {post.type ? ` (Loại: ${post.type.charAt(0).toUpperCase() + post.type.slice(1)})` : ''}
+                                                            </span>
+                                                            {post.isPinned && (
+                                                                <div className="p-1 bg-slate-100 rounded-md border border-slate-200">
+                                                                    <span className="text-xs text-slate-500 font-medium flex items-center gap-1">📌 Ghim</span>
+                                                                </div>
+                                                            )}
+                                                        </div>
+                                                        <span className="transform group-open:rotate-180 transition-transform duration-200">
+                                                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                                                <path d="M6 9L12 15L18 9" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                                                            </svg>
+                                                        </span>
+                                                    </summary>
+                                                    <div className="p-5 pt-0 border-t border-slate-100 mt-2 space-y-4">
+                                                        <div className="flex flex-col gap-2 text-sm text-slate-700">
+                                                            <div className="flex gap-2">
+                                                                <span className="font-bold min-w-[100px]">ID:</span>
+                                                                <span className="font-mono text-slate-500">{post.id}</span>
+                                                            </div>
+                                                            <div className="flex gap-2">
+                                                                <span className="font-bold min-w-[100px]">URL:</span>
+                                                                <a href={post.url} target="_blank" rel="noreferrer" className="text-blue-600 hover:underline truncate">
+                                                                    {post.url}
+                                                                </a>
+                                                            </div>
+                                                            <div className="flex gap-2">
+                                                                <span className="font-bold min-w-[100px]">Mô tả:</span>
+                                                                <p className="flex-1">{post.description}</p>
+                                                            </div>
+                                                            <div className="flex gap-2">
+                                                                <span className="font-bold min-w-[100px]">Ngày đăng:</span>
+                                                                <span>{new Date(post.time).toLocaleDateString('vi-VN')}</span>
+                                                            </div>
+
+                                                            <div className="mt-2 p-3 bg-slate-50 rounded-xl border border-slate-100">
+                                                                <span className="font-bold block mb-2">Tương tác:</span>
+                                                                <ul className="space-y-1 pl-2">
+                                                                    <li>Lượt xem: <span className="font-medium">{post.viewCount?.toLocaleString('vi-VN') || 0}</span></li>
+                                                                    <li>Lượt thích: <span className="font-medium">{post.reactions.toLocaleString('vi-VN')}</span></li>
+                                                                    <li>Bình luận: <span className="font-medium">{post.comments.toLocaleString('vi-VN')}</span></li>
+                                                                    <li>Chia sẻ: <span className="font-medium">{post.shareCount?.toLocaleString('vi-VN') || 0}</span></li>
+                                                                    <li>Lưu: <span className="font-medium">{post.saveCount?.toLocaleString('vi-VN') || 0}</span></li>
+                                                                </ul>
+                                                            </div>
+
+                                                            <div className="flex gap-2">
+                                                                <span className="font-bold min-w-[100px]">Ads:</span>
+                                                                <span>Không</span>
+                                                            </div>
+
+                                                            <div className="flex gap-2">
+                                                                <span className="font-bold min-w-[100px]">Caption:</span>
+                                                                <p className="flex-1 text-slate-700 whitespace-pre-wrap">{post.description}</p>
+                                                            </div>
+
+                                                            {/* AI Description Section */}
+                                                            <div className="space-y-1 mt-3 pt-3 border-t border-slate-100">
+                                                                <span className="font-bold block text-blue-800">
+                                                                    ✨ Mô tả {post.type === 'video' ? 'Video' : 'Hình ảnh'} (AI Analysis):
+                                                                </span>
+                                                                {post.aiDescription ? (
+                                                                    <p className="text-slate-600 italic bg-blue-50 p-3 rounded-lg border border-blue-100">
+                                                                        {post.aiDescription}
+                                                                    </p>
+                                                                ) : (
+                                                                    <div className="text-slate-400 italic text-sm bg-slate-50 p-2 rounded border border-slate-100 flex items-center justify-between gap-2">
+                                                                        <span>Chưa có mô tả từ AI.</span>
+                                                                        <button
+                                                                            onClick={() => handleAnalyzePost(post)}
+                                                                            disabled={analyzingPosts.has(post.id)}
+                                                                            className="text-xs bg-blue-600 hover:bg-blue-700 text-white px-3 py-1.5 rounded-lg flex items-center gap-1 transition-colors disabled:opacity-50 disabled:cursor-not-allowed shadow-sm font-medium"
+                                                                        >
+                                                                            {analyzingPosts.has(post.id) ? (
+                                                                                <>
+                                                                                    <Loader2 className="w-3 h-3 animate-spin" />
+                                                                                    Đang phân tích...
+                                                                                </>
+                                                                            ) : (
+                                                                                <>
+                                                                                    ✨ Phân tích ngay
+                                                                                </>
+                                                                            )}
+                                                                        </button>
+                                                                    </div>
+                                                                )}
+                                                            </div>
+
+                                                            {/* Media Gallery */}
+                                                            {post.media && post.media.length > 0 && (
+                                                                <div className="space-y-2 mt-2">
+                                                                    <span className="font-bold block">
+                                                                        {post.type === 'video' ? 'Thumbnail:' : 'Danh sách Ảnh:'}
+                                                                    </span>
+                                                                    <div className="flex gap-2 overflow-x-auto pb-2">
+                                                                        {post.type === 'video' ? (
+                                                                            <img
+                                                                                src={post.thumbnail || post.media[0]}
+                                                                                alt="Thumbnail"
+                                                                                className="h-32 rounded-lg object-cover border border-slate-200"
+                                                                            />
+                                                                        ) : (
+                                                                            post.media.map((url, i) => (
+                                                                                <img
+                                                                                    key={i}
+                                                                                    src={url}
+                                                                                    alt={`Image ${i + 1}`}
+                                                                                    className="h-32 rounded-lg object-cover border border-slate-200"
+                                                                                />
+                                                                            ))
+                                                                        )}
+                                                                    </div>
+                                                                </div>
+                                                            )}
+                                                        </div>
+                                                    </div>
+                                                </details>
+                                            ))}
+                                        </div>
+                                    </div>
+                                </div>
                             )}
                             {selectedSection === 'analysis' && (
                                 <AnalysisSection result={result} />
@@ -362,184 +628,6 @@ const BrandSpy: React.FC<BrandSpyProps> = ({ platform, platformLabel }) => {
     );
 };
 
-// Data Section Component with Accordion UI
-const DataSection: React.FC<{ result: BrandSpyResult }> = ({ result }) => {
-    return (
-        <div className="space-y-8">
-            {/* Header */}
-            <div>
-                <h3 className="text-xl font-bold text-slate-900 mb-2">Dữ liệu</h3>
-                <p className="text-slate-500 text-sm">
-                    Dữ liệu thô từ {result.platform === 'facebook' ? 'Facebook' : 'Nền tảng'} của thương hiệu {result.brandName} với {result.posts.length} bài đăng gần nhất.
-                </p>
-            </div>
-
-            {/* Profile Data */}
-            <div className="space-y-4">
-                <h3 className="text-xl font-bold text-slate-900">Dữ liệu Hồ sơ</h3>
-                <AccordionItem title="Chi tiết Hồ sơ" defaultOpen={true}>
-                    <div className="space-y-3 py-2">
-                        {Object.entries(result.profile).map(([key, value]) => {
-                            if (value === undefined || value === null || value === '') return null;
-                            return (
-                                <div key={key} className="grid grid-cols-[200px_1fr] gap-4 text-sm">
-                                    <span className="font-bold text-slate-700">
-                                        {key === 'id' ? 'id' :
-                                            key === 'url' ? 'url' :
-                                                key === 'name' ? 'name' :
-                                                    key === 'email' ? 'email' :
-                                                        key === 'phone' ? 'phone' :
-                                                            key === 'website' ? 'website' :
-                                                                key === 'category' ? 'category' :
-                                                                    key === 'about' || key === 'pageIntro' ? 'pageIntro' :
-                                                                        key === 'followers' || key === 'followerCount' ? 'followerCount' :
-                                                                            key === 'likes' || key === 'likeCount' ? 'likeCount' :
-                                                                                key === 'verified' ? 'verified' :
-                                                                                    key}
-                                        :
-                                    </span>
-                                    <span className="text-slate-600 break-words">{String(value)}</span>
-                                </div>
-                            );
-                        })}
-                    </div>
-                </AccordionItem>
-            </div>
-
-            {/* Posts Data */}
-            <div className="space-y-4">
-                <h3 className="text-xl font-bold text-slate-900">Dữ liệu Bài đăng tự nhiên</h3>
-                <div className="space-y-3">
-                    {result.posts.map((post, index) => {
-                        // Determine type
-                        const type = post.isReel ? 'Reel' : (post.media && post.media.length > 0 ? 'Image' : 'Text');
-
-                        return (
-                            <AccordionItem
-                                key={post.id}
-                                title={`Bài đăng ${index + 1} (Loại: ${type})`}
-                            >
-                                <div className="space-y-4 py-2 text-sm">
-                                    {/* Description */}
-                                    <div className="space-y-1">
-                                        <div className="font-bold text-slate-900">Mô tả:</div>
-                                        <div className="text-slate-600 leading-relaxed whitespace-pre-wrap">
-                                            {post.description}
-                                        </div>
-                                    </div>
-
-                                    {/* Stats */}
-                                    <div className="grid grid-cols-2 gap-4">
-                                        <div>
-                                            <span className="text-slate-500">Thời gian: </span>
-                                            <span className="text-slate-700 font-medium">
-                                                {new Date(post.time).toLocaleDateString('vi-VN')}
-                                            </span>
-                                        </div>
-                                        <div>
-                                            <span className="text-slate-500">Reactions: </span>
-                                            <span className="text-slate-700 font-medium">{post.reactions.toLocaleString()}</span>
-                                        </div>
-                                        <div>
-                                            <span className="text-slate-500">Comments: </span>
-                                            <span className="text-slate-700 font-medium">{post.comments.toLocaleString()}</span>
-                                        </div>
-                                    </div>
-
-                                    {/* Links */}
-                                    <div className="space-y-2 pt-2 border-t border-slate-100">
-                                        <div>
-                                            <span className="text-slate-500">URL: </span>
-                                            <a href={post.url} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:text-blue-700 hover:underline">
-                                                {post.url}
-                                            </a>
-                                        </div>
-                                        {post.media && post.media.length > 0 && (
-                                            <div>
-                                                <span className="text-slate-500">Media: </span>
-                                                <a href={post.media[0]} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:text-blue-700 hover:underline">
-                                                    Click to view in new tab
-                                                </a>
-                                            </div>
-                                        )}
-                                    </div>
-                                </div>
-                            </AccordionItem>
-                        );
-                    })}
-                </div>
-            </div>
-
-            {/* Ads Data */}
-            <div className="space-y-4">
-                <h3 className="text-xl font-bold text-slate-900">Dữ liệu Quảng cáo</h3>
-                <div className="space-y-3">
-                    {result.ads.length === 0 ? (
-                        <div className="p-4 bg-slate-50 rounded-xl text-center text-slate-500 border border-slate-100 italic">
-                            Chưa tìm thấy dữ liệu quảng cáo cho trang này.
-                        </div>
-                    ) : (
-                        result.ads.map((ad, index) => (
-                            <AccordionItem
-                                key={ad.id}
-                                title={`Quảng cáo ${index + 1}`}
-                            >
-                                <div className="space-y-4 py-2 text-sm">
-                                    {/* Description */}
-                                    <div className="space-y-1">
-                                        <div className="font-bold text-slate-900">Nội dung:</div>
-                                        <div className="text-slate-600 leading-relaxed whitespace-pre-wrap">
-                                            {ad.content}
-                                        </div>
-                                    </div>
-
-                                    {/* CTA */}
-                                    <div>
-                                        <span className="text-slate-500">CTA: </span>
-                                        <span className="text-slate-700 font-medium">{ad.cta || 'No button'}</span>
-                                    </div>
-
-                                    {/* Platform */}
-                                    <div>
-                                        <span className="text-slate-500">Platform: </span>
-                                        <span className="text-slate-700 font-medium uppercase">{ad.platform}</span>
-                                    </div>
-
-                                    {/* Media Link */}
-                                    {ad.media && ad.media.length > 0 && (
-                                        <div>
-                                            <span className="text-slate-500">Media: </span>
-                                            <a href={ad.media[0]} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:text-blue-700 hover:underline">
-                                                Click to view in new tab
-                                            </a>
-                                        </div>
-                                    )}
-
-                                    {/* Is Active */}
-                                    <div>
-                                        <span className="text-slate-500">Is_active: </span>
-                                        <span className={ad.isActive ? "text-green-600 font-bold" : "text-slate-700"}>
-                                            {String(ad.isActive)}
-                                        </span>
-                                    </div>
-
-                                    {/* Ad Archive ID */}
-                                    {ad.adArchiveId && (
-                                        <div>
-                                            <span className="text-slate-500">Ad_archive_id: </span>
-                                            <span className="text-slate-700 font-mono">{ad.adArchiveId}</span>
-                                        </div>
-                                    )}
-                                </div>
-                            </AccordionItem>
-                        ))
-                    )}
-                </div>
-            </div>
-        </div>
-    );
-};
-
 // Reusable Accordion Item
 const AccordionItem: React.FC<{
     title: string;
@@ -575,122 +663,131 @@ const AccordionItem: React.FC<{
 
 // Analysis Section Component
 const AnalysisSection: React.FC<{ result: BrandSpyResult }> = ({ result }) => {
-    const { analysis, brandName } = result;
+    const { analysis, brandName, profile } = result;
+
+    // Safely access new metrics with fallbacks for old analyses
+    const content = analysis.naturalContent;
+    const metrics = analysis.interactionMetrics || {
+        engagementRate: 0,
+        postingFrequency: 'N/A',
+        avgViewsPerPost: 0,
+        valueScore: 0,
+        viralScore: 0,
+        adRatio: 'N/A'
+    };
+    const contentMetrics = analysis.contentMetrics || {
+        totalViews: 0,
+        totalLikes: analysis.channelHealth.totalLikes,
+        totalShares: 0,
+        totalSaves: 0
+    };
 
     return (
-        <div className="space-y-8">
+        <div className="space-y-8 animate-in fade-in duration-500">
             {/* Header */}
-            <div>
-                <h3 className="text-xl font-bold text-slate-900 mb-2">Phân tích</h3>
+            <div className="bg-white p-6 rounded-2xl border border-slate-100 shadow-sm">
+                <h3 className="text-xl font-bold text-slate-900 mb-2">Phân tích chuyên sâu</h3>
                 <p className="text-slate-500 text-sm">
-                    Phân tích thương hiệu {brandName} trên {result.platform === 'facebook' ? 'Facebook' : 'Nền tảng'}.
+                    Phân tích kênh <span className="font-bold text-slate-800">{brandName}</span> trên nền tảng {result.platform === 'tiktok' ? 'TikTok' : 'Facebook'}.
                 </p>
             </div>
 
             {/* PART A: DATA SUMMARY */}
             <div className="space-y-4">
-                <h3 className="text-base font-bold text-slate-900 uppercase tracking-wide">PHẦN A: TỔNG HỢP SỐ LIỆU</h3>
+                <h3 className="text-base font-bold text-slate-900 uppercase tracking-wide px-1">PHẦN A: TỔNG HỢP SỐ LIỆU</h3>
 
-                {/* Channel Health */}
-                <AccordionItem title="Sức khỏe Kênh" defaultOpen={false}>
-                    <div className="space-y-3 py-2">
-                        <div className="flex justify-between items-center text-sm border-b border-slate-50 pb-2 last:border-0 last:pb-0">
-                            <span className="font-medium text-slate-700">Tổng lượt thích:</span>
-                            <span className="font-bold text-slate-900">{analysis.channelHealth.totalLikes.toLocaleString()}</span>
-                        </div>
-                        <div className="flex justify-between items-center text-sm border-b border-slate-50 pb-2 last:border-0 last:pb-0">
-                            <span className="font-medium text-slate-700">Đánh giá:</span>
-                            <span className="font-bold text-slate-900">{analysis.channelHealth.totalReviews > 0 ? analysis.channelHealth.totalReviews.toLocaleString() : 'N/A'}</span>
-                        </div>
-                        <div className="flex justify-between items-center text-sm border-b border-slate-50 pb-2 last:border-0 last:pb-0">
-                            <span className="font-medium text-slate-700">Tổng lượt theo dõi:</span>
+                {/* Channel Metrics */}
+                <AccordionItem title="Chỉ số Kênh" defaultOpen={true}>
+                    <div className="space-y-3 py-2 text-sm">
+                        <div className="flex justify-between items-center border-b border-slate-50 pb-2">
+                            <span className="font-medium text-slate-600">Lượt theo dõi:</span>
                             <span className="font-bold text-slate-900">{analysis.channelHealth.totalFollowers.toLocaleString()}</span>
                         </div>
-                        <div className="flex justify-between items-center text-sm border-b border-slate-50 pb-2 last:border-0 last:pb-0">
-                            <span className="font-medium text-slate-700">Tỷ lệ L/F:</span>
-                            <span className="font-bold text-slate-900">{(analysis.channelHealth.likeFollowerRatio * 100).toFixed(2)}%</span>
+                        <div className="flex justify-between items-center border-b border-slate-50 pb-2">
+                            <span className="font-medium text-slate-600">Đang theo dõi:</span>
+                            <span className="font-bold text-slate-900">{profile.followingCount?.toLocaleString() || 'N/A'}</span>
                         </div>
-                    </div>
-                </AccordionItem>
-
-                {/* Natural Content */}
-                <AccordionItem title="Nội dung Tự nhiên" defaultOpen={false}>
-                    <div className="space-y-4 py-2 text-sm">
-                        <div>
-                            <div className="font-bold text-slate-700 mb-2">Định dạng bài đăng:</div>
-                            <div className="pl-4 space-y-1">
-                                <div className="flex justify-between text-slate-600">
-                                    <span>Reels:</span>
-                                    <span className="font-medium text-slate-900">{analysis.naturalContent.postFormats.reels}</span>
-                                </div>
-                                <div className="flex justify-between text-slate-600">
-                                    <span>Images:</span>
-                                    <span className="font-medium text-slate-900">{analysis.naturalContent.postFormats.images}</span>
-                                </div>
-                            </div>
+                        <div className="flex justify-between items-center border-b border-slate-50 pb-2">
+                            <span className="font-medium text-slate-600">Số lượng bài đã đăng:</span>
+                            <span className="font-bold text-slate-900">{content.postFormats.total.toLocaleString()}</span>
                         </div>
-                        <div className="flex justify-between items-center border-t border-slate-50 pt-3">
-                            <span className="font-medium text-slate-700">Tổng số bài đăng:</span>
-                            <span className="font-bold text-slate-900">{analysis.naturalContent.postFormats.total}</span>
-                        </div>
-                        <div className="flex justify-between items-center border-t border-slate-50 pt-3">
-                            <span className="font-medium text-slate-700">Comment trung bình/bài:</span>
-                            <span className="font-bold text-slate-900">{analysis.naturalContent.avgCommentsPerPost.toFixed(1)}</span>
-                        </div>
-                        <div className="flex justify-between items-center border-t border-slate-50 pt-3">
-                            <span className="font-medium text-slate-700">Reaction trung bình/bài:</span>
-                            <span className="font-bold text-slate-900">{analysis.naturalContent.avgReactionsPerPost.toFixed(1)}</span>
-                        </div>
-                    </div>
-                </AccordionItem>
-
-                {/* Ads Activity */}
-                <AccordionItem title="Hoạt động Quảng cáo" defaultOpen={false}>
-                    <div className="space-y-4 py-2 text-sm">
                         <div className="flex justify-between items-center">
-                            <span className="font-medium text-slate-700">Tổng số quảng cáo đang chạy:</span>
-                            <span className="font-bold text-slate-900">{analysis.adActivity.totalActiveAds}</span>
-                        </div>
-
-                        <div>
-                            <div className="font-bold text-slate-700 mb-2">Phân bố Định dạng (Quảng cáo):</div>
-                            <div className="pl-4 space-y-1">
-                                {Object.entries(analysis.adActivity.formatDistribution).map(([format, count]) => (
-                                    <div key={format} className="flex justify-between text-slate-600">
-                                        <span>{format}:</span>
-                                        <span className="font-medium text-slate-900">{count} (Chiếm {analysis.adActivity.totalActiveAds > 0 ? ((count / analysis.adActivity.totalActiveAds) * 100).toFixed(0) : 0}%)</span>
-                                    </div>
-                                ))}
-                            </div>
-                        </div>
-
-                        <div>
-                            <div className="font-bold text-slate-700 mb-2">Phân bố CTA:</div>
-                            <div className="pl-4 space-y-1">
-                                {Object.entries(analysis.adActivity.ctaDistribution).map(([cta, count]) => (
-                                    <div key={cta} className="flex justify-between text-slate-600">
-                                        <span>{cta}:</span>
-                                        <span className="font-medium text-slate-900">{count} (Chiếm {analysis.adActivity.totalActiveAds > 0 ? ((count / analysis.adActivity.totalActiveAds) * 100).toFixed(0) : 0}%)</span>
-                                    </div>
-                                ))}
-                            </div>
+                            <span className="font-medium text-slate-600">Tổng lượt thích (Heart):</span>
+                            <span className="font-bold text-slate-900">{analysis.channelHealth.totalLikes.toLocaleString()}</span>
                         </div>
                     </div>
                 </AccordionItem>
 
-                {/* Comments */}
-                <AccordionItem title="Bình luận" defaultOpen={false}>
-                    <div className="space-y-3 py-2 text-sm">
-                        <div className="flex justify-between items-center border-b border-slate-50 pb-2 last:border-0 last:pb-0">
-                            <span className="font-medium text-slate-700">Tổng Comment từ người dùng:</span>
-                            <span className="font-bold text-slate-900">{analysis.comments?.totalUserComments?.toLocaleString() || 'N/A'}</span>
+                {/* Content Metrics */}
+                <AccordionItem title="Chỉ số Nội dung" defaultOpen={true}>
+                    <div className="space-y-6 py-2 text-sm">
+                        {/* Scope */}
+                        <div>
+                            <div className="font-bold text-slate-800 mb-2">Phạm vi bài đăng: {content.postFormats.total}</div>
+                            <div className="pl-4 space-y-1 text-slate-600">
+                                <div className="flex justify-between">
+                                    <span>Bài ảnh:</span>
+                                    <span className="font-medium text-slate-900">{content.postFormats.images}</span>
+                                </div>
+                                <div className="flex justify-between">
+                                    <span>Bài video:</span>
+                                    <span className="font-medium text-slate-900">{content.postFormats.reels}</span>
+                                </div>
+                            </div>
                         </div>
-                        <div className="flex justify-between items-center border-b border-slate-50 pb-2 last:border-0 last:pb-0">
-                            <span className="font-medium text-slate-700">Tổng Comment từ thương hiệu:</span>
-                            <span className="font-bold text-slate-900">{analysis.comments?.totalBrandComments?.toLocaleString() || 0}</span>
+
+                        {/* Interactions */}
+                        <div>
+                            <div className="font-bold text-slate-800 mb-2">Tương tác:</div>
+                            <div className="pl-4 space-y-2">
+                                <div className="flex justify-between">
+                                    <span className="text-slate-600">Lượt xem:</span>
+                                    <span className="font-bold text-slate-900">{contentMetrics.totalViews.toLocaleString()}</span>
+                                </div>
+                                <div className="flex justify-between">
+                                    <span className="text-slate-600">Lượt thích:</span>
+                                    <span className="font-bold text-slate-900">{contentMetrics.totalLikes.toLocaleString()}</span>
+                                </div>
+                                <div className="flex justify-between">
+                                    <span className="text-slate-600">Lượt chia sẻ:</span>
+                                    <span className="font-bold text-slate-900">{contentMetrics.totalShares.toLocaleString()}</span>
+                                </div>
+                                <div className="flex justify-between">
+                                    <span className="text-slate-600">Lượt lưu:</span>
+                                    <span className="font-bold text-slate-900">{contentMetrics.totalSaves.toLocaleString()}</span>
+                                </div>
+                            </div>
                         </div>
-                        <div className="text-xs text-slate-400 italic pt-2">
-                            Số liệu bình luận có thể sai số do chính sách nghiêm ngặt của Facebook.
+
+                        {/* Interaction Indices */}
+                        <div>
+                            <div className="font-bold text-slate-800 mb-2">Chỉ số tương tác:</div>
+                            <div className="pl-4 space-y-2">
+                                <div className="flex justify-between items-center">
+                                    <span className="text-slate-600">Tỉ lệ tương tác:</span>
+                                    <span className="font-bold text-blue-600">{metrics.engagementRate.toFixed(2)}%</span>
+                                </div>
+                                <div className="flex justify-between items-center">
+                                    <span className="text-slate-600">Tần suất đăng bài:</span>
+                                    <span className="font-bold text-slate-900">{metrics.postingFrequency}</span>
+                                </div>
+                                <div className="flex justify-between items-center">
+                                    <span className="text-slate-600">Lượt xem trung bình:</span>
+                                    <span className="font-bold text-slate-900">{metrics.avgViewsPerPost.toLocaleString()}</span>
+                                </div>
+                                <div className="flex justify-between items-center">
+                                    <span className="text-slate-600">Tỉ lệ giá trị (Value Score):</span>
+                                    <span className="font-bold text-green-600">{metrics.valueScore.toLocaleString()}%</span>
+                                </div>
+                                <div className="flex justify-between items-center">
+                                    <span className="text-slate-600">Tỉ lệ lan truyền (Viral Score):</span>
+                                    <span className="font-bold text-purple-600">{metrics.viralScore.toFixed(3)}%</span>
+                                </div>
+                                <div className="flex justify-between items-center">
+                                    <span className="text-slate-600">Tỉ lệ bài quảng cáo:</span>
+                                    <span className="font-bold text-slate-900">{metrics.adRatio}</span>
+                                </div>
+                            </div>
                         </div>
                     </div>
                 </AccordionItem>
@@ -698,7 +795,7 @@ const AnalysisSection: React.FC<{ result: BrandSpyResult }> = ({ result }) => {
 
             {/* PART B: STRATEGIC ANALYSIS */}
             <div className="space-y-4">
-                <h3 className="text-base font-bold text-slate-900 uppercase tracking-wide">PHẦN B: PHÂN TÍCH CHIẾN LƯỢC</h3>
+                <h3 className="text-base font-bold text-slate-900 uppercase tracking-wide px-1">PHẦN B: PHÂN TÍCH CHIẾN LƯỢC</h3>
 
                 {/* Brand Positioning */}
                 <AccordionItem title="Định vị Thương hiệu" defaultOpen={true}>
@@ -714,55 +811,106 @@ const AnalysisSection: React.FC<{ result: BrandSpyResult }> = ({ result }) => {
                     </div>
                 </AccordionItem>
 
+                {/* Brand Voice */}
+                <AccordionItem title="Giọng nói Thương hiệu" defaultOpen={false}>
+                    <p className="text-sm text-slate-700 leading-relaxed py-2">
+                        {analysis.strategy.brandVoice || "Chưa có dữ liệu."}
+                    </p>
+                </AccordionItem>
+
+                {/* Shooting Style */}
+                <AccordionItem title="Phong cách Quay dựng" defaultOpen={false}>
+                    <p className="text-sm text-slate-700 leading-relaxed py-2">
+                        {analysis.strategy.shootingStyle || "Chưa có dữ liệu."}
+                    </p>
+                </AccordionItem>
+
                 {/* Content Structure */}
-                <AccordionItem title="Cấu trúc & Công thức Nội dung" defaultOpen={false}>
-                    <div className="space-y-3 py-2">
-                        <div className="text-sm text-slate-600 leading-relaxed">
-                            {analysis.strategy.contentStructure}
-                        </div>
-                        {analysis.strategy.contentPillars.length > 0 && (
-                            <div className="mt-2">
-                                <div className="text-xs font-bold text-slate-500 uppercase mb-2">Các tuyến nội dung chính:</div>
-                                <div className="flex flex-wrap gap-2">
-                                    {analysis.strategy.contentPillars.map((pillar, idx) => (
-                                        <span key={idx} className="px-3 py-1 bg-slate-100 text-slate-700 rounded-full text-xs font-medium border border-slate-200">
-                                            {pillar}
-                                        </span>
-                                    ))}
+                <AccordionItem title="Cấu trúc Nội dung" defaultOpen={false}>
+                    <div className="text-sm text-slate-600 leading-relaxed py-2">
+                        {analysis.strategy.contentStructure}
+                    </div>
+                </AccordionItem>
+
+                {/* Content Pillars */}
+                <AccordionItem title="Tuyến Nội dung (Content Pillars)" defaultOpen={false}>
+                    <div className="space-y-4 py-2">
+                        {analysis.strategy.contentPillars?.length ? (
+                            analysis.strategy.contentPillars.map((pillar: any, index: number) => (
+                                <div key={index} className="border-l-2 border-blue-500 pl-4 space-y-1">
+                                    <div className="font-bold text-slate-900">{pillar.title}</div>
+                                    <div className="text-sm text-slate-600"><span className="font-medium text-slate-700">Mục tiêu:</span> {pillar.objective}</div>
+                                    <div className="text-sm text-slate-600"><span className="font-medium text-slate-700">Cách thực hiện:</span> {pillar.execution}</div>
                                 </div>
-                            </div>
+                            ))
+                        ) : (
+                            <p className="text-sm text-slate-600">Chưa có dữ liệu tuyến nội dung.</p>
                         )}
                     </div>
                 </AccordionItem>
 
-                {/* Reel Transcript Analysis */}
-                <AccordionItem title="Phân tích Reel Transcript" defaultOpen={false}>
-                    <div className="text-sm text-slate-600 leading-relaxed py-2">
-                        {analysis.strategy.reelsTranscriptAnalysis || 'Chưa có phân tích Transcript cho Reel.'}
+                {/* Hashtags */}
+                <AccordionItem title="Hashtags Phổ biến" defaultOpen={false}>
+                    <div className="flex flex-wrap gap-2 py-2">
+                        {analysis.strategy.hashtags?.length ? (
+                            analysis.strategy.hashtags.map((tag, index) => (
+                                <span key={index} className="bg-slate-100 text-slate-600 px-2 py-1 rounded text-sm">
+                                    {tag.startsWith('#') ? tag : `#${tag}`}
+                                </span>
+                            ))
+                        ) : (
+                            <p className="text-sm text-slate-500">Không có dữ liệu hashtag.</p>
+                        )}
                     </div>
                 </AccordionItem>
 
+                {/* Chiến lược quảng cáo (Ad Strategy) */}
+                <AccordionItem title="Chiến lược Quảng cáo" defaultOpen={false}>
+                    <div className="space-y-3 py-2 text-sm text-slate-600">
+                        <div>
+                            <span className="font-bold text-slate-700 block mb-1">Mục tiêu chiến dịch:</span>
+                            <ul className="list-disc ml-5 space-y-1">
+                                {analysis.strategy.adStrategy.campaignObjectives?.length > 0
+                                    ? analysis.strategy.adStrategy.campaignObjectives.map((obj, i) => <li key={i}>{obj}</li>)
+                                    : <li>Chưa có dữ liệu</li>
+                                }
+                            </ul>
+                        </div>
+                        <div>
+                            <span className="font-bold text-slate-700 block mb-1">Phân tích Creative:</span>
+                            <div className="leading-relaxed whitespace-pre-line">{analysis.strategy.adStrategy.creativeAnalysis || "Chưa có dữ liệu"}</div>
+                        </div>
+                    </div>
+                </AccordionItem>
+
+                {/* Top Content */}
+                <AccordionItem title="Top Nội dung" defaultOpen={false}>
+                    <p className="text-sm text-slate-700 leading-relaxed py-2">
+                        {analysis.strategy.topContent || "Đang cập nhật..."}
+                    </p>
+                </AccordionItem>
+
                 {/* Marketing Funnel */}
-                <AccordionItem title="Phễu Marketing" defaultOpen={false}>
-                    <div className="space-y-4 py-2 text-sm">
+                <AccordionItem title="Phễu Marketing (Funnel)" defaultOpen={false}>
+                    <div className="space-y-3 py-2 text-sm text-slate-600">
                         <div>
-                            <div className="font-bold text-slate-700 mb-1">TOFU (Top of Funnel)</div>
-                            <div className="text-slate-600 leading-relaxed">{analysis.strategy.marketingFunnel.tofu}</div>
+                            <span className="font-bold text-slate-700 block mb-1">ToFu (Nhận thức):</span>
+                            <div className="leading-relaxed">{analysis.strategy.marketingFunnel.tofu}</div>
                         </div>
                         <div>
-                            <div className="font-bold text-slate-700 mb-1">MOFU (Middle of Funnel)</div>
-                            <div className="text-slate-600 leading-relaxed">{analysis.strategy.marketingFunnel.mofu}</div>
+                            <span className="font-bold text-slate-700 block mb-1">MoFu (Cân nhắc):</span>
+                            <div className="leading-relaxed">{analysis.strategy.marketingFunnel.mofu}</div>
                         </div>
                         <div>
-                            <div className="font-bold text-slate-700 mb-1">BOFU (Bottom of Funnel)</div>
-                            <div className="text-slate-600 leading-relaxed">{analysis.strategy.marketingFunnel.bofu}</div>
+                            <span className="font-bold text-slate-700 block mb-1">BoFu (Chuyển đổi):</span>
+                            <div className="leading-relaxed">{analysis.strategy.marketingFunnel.bofu}</div>
                         </div>
                     </div>
                 </AccordionItem>
 
                 {/* Engagement Strategy */}
-                <AccordionItem title="Chiến lược Tương tác & Bình luận" defaultOpen={false}>
-                    <div className="text-sm text-slate-600 leading-relaxed py-2 whitespace-pre-line">
+                <AccordionItem title="Chiến lược Tương tác" defaultOpen={false}>
+                    <div className="text-sm text-slate-600 leading-relaxed py-2">
                         {analysis.strategy.engagementStrategy}
                     </div>
                 </AccordionItem>

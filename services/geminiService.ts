@@ -1,7 +1,225 @@
-import { GoogleGenAI } from "@google/genai";
 import { ContentPillar, AdsHealthInput, AdsHealthResult, BrandPositioningInput, BrandPositioningResult, PricingAnalyzerInput, PricingAnalyzerResult, AudienceEmotionMapInput, AudienceEmotionMapResult } from "../types";
 
-const ai = new GoogleGenAI({ apiKey: import.meta.env.VITE_GEMINI_API_KEY });
+// Direct REST API implementation (no SDK)
+const GEMINI_API_KEY = import.meta.env.VITE_GEMINI_API_KEY;
+const GEMINI_API_BASE = 'https://generativelanguage.googleapis.com/v1beta';
+
+// Helper function to call Gemini API directly
+async function callGeminiAPI(prompt: string, systemInstruction?: string, options: { temperature?: number; jsonMode?: boolean } = {}) {
+    if (!GEMINI_API_KEY) {
+        throw new Error('VITE_GEMINI_API_KEY is not configured');
+    }
+
+    const url = `${GEMINI_API_BASE}/models/gemini-2.5-flash:generateContent?key=${GEMINI_API_KEY}`;
+
+    // Build the request body
+    const requestBody: any = {
+        contents: [{
+            parts: [{
+                text: systemInstruction
+                    ? `${systemInstruction}\n\n${prompt}`
+                    : prompt
+            }]
+        }],
+        safetySettings: [
+            { category: 'HARM_CATEGORY_HARASSMENT', threshold: 'BLOCK_NONE' },
+            { category: 'HARM_CATEGORY_HATE_SPEECH', threshold: 'BLOCK_NONE' },
+            { category: 'HARM_CATEGORY_SEXUALLY_EXPLICIT', threshold: 'BLOCK_NONE' },
+            { category: 'HARM_CATEGORY_DANGEROUS_CONTENT', threshold: 'BLOCK_NONE' }
+        ],
+        generationConfig: {
+            temperature: options.temperature ?? 0.7
+        }
+    };
+
+    // Add JSON mode if requested
+    if (options.jsonMode) {
+        requestBody.generationConfig.responseMimeType = 'application/json';
+    }
+
+    try {
+        const response = await fetch(url, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(requestBody)
+        });
+
+        if (!response.ok) {
+            const errorText = await response.text();
+            throw new Error(`Gemini API Error (${response.status}): ${errorText}`);
+        }
+
+        const data = await response.json();
+
+        // Extract text from response
+        const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
+
+        if (!text) {
+            throw new Error('No text returned from Gemini API');
+        }
+
+        return text;
+    } catch (error: any) {
+        console.error('❌ Gemini API Error:', error);
+        throw error;
+    }
+}
+
+
+// Helper for Vision API (Text + Image)
+async function callGeminiVisionAPI(prompt: string, base64Data: string, mimeType: string) {
+    if (!GEMINI_API_KEY) throw new Error('VITE_GEMINI_API_KEY is not configured');
+    const url = `${GEMINI_API_BASE}/models/gemini-2.5-flash:generateContent?key=${GEMINI_API_KEY}`;
+
+    const requestBody = {
+        contents: [{
+            parts: [
+                { text: prompt },
+                {
+                    inlineData: {
+                        mimeType: mimeType,
+                        data: base64Data
+                    }
+                }
+            ]
+        }],
+        safetySettings: [
+            { category: 'HARM_CATEGORY_HARASSMENT', threshold: 'BLOCK_NONE' },
+            { category: 'HARM_CATEGORY_HATE_SPEECH', threshold: 'BLOCK_NONE' },
+            { category: 'HARM_CATEGORY_SEXUALLY_EXPLICIT', threshold: 'BLOCK_NONE' },
+            { category: 'HARM_CATEGORY_DANGEROUS_CONTENT', threshold: 'BLOCK_NONE' }
+        ],
+        generationConfig: { temperature: 0.4 }
+    };
+
+    try {
+        const response = await fetch(url, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(requestBody)
+        });
+
+        if (!response.ok) {
+            const errorText = await response.text();
+            throw new Error(`Gemini Vision API Error (${response.status}): ${errorText}`);
+        }
+
+        const data = await response.json();
+        const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
+        if (!text) throw new Error('No text returned from Gemini Vision API');
+
+        return text;
+    } catch (error: any) {
+        console.error('❌ Gemini Vision API Error:', error);
+    }
+}
+
+// Helper for Multi-Image Vision API
+async function callGeminiMultiImageAPI(prompt: string, images: { base64: string; mimeType: string }[]) {
+    if (!GEMINI_API_KEY) throw new Error('VITE_GEMINI_API_KEY is not configured');
+    const url = `${GEMINI_API_BASE}/models/gemini-2.5-flash:generateContent?key=${GEMINI_API_KEY}`;
+
+    const parts: any[] = [{ text: prompt }];
+
+    // Add all images
+    for (const img of images) {
+        parts.push({
+            inlineData: {
+                mimeType: img.mimeType,
+                data: img.base64
+            }
+        });
+    }
+
+    const requestBody = {
+        contents: [{ parts }],
+        safetySettings: [
+            { category: 'HARM_CATEGORY_HARASSMENT', threshold: 'BLOCK_NONE' },
+            { category: 'HARM_CATEGORY_HATE_SPEECH', threshold: 'BLOCK_NONE' },
+            { category: 'HARM_CATEGORY_SEXUALLY_EXPLICIT', threshold: 'BLOCK_NONE' },
+            { category: 'HARM_CATEGORY_DANGEROUS_CONTENT', threshold: 'BLOCK_NONE' }
+        ],
+        generationConfig: { temperature: 0.4 }
+    };
+
+    try {
+        const response = await fetch(url, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(requestBody)
+        });
+
+        if (!response.ok) {
+            const errorText = await response.text();
+            throw new Error(`Gemini Multi-Vision API Error (${response.status}): ${errorText}`);
+        }
+
+        const data = await response.json();
+        const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
+        if (!text) throw new Error('No text returned from Gemini Vision API');
+
+        return text;
+    } catch (error: any) {
+        console.error('❌ Gemini Multi-Vision API Error:', error);
+        throw error;
+    }
+}
+
+export const analyzeImages = async (
+    images: { base64: string; mimeType: string }[],
+    promptText: string = "Describe these images briefly."
+): Promise<string> => {
+    try {
+        return await callGeminiMultiImageAPI(promptText, images);
+    } catch (error) {
+        console.error("Gemini Multi-Image Analysis failed:", error);
+        return "Failed to analyze images.";
+    }
+};
+
+// Compatibility wrapper to maintain existing code structure
+const ai = {
+    models: {
+        generateContent: async (params: any) => {
+            const { contents, config } = params;
+
+            // Call the direct API
+            const text = await callGeminiAPI(
+                contents,
+                config?.systemInstruction,
+                {
+                    temperature: config?.temperature,
+                    jsonMode: config?.responseMimeType === 'application/json'
+                }
+            );
+
+            // Return in expected format
+            return {
+                text: text,
+                candidates: [{ content: { parts: [{ text }] } }],
+                usageMetadata: {}
+            };
+        }
+    }
+};
+
+// ... (SAFETY_SETTINGS omitted as it is used above or can be reused)
+// ...
+
+export const analyzeImage = async (
+    base64Data: string,
+    mimeType: string,
+    promptText: string = "Describe this image in detail."
+): Promise<string> => {
+    try {
+        return await callGeminiVisionAPI(promptText, base64Data, mimeType);
+    } catch (error) {
+        console.error("Gemini Image Analysis failed:", error);
+        return "Failed to analyze image.";
+    }
+};
 
 // NOTE: These settings are critical for local usage where default filters are stricter.
 const SAFETY_SETTINGS = [
@@ -21,7 +239,7 @@ IMPORTANT: Return ONLY the translated text.Do not add any explanations, notes, p
 
     try {
         const response = await ai.models.generateContent({
-            model: 'gemini-2.5-flash',
+            model: 'gemini-1.5-flash',
             contents: text,
             config: {
                 systemInstruction: systemPrompt,
@@ -294,8 +512,9 @@ export const generateStoryboardFrame = async (
         // Check all parts for image data, just in case text comes first
         if (response.candidates?.[0]?.content?.parts) {
             for (const p of response.candidates[0].content.parts) {
-                if (p.inlineData && p.inlineData.data) {
-                    return `data: image / png; base64, ${p.inlineData.data} `;
+                const part = p as any;
+                if (part.inlineData && part.inlineData.data) {
+                    return `data:image/png;base64,${part.inlineData.data}`;
                 }
             }
         }
@@ -305,6 +524,8 @@ export const generateStoryboardFrame = async (
 
     return null;
 }
+
+
 
 // --- MINDMAP GENERATOR ---
 export interface MindmapData {
@@ -3444,87 +3665,116 @@ export const analyzeBrandStrategy = async (
     posts: BrandPost[],
     ads: BrandAd[]
 ): Promise<BrandAnalysis | null> => {
-    // Calculate actual metrics from provided data
-    const totalReactions = posts.reduce((sum, post) => sum + post.reactions, 0);
-    const totalComments = posts.reduce((sum, post) => sum + post.comments, 0);
-    const reelsCount = posts.filter(p => p.isReel).length;
-    const imagesCount = posts.length - reelsCount;
+    // 1. Calculate actual metrics (Deterministic)
+    const postsCount = posts.length;
+    const totalLikes = posts.reduce((sum, p) => sum + p.reactions, 0);
+    const totalComments = posts.reduce((sum, p) => sum + p.comments, 0);
+    const totalShares = posts.reduce((sum, p) => sum + (p.shareCount || 0), 0);
+    const totalSaves = posts.reduce((sum, p) => sum + (p.saveCount || 0), 0);
+    const totalViews = posts.reduce((sum, p) => sum + (p.viewCount || 0), 0);
+
+    const totalInteractions = totalLikes + totalComments + totalShares + totalSaves;
+
+    // Formats
+    const reelsCount = posts.filter(p => p.isReel || p.type === 'video').length;
+    const imagesCount = postsCount - reelsCount;
     const activeAdsCount = ads.filter(a => a.isActive).length;
-    const avgReactions = posts.length > 0 ? Math.round(totalReactions / posts.length) : 0;
-    const avgComments = posts.length > 0 ? Math.round(totalComments / posts.length) : 0;
+
+    // Averages
+    const avgReactions = postsCount > 0 ? Math.round(totalLikes / postsCount) : 0;
+    const avgComments = postsCount > 0 ? Math.round(totalComments / postsCount) : 0;
+    const avgViews = postsCount > 0 ? Math.round(totalViews / postsCount) : 0;
+
+    // Advanced Metrics
+    // Engagement Rate: (Interactions / Views) * 100 for video platforms, else (Interactions / Followers) * 100
+    let engagementRate = 0;
+    if (totalViews > 0) {
+        engagementRate = (totalInteractions / totalViews) * 100;
+    } else if (profile.followerCount > 0) {
+        engagementRate = (totalInteractions / profile.followerCount) * 100;
+    }
+
+    // Frequency (Posts/Week)
+    let postingFrequency = "0.0 bài/tuần";
+    if (postsCount >= 2) {
+        const sorted = [...posts].sort((a, b) => new Date(a.time).getTime() - new Date(b.time).getTime());
+        const first = new Date(sorted[0].time).getTime();
+        const last = new Date(sorted[postsCount - 1].time).getTime();
+        const days = (last - first) / (1000 * 3600 * 24);
+        const weeks = Math.max(days / 7, 1); // Avoid div by 0
+        postingFrequency = `${(postsCount / weeks).toFixed(1)} bài/tuần`;
+    }
+
+    // Value Score: (Saves / Views) * 1000 (Arbitrary scaling for "Value")
+    const valueScore = totalViews > 0 ? (totalSaves / totalViews) * 1000 : 0;
+
+    // Viral Score: (Shares / Views) * 100
+    const viralScore = totalViews > 0 ? (totalShares / totalViews) * 100 : 0;
 
     const systemPrompt = `### CRITICAL ANTI-HALLUCINATION RULES:
 1. **ONLY** analyze data explicitly provided below
 2. **NEVER** invent, assume, or fabricate any numbers, metrics, or facts
 3. All numerical values MUST come from the provided data
-4. If information is not in the data, mark as "Không có dữ liệu" or leave blank
-5. Focus on PATTERNS and OBSERVATIONS from actual data, not speculation
+4. Focus on PATTERNS and OBSERVATIONS from actual data (descriptions, visuals, stats)
 
 ### ROLE & CONTEXT:
-Bạn là Senior Brand Strategist phân tích DỮ LIỆU THỰC TẾ (không được bịa đặt).
+Bạn là Senior Brand Strategist phân tích DỮ LIỆU THỰC TẾ để tạo báo cáo chiến lược chuyên sâu.
 
 ### INPUT DATA (GROUND TRUTH):
 **Platform**: ${platform}
 **Brand Profile**: ${JSON.stringify(profile, null, 2)}
-**Total Posts Analyzed**: ${posts.length}
-**Total Ads Analyzed**: ${ads.length}
+**Metrics**:
+- Posts: ${postsCount}
+- Likes: ${totalLikes}
+- Comments: ${totalComments}
+- Shares: ${totalShares}
+- Saves: ${totalSaves}
+- Views: ${totalViews}
+- Engagement Rate: ${engagementRate.toFixed(2)}%
 
-**Calculated Metrics** (use these exact numbers):
-- Total Reactions: ${totalReactions}
-- Total Comments: ${totalComments}
-- Avg Reactions/Post: ${avgReactions}
-- Avg Comments/Post: ${avgComments}
-- Reels: ${reelsCount}
-- Images: ${imagesCount}
-- Active Ads: ${activeAdsCount}
+**Sample Posts** (Use for qualitative analysis):
+${posts.slice(0, 8).map(p => `- [${p.type}] "${p.description?.substring(0, 100)}..." (Views: ${p.viewCount}, Likes: ${p.reactions}, Shares: ${p.shareCount}, Saves: ${p.saveCount})`).join('\n')}
 
-**Sample Posts** (first 5 for pattern analysis):
-${posts.slice(0, 5).map(p => `- "${p.description}" (${p.reactions} reactions, ${p.comments} comments, ${p.isReel ? 'Reel' : 'Image'})`).join('\n')}
-
-**Sample Ads** (first 3):
-${ads.slice(0, 3).map(a => `- "${a.content}" (CTA: ${a.cta}, Active: ${a.isActive})`).join('\n')}
-
-### ANALYSIS FRAMEWORK (DATA-DRIVEN ONLY):
-
-**1. CHANNEL HEALTH** - Use EXACT numbers from profile:
-- totalLikes: ${profile.followerCount || 0} (from profile.followerCount)
-- totalReviews: 0 (no review data provided)
-- totalFollowers: ${profile.followerCount || 0}
-- likeFollowerRatio: Calculate from above if possible, else 1.0
-
-**2. NATURAL CONTENT** - Use CALCULATED metrics:
-- reels: ${reelsCount}
-- images: ${imagesCount}
-- total: ${posts.length}
-- avgCommentsPerPost: ${avgComments}
-- avgReactionsPerPost: ${avgReactions}
-
-**3. AD ACTIVITY** - Count from provided ads array:
-- totalActiveAds: ${activeAdsCount}
-- formatDistribution: Count video vs image from ads data
-- ctaDistribution: Count different CTAs from ads data
-
-**4. STRATEGIC INSIGHTS** - Based ONLY on patterns you observe:
-- Brand Positioning: Infer from language/tone in ACTUAL post descriptions
-- Message Language: Analyze ACTUAL post content (formal/casual, emotional/rational)
-- Content Pillars: Extract 3-4 themes from ACTUAL post topics (not generic categories)
-- Ad Strategy: Based on ACTUAL CTA types and ad content patterns
+### ANALYSIS TASKS (Qualitative Only):
+1. **Brand Positioning**: Infer from tone, bio, and content.
+2. **Brand Voice**: Adjectives describing their language (e.g., Chill, Educational, GenZ, Professional).
+3. **Shooting Style**: Describe visual style (e.g., Vlog, Cinematic, Studio, UGC).
+4. **Message Language**: Formal vs Informal, Call to actions used.
+5. **Content Structure**: Hook -> Value -> CTA patterns.
+6. **Top Content**: Analyze the highest performing posts (high views/likes) to explain WHY they worked.
+7. **Content Pillars**: Identify 3-4 main topics. For each, provide: Title, Objective (Mục tiêu), Execution (Cách thực hiện).
+8. **Hashtags**: List common hashtags used.
+9. **Marketing Funnel**: Analyze content distribution across ToFu (Awareness), MoFu (Consideration), BoFu (Conversion).
+10. **Engagement Strategy**: Analyze how the brand interacts (reply style, CTA types, community building).
 
 ### OUTPUT FORMAT (STRICT JSON):
-Return ONLY valid JSON matching this structure. Use actual calculated values:
-
+Return ONLY valid JSON.
 {
   "channelHealth": {
-    "totalLikes": ${profile.followerCount || 0},
+    "totalLikes": ${profile.followerCount || 0}, 
     "totalReviews": 0,
     "totalFollowers": ${profile.followerCount || 0},
     "likeFollowerRatio": 1.0
+  },
+  "contentMetrics": {
+     "totalViews": ${totalViews},
+     "totalLikes": ${totalLikes},
+     "totalShares": ${totalShares},
+     "totalSaves": ${totalSaves}
+  },
+  "interactionMetrics": {
+     "engagementRate": ${engagementRate},
+     "postingFrequency": "${postingFrequency}",
+     "avgViewsPerPost": ${avgViews},
+     "valueScore": ${valueScore},
+     "viralScore": ${viralScore},
+     "adRatio": "0/${postsCount} bài"
   },
   "naturalContent": {
     "postFormats": {
       "reels": ${reelsCount},
       "images": ${imagesCount},
-      "total": ${posts.length}
+      "total": ${postsCount}
     },
     "avgCommentsPerPost": ${avgComments},
     "avgReactionsPerPost": ${avgReactions}
@@ -3532,33 +3782,41 @@ Return ONLY valid JSON matching this structure. Use actual calculated values:
   "adActivity": {
     "totalActiveAds": ${activeAdsCount},
     "formatDistribution": {"Video": 0, "Image": 0},
-    "ctaDistribution": {"Shop Now": 0, "Learn More": 0}
+    "ctaDistribution": {}
   },
   "comments": {
     "totalUserComments": ${totalComments},
     "totalBrandComments": 0
   },
   "strategy": {
-    "brandPositioning": "BASED ON ACTUAL POST CONTENT ANALYSIS",
-    "messageLanguage": "BASED ON ACTUAL LANGUAGE USED",
-    "contentStructure": "BASED ON OBSERVED POST PATTERNS",
-    "reelsTranscriptAnalysis": "BASED ON ACTUAL REEL TRANSCRIPTS IF PROVIDED",
-    "contentPillars": ["Theme 1 from posts", "Theme 2 from posts", "Theme 3 from posts"],
+    "brandPositioning": "Analyze...",
+    "brandVoice": "Analyze...",
+    "shootingStyle": "Analyze...",
+    "messageLanguage": "Analyze...",
+    "contentStructure": "Analyze...",
+    "reelsTranscriptAnalysis": "",
+    "contentPillars": [
+      {
+        "title": "Topic Name",
+        "objective": "Target...",
+        "execution": "How to do..."
+      }
+    ],
+    "hashtags": ["#tag1", "#tag2"],
+    "topContent": "Analyze best performing posts...",
     "adStrategy": {
-      "campaignObjectives": ["Based on actual CTA patterns"],
-      "creativeAnalysis": "Based on actual ad content",
-      "adAngles": ["Angle 1 from ads", "Angle 2 from ads"]
+      "campaignObjectives": [],
+      "creativeAnalysis": "None",
+      "adAngles": []
     },
     "marketingFunnel": {
-      "tofu": "Based on actual content types",
-      "mofu": "Based on actual content types",
-      "bofu": "Based on actual content types"
+      "tofu": "Analyze...",
+      "mofu": "Analyze...",
+      "bofu": "Analyze..."
     },
-    "engagementStrategy": "Based on comment/reaction patterns"
+    "engagementStrategy": "Analyze..."
   }
-}
-
-**CRITICAL**: Do NOT make up numbers. Only report what exists in the data.`;
+}`;
 
     try {
         const response = await ai.models.generateContent({
@@ -3572,16 +3830,70 @@ Return ONLY valid JSON matching this structure. Use actual calculated values:
             },
         });
 
-        const text = response.text || "{}";
-        const parsed = JSON.parse(text);
+        // Create a default result with deterministic metrics to ensure we always return data
+        const defaultResult: any = {
+            channelHealth: {
+                totalLikes: profile.followerCount || 0,
+                totalReviews: 0,
+                totalFollowers: profile.followerCount || 0,
+                likeFollowerRatio: 1.0
+            },
+            contentMetrics: {
+                totalViews, totalLikes, totalShares, totalSaves
+            },
+            interactionMetrics: {
+                engagementRate, postingFrequency, avgViewsPerPost: avgViews, valueScore, viralScore, adRatio: `0/${postsCount} bài`
+            },
+            naturalContent: {
+                postFormats: { reels: reelsCount, images: imagesCount, total: postsCount },
+                avgCommentsPerPost: avgComments,
+                avgReactionsPerPost: avgReactions
+            },
+            adActivity: {
+                totalActiveAds: activeAdsCount,
+                formatDistribution: { "Video": 0, "Image": 0 },
+                ctaDistribution: {}
+            },
+            comments: {
+                totalUserComments: totalComments,
+                totalBrandComments: 0
+            },
+            strategy: {
+                brandPositioning: "Đang cập nhật...",
+                brandVoice: "Đang cập nhật...",
+                shootingStyle: "Đang cập nhật...",
+                messageLanguage: "Đang cập nhật...",
+                contentStructure: "Đang cập nhật...",
+                reelsTranscriptAnalysis: "",
+                contentPillars: [],
+                hashtags: [],
+                topContent: "Đang cập nhật...",
+                adStrategy: { campaignObjectives: [], creativeAnalysis: "", adAngles: [] },
+                marketingFunnel: { tofu: "", mofu: "", bofu: "" },
+                engagementStrategy: ""
+            }
+        };
 
-        // Validate the response has required fields
-        if (!parsed.channelHealth || !parsed.naturalContent || !parsed.adActivity || !parsed.strategy) {
-            console.error("Invalid analysis response structure");
-            return null;
+        const text = response.text ? response.text.replace(/```json/g, '').replace(/```/g, '').trim() : "{}";
+
+        try {
+            const parsed = JSON.parse(text);
+            // Merge parsed strategy into default result
+            return {
+                ...defaultResult,
+                ...parsed,
+                // Ensure metrics are strictly from our calc (overwrite AI if it tried to guess)
+                contentMetrics: defaultResult.contentMetrics,
+                interactionMetrics: defaultResult.interactionMetrics,
+                channelHealth: defaultResult.channelHealth,
+                naturalContent: defaultResult.naturalContent
+            };
+        } catch (parseError) {
+            console.warn("Brand Strategy JSON Parse Failed, returning partial results:", parseError);
+            console.log("Raw text:", text);
+            // Return default result with calculated metrics if AI fails
+            return defaultResult;
         }
-
-        return parsed;
     } catch (error) {
         console.error("Brand Strategy Analysis Error:", error);
         return null;

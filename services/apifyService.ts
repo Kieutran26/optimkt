@@ -178,6 +178,109 @@ export class ApifyService {
     }
 
     /**
+     * Scrape TikTok Profile using clockworks/tiktok-scraper
+     */
+    static async scrapeTikTokProfile(
+        usernameOrUrl: string,
+        options: {
+            maxPosts?: number;
+        } = {}
+    ): Promise<any | null> {
+        try {
+            const { maxPosts = 30 } = options;
+            const token = this.getApiToken();
+
+            // Clean username (remove @/url)
+            // If URL is provided, extract username
+            let username = usernameOrUrl;
+            if (usernameOrUrl.includes('tiktok.com')) {
+                const match = usernameOrUrl.match(/@([a-zA-Z0-9_.-]+)/);
+                if (match) username = match[1];
+            }
+            username = username.replace('@', '');
+
+            console.log(`🔍 Starting TikTok Scraper for: ${username} (Limit: ${maxPosts} posts)`);
+
+            // 1. Start the Actor Run (clockworks/tiktok-scraper)
+            // https://apify.com/clockworks/tiktok-scraper
+            const startUrl = `${this.APIFY_API_BASE}/acts/clockworks~tiktok-scraper/runs?token=${token}`;
+
+            const runResponse = await fetch(startUrl, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    profiles: [username],
+                    resultsPerPage: maxPosts,
+                    shouldDownloadVideos: false,
+                    shouldDownloadCovers: true,
+                })
+            });
+
+            if (!runResponse.ok) {
+                const err = await runResponse.json();
+                throw new Error(`Failed to start Apify run: ${err.error?.message || runResponse.statusText}`);
+            }
+
+            const runData = await runResponse.json();
+            const runId = runData.data.id;
+            const defaultDatasetId = runData.data.defaultDatasetId;
+
+            console.log(`🚀 TikTok Run Started. ID: ${runId}`);
+
+            // 2. Poll for completion
+            // We'll check every 3 seconds
+            let isRunning = true;
+            let attempts = 0;
+            const MAX_ATTEMPTS = 100;
+
+            while (isRunning && attempts < MAX_ATTEMPTS) {
+                await new Promise(resolve => setTimeout(resolve, 3000));
+                attempts++;
+
+                const statusUrl = `${this.APIFY_API_BASE}/actor-runs/${runId}?token=${token}`;
+                const statusRes = await fetch(statusUrl);
+                if (!statusRes.ok) continue;
+
+                const statusData = await statusRes.json();
+                const status = statusData.data.status;
+
+                console.log(`⏳ TikTok Run Status (${attempts}/${MAX_ATTEMPTS}): ${status}`);
+
+                if (status === 'SUCCEEDED') {
+                    isRunning = false;
+                } else if (status === 'FAILED' || status === 'ABORTED' || status === 'TIMED-OUT') {
+                    throw new Error(`Apify tiktok run failed with status: ${status}`);
+                }
+            }
+
+            if (isRunning) {
+                throw new Error('TikTok run timed out after 5 minutes');
+            }
+
+            console.log('✅ TikTok Run Succeeded. Fetching dataset...');
+
+            // 3. Fetch Results from Dataset
+            const datasetUrl = `${this.APIFY_API_BASE}/datasets/${defaultDatasetId}/items?token=${token}`;
+            const datasetRes = await fetch(datasetUrl);
+            const items = await datasetRes.json();
+
+            // clockworks/tiktok-scraper usually returns items where type="profile" or type="video"
+            // We need to separate them
+
+            if (!Array.isArray(items) || items.length === 0) {
+                console.warn('⚠️ No items returned from TikTok scraper');
+                return null;
+            }
+
+            return items;
+
+        } catch (error: any) {
+            console.error('Apify TikTok API error:', error);
+            throw error;
+        }
+    }
+
+    /**
      * Get account info (credits remaining)
      */
     static async getAccountInfo(): Promise<{ credits: number } | null> {
