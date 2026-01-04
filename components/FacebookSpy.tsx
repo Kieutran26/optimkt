@@ -4,6 +4,7 @@ import { BrandSpyService } from '../services/brandSpyService';
 import { analyzeBrandStrategy, evaluateBrandPerformance } from '../services/geminiService';
 import { Search, Loader2, Save, History, X, Trash2, ExternalLink } from 'lucide-react';
 import { Toast, ToastType } from './Toast';
+import BrandHistoryTable from './BrandHistoryTable';
 
 interface BrandSpyProps {
     platform: BrandSpyPlatform;
@@ -46,6 +47,7 @@ const BrandSpy: React.FC<BrandSpyProps> = ({ platform, platformLabel }) => {
 
         try {
             let profile, posts, ads;
+            let finalBrandName = brandName;
 
             // For Facebook: Use REAL API data
             if (platform === 'facebook') {
@@ -61,7 +63,10 @@ const BrandSpy: React.FC<BrandSpyProps> = ({ platform, platformLabel }) => {
 
                 // If brand name was empty, use the one from profile
                 if (!brandName && profile.name) {
+                    finalBrandName = profile.name;
                     setBrandName(profile.name);
+                } else {
+                    finalBrandName = brandName;
                 }
 
                 setProgress(`✅ Đã lấy ${posts.length} posts và ${ads.length} ads thực tế`);
@@ -74,6 +79,8 @@ const BrandSpy: React.FC<BrandSpyProps> = ({ platform, platformLabel }) => {
                 profile = BrandSpyService.generateMockProfile(platform, brandName, targetUrl);
                 posts = BrandSpyService.generateMockPosts(platform, 30);
                 ads = BrandSpyService.generateMockAds(platform, 15);
+
+                finalBrandName = brandName || 'Demo Brand';
             }
 
             setProgress('Đang phân tích chiến lược với AI...');
@@ -88,7 +95,7 @@ const BrandSpy: React.FC<BrandSpyProps> = ({ platform, platformLabel }) => {
             setProgress('Đang đánh giá hiệu suất với AI...');
 
             // Evaluate performance with AI
-            const evaluation = await evaluateBrandPerformance(platform, brandName, analysis);
+            const evaluation = await evaluateBrandPerformance(platform, finalBrandName, analysis);
 
             if (!evaluation) {
                 throw new Error('Không thể đánh giá hiệu suất');
@@ -99,7 +106,7 @@ const BrandSpy: React.FC<BrandSpyProps> = ({ platform, platformLabel }) => {
                 id: crypto.randomUUID(),
                 platform,
                 targetUrl,
-                brandName,
+                brandName: finalBrandName, // Use local variable
                 profile,
                 posts,
                 ads,
@@ -168,140 +175,142 @@ const BrandSpy: React.FC<BrandSpyProps> = ({ platform, platformLabel }) => {
     };
 
     return (
-        <div className="w-full h-full overflow-auto bg-slate-50/30 p-8">
-            <div className="max-w-7xl mx-auto">
-                {/* Header */}
-                <div className="mb-8">
-                    <div className="flex items-center gap-3 mb-3">
-                        <div className="p-3 bg-slate-100 rounded-2xl border border-slate-200">
-                            <Search className="w-6 h-6 text-slate-700" />
-                        </div>
-                        <div>
-                            <h2 className="text-2xl font-bold text-slate-900 tracking-tight">{platformLabel}</h2>
-                            <p className="text-slate-500 text-sm mt-0.5">Phân tích chiến lược thương hiệu đối thủ chi tiết</p>
-                        </div>
-                        <div className="flex gap-2 ml-auto">
-                            {result && (
-                                <button
-                                    onClick={handleSave}
-                                    className="bg-white hover:bg-slate-50 text-slate-700 px-4 py-2.5 rounded-xl border border-slate-200 hover:border-slate-300 shadow-sm flex items-center gap-2 text-sm font-bold transition-all"
-                                >
-                                    <Save size={16} />
-                                    Lưu
-                                </button>
-                            )}
-                            <button
-                                onClick={() => setShowHistory(true)}
-                                className="bg-white hover:bg-slate-50 text-slate-700 px-4 py-2.5 rounded-xl border border-slate-200 hover:border-slate-300 shadow-sm flex items-center gap-2 text-sm font-bold transition-all"
-                            >
-                                <History size={16} />
-                                Lịch sử
-                            </button>
-                        </div>
-                    </div>
+        <div className="w-full h-full overflow-hidden flex flex-col bg-slate-50">
+            {/* Header Area */}
+            <div className="flex-shrink-0 px-8 py-6 flex items-center justify-between">
+                <div>
+                    <h2 className="text-2xl font-bold text-slate-900 tracking-tight">{platformLabel}</h2>
+                    <p className="text-slate-500 text-sm mt-1">Phân tích chiến lược thương hiệu đối thủ chi tiết</p>
                 </div>
+                <div className="flex gap-3">
+                    {result && (
+                        <button
+                            onClick={handleSave}
+                            className="bg-white hover:bg-slate-50 text-slate-900 px-5 py-2.5 rounded-full border border-slate-200 hover:border-slate-300 shadow-sm flex items-center gap-2 text-sm font-bold transition-all"
+                        >
+                            <Save size={18} />
+                            Lưu báo cáo
+                        </button>
+                    )}
+                    <button
+                        onClick={() => setShowHistory(true)}
+                        className="bg-white hover:bg-slate-50 text-slate-900 px-5 py-2.5 rounded-full border border-slate-200 hover:border-slate-300 shadow-sm flex items-center gap-2 text-sm font-bold transition-all"
+                    >
+                        <History size={18} />
+                        Lịch sử
+                    </button>
+                </div>
+            </div>
 
+            <div className="flex-1 overflow-hidden px-8 pb-8">
                 {/* Input Form */}
                 {!result && (
-                    <div className="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm mb-8">
-                        <h3 className="text-lg font-bold text-slate-900 mb-5">Thông tin phân tích</h3>
-
-                        <div className="space-y-5">
-                            {/* URL / Page ID */}
-                            <div className="space-y-2">
-                                <label className="text-xs font-bold uppercase tracking-wider text-slate-500">
-                                    URL / Page ID *
-                                </label>
-                                <input
-                                    type="text"
-                                    value={targetUrl}
-                                    onChange={(e) => setTargetUrl(e.target.value)}
-                                    className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-medium text-slate-700 placeholder:text-slate-400 focus:border-slate-400 focus:bg-white focus:ring-4 focus:ring-slate-400/10 transition-all outline-none"
-                                    placeholder="VD: https://facebook.com/highlands hoặc Page ID"
-                                />
-                            </div>
-
-                            {/* Post Limit Selector */}
-                            <div className="space-y-2">
-                                <label className="text-xs font-bold uppercase tracking-wider text-slate-500">
-                                    Số lượng bài viết phân tích
-                                </label>
-                                <div className="grid grid-cols-4 gap-3">
-                                    {[1, 5, 10, 30].map((limit) => (
-                                        <button
-                                            key={limit}
-                                            onClick={() => setPostLimit(limit)}
-                                            className={`py-2 rounded-xl text-sm font-bold border transition-all ${postLimit === limit
-                                                ? 'bg-slate-800 text-white border-slate-800'
-                                                : 'bg-white text-slate-600 border-slate-200 hover:border-slate-300 hover:bg-slate-50'
-                                                }`}
-                                        >
-                                            {limit} bài
-                                        </button>
-                                    ))}
+                    <div className="max-w-2xl mx-auto mt-12">
+                        <div className="bg-white rounded-[2rem] border border-slate-200 p-8 shadow-sm">
+                            <div className="flex items-center gap-4 mb-8">
+                                <div className="p-4 bg-slate-900 rounded-2xl text-white">
+                                    <Search className="w-6 h-6" />
+                                </div>
+                                <div>
+                                    <h3 className="text-xl font-bold text-slate-900">Bắt đầu phân tích</h3>
+                                    <p className="text-slate-500 text-sm">Nhập địa chỉ Fanpage để AI tự động thu thập và phân tích dữ liệu.</p>
                                 </div>
                             </div>
 
-                            {/* Analyze Button */}
-                            <button
-                                onClick={handleAnalyze}
-                                disabled={loading}
-                                className="w-full mt-2 px-6 py-3.5 bg-slate-800 hover:bg-slate-900 disabled:bg-slate-300 text-white font-bold rounded-xl shadow-sm transition-all flex items-center justify-center gap-2"
-                            >
-                                {loading ? (
-                                    <>
-                                        <Loader2 className="w-5 h-5 animate-spin" />
-                                        {progress || 'Đang phân tích...'}
-                                    </>
-                                ) : (
-                                    <>
-                                        <Search className="w-5 h-5" />
-                                        Bắt đầu phân tích
-                                    </>
-                                )}
-                            </button>
+                            <div className="space-y-6">
+                                {/* URL / Page ID */}
+                                <div className="space-y-2">
+                                    <label className="text-xs font-bold uppercase tracking-wider text-slate-500 ml-1">
+                                        URL / Page ID
+                                    </label>
+                                    <input
+                                        type="text"
+                                        value={targetUrl}
+                                        onChange={(e) => setTargetUrl(e.target.value)}
+                                        className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-5 py-4 text-slate-900 font-medium placeholder:text-slate-400 focus:border-slate-900 focus:bg-white focus:ring-0 transition-all outline-none"
+                                        placeholder="VD: https://facebook.com/highlands hoặc Page ID"
+                                    />
+                                </div>
+
+                                {/* Post Limit Selector */}
+                                <div className="space-y-2">
+                                    <label className="text-xs font-bold uppercase tracking-wider text-slate-500 ml-1">
+                                        Số lượng bài viết
+                                    </label>
+                                    <div className="grid grid-cols-4 gap-3">
+                                        {[1, 5, 10, 30].map((limit) => (
+                                            <button
+                                                key={limit}
+                                                onClick={() => setPostLimit(limit)}
+                                                className={`py-3 rounded-xl text-sm font-bold border transition-all ${postLimit === limit
+                                                    ? 'bg-slate-900 text-white border-slate-900'
+                                                    : 'bg-white text-slate-600 border-slate-200 hover:border-slate-300 hover:bg-slate-50'
+                                                    }`}
+                                            >
+                                                {limit} bài
+                                            </button>
+                                        ))}
+                                    </div>
+                                </div>
+
+                                {/* Analyze Button */}
+                                <button
+                                    onClick={handleAnalyze}
+                                    disabled={loading}
+                                    className="w-full mt-4 px-6 py-4 bg-slate-900 hover:bg-black disabled:bg-slate-200 disabled:text-slate-400 text-white font-bold rounded-2xl shadow-lg shadow-slate-900/10 transition-all flex items-center justify-center gap-3"
+                                >
+                                    {loading ? (
+                                        <>
+                                            <Loader2 className="w-5 h-5 animate-spin" />
+                                            {progress || 'Đang xử lý...'}
+                                        </>
+                                    ) : (
+                                        <>
+                                            <Search className="w-5 h-5" />
+                                            Phân tích ngay
+                                        </>
+                                    )}
+                                </button>
+                            </div>
                         </div>
                     </div>
                 )}
 
-                {/* Results */}
+                {/* Results Layout */}
                 {result && (
-                    <div className="flex gap-6">
-                        {/* Left Sidebar Navigation */}
-                        <div className="w-64 flex-shrink-0">
-                            <div className="bg-white rounded-2xl border border-slate-200 p-4 shadow-sm sticky top-8">
-                                <h3 className="text-sm font-bold uppercase tracking-wider text-slate-500 mb-3 px-2">Phân tích</h3>
-                                <div className="space-y-1">
-                                    {[
-                                        { id: 'data' as const, label: 'Dữ liệu', icon: '📊' },
-                                        { id: 'analysis' as const, label: 'Phân tích', icon: '🔍' },
-                                        { id: 'evaluation' as const, label: 'Đánh giá', icon: '⭐' },
-                                    ].map((section) => (
-                                        <button
-                                            key={section.id}
-                                            onClick={() => setSelectedSection(section.id)}
-                                            className={`w-full text-left px-4 py-3 rounded-xl text-sm font-bold transition-all ${selectedSection === section.id
-                                                ? 'bg-slate-100 text-slate-900 border border-slate-200'
-                                                : 'text-slate-600 hover:bg-slate-50'
-                                                }`}
-                                        >
-                                            <span className="mr-2">{section.icon}</span>
-                                            {section.label}
-                                        </button>
-                                    ))}
-                                </div>
-
-                                <button
-                                    onClick={() => setResult(null)}
-                                    className="w-full mt-4 px-4 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-sm font-bold transition-all"
-                                >
-                                    Phân tích mới
-                                </button>
+                    <div className="flex gap-8 h-full">
+                        {/* Sidebar */}
+                        <div className="w-64 flex-shrink-0 flex flex-col gap-2">
+                            <div className="bg-white rounded-3xl p-2 shadow-sm border border-slate-100">
+                                {[
+                                    { id: 'data' as const, label: 'Dữ liệu' },
+                                    { id: 'analysis' as const, label: 'Phân tích' },
+                                    { id: 'evaluation' as const, label: 'Đánh giá' },
+                                ].map((section) => (
+                                    <button
+                                        key={section.id}
+                                        onClick={() => setSelectedSection(section.id)}
+                                        className={`w-full text-left px-5 py-4 rounded-2xl text-sm font-bold transition-all mb-1 last:mb-0 ${selectedSection === section.id
+                                            ? 'bg-slate-900 text-white shadow-lg shadow-slate-900/20'
+                                            : 'text-slate-500 hover:bg-slate-50 hover:text-slate-900'
+                                            }`}
+                                    >
+                                        {section.label}
+                                    </button>
+                                ))}
                             </div>
+
+                            <button
+                                onClick={() => setResult(null)}
+                                className="mt-auto w-full px-5 py-4 bg-white border border-slate-200 text-slate-600 hover:text-red-600 hover:bg-red-50 hover:border-red-100 rounded-3xl text-sm font-bold transition-all flex items-center justify-center gap-2"
+                            >
+                                <X size={18} />
+                                Đóng báo cáo
+                            </button>
                         </div>
 
-                        {/* Main Content Area */}
-                        <div className="flex-1">
+                        {/* Main Content */}
+                        <div className="flex-1 bg-white rounded-[2.5rem] p-8 shadow-sm border border-slate-100 overflow-y-auto custom-scrollbar">
                             {selectedSection === 'data' && (
                                 <DataSection result={result} />
                             )}
@@ -318,40 +327,23 @@ const BrandSpy: React.FC<BrandSpyProps> = ({ platform, platformLabel }) => {
 
             {/* History Modal */}
             {showHistory && (
-                <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-                    <div className="bg-white rounded-3xl w-full max-w-2xl shadow-2xl border border-slate-100 flex flex-col max-h-[80vh]">
-                        <div className="p-6 border-b border-slate-100 flex justify-between items-center bg-slate-50 rounded-t-3xl">
-                            <h3 className="text-xl font-bold text-slate-800 flex items-center gap-2">
-                                <History size={20} /> Lịch sử {platformLabel}
-                            </h3>
-                            <button onClick={() => setShowHistory(false)} className="text-slate-400 hover:text-slate-700 bg-white p-1 rounded-full shadow-sm">
-                                <X size={20} />
+                <div className="fixed inset-0 bg-slate-900/20 backdrop-blur-sm z-50 flex items-center justify-center p-8">
+                    <div className="bg-white rounded-[2rem] w-full max-w-6xl h-[80vh] shadow-2xl border border-slate-100 flex flex-col overflow-hidden animate-in fade-in zoom-in-95 duration-200">
+                        <div className="p-8 border-b border-slate-100 flex justify-between items-center bg-white">
+                            <div>
+                                <h3 className="text-2xl font-bold text-slate-900">Lịch sử báo cáo</h3>
+                                <p className="text-slate-500 text-sm mt-1">Quản lý các báo cáo đã phân tích của bạn</p>
+                            </div>
+                            <button onClick={() => setShowHistory(false)} className="p-2 hover:bg-slate-50 text-slate-400 hover:text-slate-900 rounded-full transition-colors">
+                                <X size={24} />
                             </button>
                         </div>
-                        <div className="p-6 overflow-y-auto space-y-3">
-                            {savedAnalyses.length === 0 ? (
-                                <div className="text-center py-10 text-slate-400">Chưa có phân tích nào.</div>
-                            ) : (
-                                savedAnalyses.map((analysis) => (
-                                    <div key={analysis.id} className="p-4 rounded-2xl border border-slate-100 hover:border-slate-200 hover:bg-slate-50 transition-all group">
-                                        <div className="flex items-start gap-3">
-                                            <button onClick={() => handleLoad(analysis)} className="flex-1 text-left">
-                                                <div className="font-bold text-slate-800 mb-1">{analysis.brandName}</div>
-                                                <div className="text-xs text-slate-400 mb-2">
-                                                    {new Date(analysis.createdAt).toLocaleDateString('vi-VN')}
-                                                </div>
-                                                <div className="text-xs text-slate-600 font-bold">{analysis.targetUrl}</div>
-                                            </button>
-                                            <button
-                                                onClick={() => handleDelete(analysis.id)}
-                                                className="text-slate-400 hover:text-red-600 p-2 rounded-lg hover:bg-red-50 transition-colors opacity-0 group-hover:opacity-100"
-                                            >
-                                                <Trash2 size={16} />
-                                            </button>
-                                        </div>
-                                    </div>
-                                ))
-                            )}
+                        <div className="flex-1 overflow-auto p-8 bg-slate-50/30">
+                            <BrandHistoryTable
+                                analyses={savedAnalyses}
+                                onLoad={handleLoad}
+                                onDelete={handleDelete}
+                            />
                         </div>
                     </div>
                 </div>

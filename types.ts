@@ -1490,6 +1490,10 @@ export interface BrandSpyResult {
   ads: BrandAd[];
   analysis: BrandAnalysis;
   evaluation: BrandEvaluation;
+  metadata?: {
+    isRealData?: boolean;
+    [key: string]: any;
+  };
   createdAt: number;
   updatedAt: number;
 }

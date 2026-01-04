@@ -48,6 +48,9 @@ import NewsPage from './components/News/NewsPage';
 import ToolkitPage from './components/Toolkit/ToolkitPage';
 import FacebookSpy from './components/FacebookSpy';
 import TikTokSpy from './components/TikTokSpy';
+import GoogleAdsSpy from './components/GoogleAdsSpy';
+import LinkedInSpy from './components/LinkedInSpy';
+import WebsiteSpy from './components/WebsiteSpy';
 
 
 import { ViewState, StudyMode, Word, MastermindStrategy } from './types';
@@ -218,11 +221,11 @@ function AppContent() {
       case 'BRAND_SPY_TIKTOK':
         return <TikTokSpy platform="tiktok" platformLabel="Soi TikTok" />;
       case 'BRAND_SPY_GOOGLE_ADS':
-        return <GoogleAds platform="google_ads" platformLabel="Soi Google Ads" />;
+        return <GoogleAdsSpy platform="google_ads" platformLabel="Soi Google Ads" />;
       case 'BRAND_SPY_LINKEDIN':
-        return <LinkedIn platform="linkedin" platformLabel="Soi LinkedIn" />;
+        return <LinkedInSpy platform="linkedin" platformLabel="Soi LinkedIn" />;
       case 'BRAND_SPY_WEBSITE':
-        return <Website platform="website" platformLabel="Soi Website" />;
+        return <WebsiteSpy platform="website" platformLabel="Soi Website" />;
       default:
         return <TranslationView />;
     }
