@@ -281,6 +281,100 @@ export class ApifyService {
     }
 
     /**
+     * Scrape Google Search Results using apify/google-search-scraper
+     * Focus on extracting Ads (Paid Results)
+     */
+    static async scrapeGoogleSearch(
+        queries: string[],
+        options: {
+            maxResults?: number;
+            countryCode?: string;
+        } = {}
+    ): Promise<any | null> {
+        try {
+            const { maxResults = 20, countryCode = 'vn' } = options;
+            const token = this.getApiToken();
+
+            console.log(`🔍 Starting Google Search Scraper for: ${queries.join(', ')}`);
+
+            // 1. Start the Actor Run (apify/google-search-scraper)
+            const startUrl = `${this.APIFY_API_BASE}/acts/apify~google-search-scraper/runs?token=${token}`;
+
+            const runResponse = await fetch(startUrl, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    queries: queries.join('\n'), // Actor expects queries separated by newlines
+                    resultsPerPage: maxResults,
+                    countryCode: countryCode,
+                    languageCode: 'vi', // Default to Vietnamese
+                    maxPagesPerQuery: 1, // Only need first page for ads usually
+                    saveHtml: false,
+                    saveHtmlToKeyValueStore: false
+                })
+            });
+
+            if (!runResponse.ok) {
+                const err = await runResponse.json();
+                throw new Error(`Failed to start Apify run: ${err.error?.message || runResponse.statusText}`);
+            }
+
+            const runData = await runResponse.json();
+            const runId = runData.data.id;
+            const defaultDatasetId = runData.data.defaultDatasetId;
+
+            console.log(`🚀 Google Search Run Started. ID: ${runId}`);
+
+            // 2. Poll for completion
+            let isRunning = true;
+            let attempts = 0;
+            const MAX_ATTEMPTS = 100;
+
+            while (isRunning && attempts < MAX_ATTEMPTS) {
+                await new Promise(resolve => setTimeout(resolve, 3000));
+                attempts++;
+
+                const statusUrl = `${this.APIFY_API_BASE}/actor-runs/${runId}?token=${token}`;
+                const statusRes = await fetch(statusUrl);
+                if (!statusRes.ok) continue;
+
+                const statusData = await statusRes.json();
+                const status = statusData.data.status;
+
+                console.log(`⏳ Google Run Status (${attempts}/${MAX_ATTEMPTS}): ${status}`);
+
+                if (status === 'SUCCEEDED') {
+                    isRunning = false;
+                } else if (status === 'FAILED' || status === 'ABORTED' || status === 'TIMED-OUT') {
+                    throw new Error(`Apify google run failed with status: ${status}`);
+                }
+            }
+
+            if (isRunning) {
+                throw new Error('Google run timed out after 5 minutes');
+            }
+
+            console.log('✅ Google Run Succeeded. Fetching dataset...');
+
+            // 3. Fetch Results from Dataset
+            const datasetUrl = `${this.APIFY_API_BASE}/datasets/${defaultDatasetId}/items?token=${token}`;
+            const datasetRes = await fetch(datasetUrl);
+            const items = await datasetRes.json();
+
+            if (!Array.isArray(items) || items.length === 0) {
+                console.warn('⚠️ No items returned from Google scraper');
+                return null;
+            }
+
+            return items;
+
+        } catch (error: any) {
+            console.error('Apify Google Search API error:', error);
+            throw error;
+        }
+    }
+
+    /**
      * Get account info (credits remaining)
      */
     static async getAccountInfo(): Promise<{ credits: number } | null> {

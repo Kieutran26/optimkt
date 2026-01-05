@@ -441,8 +441,152 @@ export class BrandSpyService {
     }
 
 
-    // Analyze post media (single post)
-    static async analyzePostMedia(post: BrandPost): Promise<string> {
+    // ===== Fetch REAL Google Ads Data via Apify =====
+    static async fetchRealGoogleAdsData(keyword: string, options: { brandName?: string; maxPosts?: number } = {}) {
+        const { ApifyService } = await import('./apifyService');
+        const { brandName, maxPosts = 20 } = options;
+
+        try {
+            console.log(`🔍 Fetching real Google Ads data for: ${keyword}`);
+
+            let queries: string[] = [];
+
+            // Check if input is a URL
+            const isUrl = /^(https?:\/\/)?(www\.)?[\w-]+\.[a-z]{2,}(\/.*)?$/i.test(keyword);
+
+            if (isUrl) {
+                // URL Logic: Extract domain and brand
+                let cleanUrl = keyword;
+                if (!cleanUrl.startsWith('http')) {
+                    cleanUrl = 'https://' + cleanUrl;
+                }
+
+                try {
+                    const urlObj = new URL(cleanUrl);
+                    const hostname = urlObj.hostname.replace('www.', ''); // e.g. itoursys.com
+                    const brandFromDomain = hostname.split('.')[0]; // e.g. itoursys
+
+                    queries = [
+                        keyword,                        // Original URL
+                        hostname,                       // Domain only
+                        brandName || brandFromDomain,   // Brand name
+                        `review ${brandName || brandFromDomain}`,
+                        `${brandName || brandFromDomain} khuyến mãi`
+                    ];
+                } catch (e) {
+                    queries = [keyword];
+                }
+            } else {
+                // KEYWORD Logic
+                queries = [
+                    keyword,
+                    `mua ${keyword}`,
+                    `giá ${keyword}`,
+                    `dịch vụ ${keyword}`,
+                    `top ${keyword}`,
+                    `báo giá ${keyword}`
+                ];
+            }
+
+            // Remove duplicates and empty strings
+            queries = [...new Set(queries)].filter(q => !!q && q.trim().length > 0);
+
+            console.log('✅ Generated Google Ads Queries:', queries);
+
+            // Scrape
+            const searchResults = await ApifyService.scrapeGoogleSearch(queries, { maxResults: maxPosts });
+
+            if (!searchResults || searchResults.length === 0) {
+                throw new Error('No data returned from Google Search scraper');
+            }
+
+            // Extract ALL Paid Results (Ads) from all queries
+            let allAds: any[] = [];
+            let allOrganic: any[] = [];
+
+            searchResults.forEach((result: any) => {
+                if (result.paidResults) {
+                    allAds = [...allAds, ...result.paidResults];
+                }
+                if (result.organicResults) {
+                    allOrganic = [...allOrganic, ...result.organicResults];
+                }
+            });
+
+            // Remove duplicates based on headline
+            const uniqueAds = allAds.filter((ad, index, self) =>
+                index === self.findIndex((t) => (
+                    t.title === ad.title && t.description === ad.description
+                ))
+            );
+
+            console.log(`✅ Found ${uniqueAds.length} unique ads`);
+
+            // Find best matching organic result for Profile Info (if Brand Name matches)
+            const bestOrganic = allOrganic[0] || {}; // Fallback to first if no match
+
+            // Map Profile (Simulated from Organic Result)
+            const brandProfile: BrandProfile = {
+                id: `google_${Date.now()}`,
+                url: bestOrganic.url || `https://google.com/search?q=${keyword}`,
+                name: brandName || keyword, // Use keyword as name if brand name not provided
+                email: '',
+                website: bestOrganic.url || '',
+                phone: '',
+                category: 'Google Ads Advertiser',
+                pageIntro: bestOrganic.description || `Advertises on keyword: "${keyword}"`,
+                followerCount: 0,
+                isBusinessPageActive: true,
+                pageId: `google_ads_${Date.now()}`,
+                adStatus: 'Active Ads Found',
+                // Google specific
+                adsCount: uniqueAds.length
+            };
+
+            // Map Ads to BrandAd
+            const brandAds: BrandAd[] = uniqueAds.map((ad: any, index: number) => ({
+                id: `gad_${index}`,
+                content: `${ad.title}\n\n${ad.description}`,
+                cta: 'Visit Website',
+                platform: 'google_ads',
+                media: [], // Google Search Ads are usually text-only
+                isActive: true,
+                adArchiveId: `gad_archive_${index}`,
+                // Extra metadata for analysis
+                displayedUrl: ad.displayedUrl,
+                originalUrl: ad.url
+            }));
+
+            // Google doesn't have "Posts" in the same way, so we leave it empty or mock relevant content
+            // We can return organic results as "Posts" for context if needed, but for now empty
+            const brandPosts: BrandPost[] = [];
+
+            return {
+                profile: brandProfile,
+                posts: brandPosts,
+                ads: brandAds,
+                metadata: {
+                    dataSource: 'Apify (Google Search)',
+                    isRealData: true,
+                    adsCount: brandAds.length,
+                    queries: queries
+                }
+            };
+
+        } catch (error: any) {
+            console.error('❌ Apify Google Ads error:', error);
+            // Fallback
+            return {
+                profile: this.generateMockProfile('google_ads', brandName || keyword, 'https://google.com'),
+                posts: [],
+                ads: this.generateMockAds('google_ads', 10),
+                metadata: {
+                    dataSource: 'Mock Data (Error)',
+                    error: error.message
+                }
+            };
+        }
+    } static async analyzePostMedia(post: BrandPost): Promise<string> {
         // Return existing if available
         if (post.aiDescription) return post.aiDescription;
 

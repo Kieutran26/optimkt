@@ -1365,6 +1365,9 @@ export interface BrandProfile {
   followingCount?: number;
   videoCount?: number;
   heartCount?: number;
+
+  // Google Ads specific
+  adsCount?: number;
 }
 
 // Post Data
