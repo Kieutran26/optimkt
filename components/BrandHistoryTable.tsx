@@ -62,7 +62,10 @@ const BrandHistoryTable: React.FC<BrandHistoryTableProps> = ({ analyses, onLoad,
 
                             {/* Quantity */}
                             <td className="px-6 py-4 text-slate-600">
-                                {item.posts?.length || 0} bài
+                                {item.platform === 'google_ads'
+                                    ? `${item.ads?.length || 0} ads`
+                                    : `${item.posts?.length || 0} bài`
+                                }
                             </td>
 
                             {/* Status - Mock status since we assume saved = done */}

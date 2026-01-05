@@ -1,4 +1,4 @@
-import { ContentPillar, AdsHealthInput, AdsHealthResult, BrandPositioningInput, BrandPositioningResult, PricingAnalyzerInput, PricingAnalyzerResult, AudienceEmotionMapInput, AudienceEmotionMapResult } from "../types";
+import { ContentPillar, AdsHealthInput, AdsHealthResult, BrandPositioningInput, BrandPositioningResult, PricingAnalyzerInput, PricingAnalyzerResult, AudienceEmotionMapInput, AudienceEmotionMapResult, StrategicSolution } from "../types";
 
 // Direct REST API implementation (no SDK)
 const GEMINI_API_KEY = import.meta.env.VITE_GEMINI_API_KEY;
@@ -3735,17 +3735,24 @@ Bạn là Senior Brand Strategist phân tích DỮ LIỆU THỰC TẾ để tạ
 **Sample Posts** (Use for qualitative analysis):
 ${posts.slice(0, 8).map(p => `- [${p.type}] "${p.description?.substring(0, 100)}..." (Views: ${p.viewCount}, Likes: ${p.reactions}, Shares: ${p.shareCount}, Saves: ${p.saveCount})`).join('\n')}
 
+**Sample Ads** (Use for ad strategy analysis):
+${ads.slice(0, 10).map(a => `- [${a.platform}] "${a.content?.substring(0, 200)}..." (CTA: ${a.cta})`).join('\n')}
+
+### LANGUAGE REQUIREMENT:
+**CRITICAL**: ALL Qualitative Output MUST BE IN **VIETNAMESE** (Tiếng Việt). Do not output English.
+
 ### ANALYSIS TASKS (Qualitative Only):
-1. **Brand Positioning**: Infer from tone, bio, and content.
-2. **Brand Voice**: Adjectives describing their language (e.g., Chill, Educational, GenZ, Professional).
-3. **Shooting Style**: Describe visual style (e.g., Vlog, Cinematic, Studio, UGC).
-4. **Message Language**: Formal vs Informal, Call to actions used.
-5. **Content Structure**: Hook -> Value -> CTA patterns.
-6. **Top Content**: Analyze the highest performing posts (high views/likes) to explain WHY they worked.
-7. **Content Pillars**: Identify 3-4 main topics. For each, provide: Title, Objective (Mục tiêu), Execution (Cách thực hiện).
-8. **Hashtags**: List common hashtags used.
-9. **Marketing Funnel**: Analyze content distribution across ToFu (Awareness), MoFu (Consideration), BoFu (Conversion).
-10. **Engagement Strategy**: Analyze how the brand interacts (reply style, CTA types, community building).
+0. **LƯU Ý QUAN TRỌNG**: Nếu Platform là "google_ads" hoặc không có bài post, BẮT BUỘC dùng **Sample Ads** để phân tích chiến lược, định vị và giọng điệu.
+1. **Brand Positioning (Định vị)**: Suy luận từ tone, bio, nội dung (hoặc quảng cáo).
+2. **Brand Voice (Giọng điệu)**: Tính từ mô tả ngôn ngữ (VD: Thân thiện, Chuyên gia, GenZ, Hài hước).
+3. **Shooting Style (Phong cách hình ảnh)**: Mô tả phong cách (VD: Vlog, Cinematic, Studio, UGC).
+4. **Message Language (Ngôn ngữ truyền tải)**: Trang trọng hay Dân dã, các loại CTA được sử dụng.
+5. **Content Structure (Cấu trúc nội dung)**: Hook -> Value -> CTA pattern.
+6. **Top Content (Nội dung hiệu quả nhất)**: Phân tích các bài/quảng cáo tốt nhất và GIẢI THÍCH TẠI SAO nó hiệu quả.
+7. **Content Pillars (Trụ cột nội dung)**: Xác định 3-4 chủ đề chính. Với mỗi chủ đề, cung cấp: Tiêu đề, Mục tiêu, Cách thực hiện.
+8. **Hashtags**: Các hashtag thường dùng.
+9. **Marketing Funnel (Phễu Marketing)**: Phân bổ nội dung theo ToFu (Nhận biết), MoFu (Cân nhắc), BoFu (Chuyển đổi).
+10. **Engagement Strategy (Chiến lược tương tác)**: Cách thương hiệu tương tác (phản hồi, xây dựng cộng đồng).
 
 ### OUTPUT FORMAT (STRICT JSON):
 Return ONLY valid JSON.
@@ -3922,35 +3929,36 @@ Bạn là Marketing Consultant đưa ra đánh giá DỰA TRÊN BẰNG CHỨNG (
 **Analysis Data** (your only source of truth):
 ${JSON.stringify(analysis, null, 2)}
 
+### LANGUAGE REQUIREMENT:
+**CRITICAL**: ALL Output MUST BE IN **VIETNAMESE** (Tiếng Việt).
+
 ### EVALUATION RULES:
 
-**1. STRATEGY SUMMARY:**
-- Summarize ONLY what you observe in the analysis data
-- Focus on key numbers and patterns actually present
-- Do NOT add assumptions
+**1. STRATEGY SUMMARY (Tóm tắt chiến lược):**
+- Tóm tắt CHỈ những gì bạn quan sát được từ dữ liệu
+- Tập trung vào các con số và mô hình thực tế
 
-**2. STRENGTHS (3-5 points):**
-Each strength MUST:
-- Reference a specific metric from analysis data
-- Use format: "[Observation] - [Evidence from data]"
-- Example: "Tương tác cao trên Reels - Trung bình ${analysis.naturalContent?.avgReactionsPerPost || 0} reactions/bài"
+**2. STRENGTHS (Điểm mạnh - 3-5 ý):**
+Mỗi điểm mạnh PHẢI:
+- Trích dẫn số liệu cụ thể từ dữ liệu phân tích
+- Format: "[Nhận định] - [Bằng chứng từ dữ liệu]"
+- VD: "Tương tác cao trên Reels - Trung bình ${analysis.naturalContent?.avgReactionsPerPost || 0} reactions/bài"
 
-**3. WEAKNESSES (3-5 points):**
-Each weakness MUST:
-- Point to a gap or low metric in the data
-- Use format: "[Issue] - [Evidence from data]"
-- Example: "Thiếu đa dạng định dạng - Chỉ ${analysis.naturalContent?.postFormats?.reels || 0} reels trong ${analysis.naturalContent?.postFormats?.total || 0} bài"
+**3. WEAKNESSES (Điểm yếu - 3-5 ý):**
+Mỗi điểm yếu PHẢI:
+- Chỉ ra lỗ hổng hoặc chỉ số thấp
+- Format: "[Vấn đề] - [Bằng chứng từ dữ liệu]"
+- VD: "Thiếu đa dạng định dạng - Chỉ ${analysis.naturalContent?.postFormats?.reels || 0} reels trong ${analysis.naturalContent?.postFormats?.total || 0} bài"
 
-**4. OPPORTUNITIES (3-5 points):**
-- Based ONLY on gaps visible in the data
-- NO generic "tăng engagement" - be specific about WHAT to increase
-- Reference actual numbers
+**4. OPPORTUNITIES (Cơ hội - 3-5 ý):**
+- Dựa trên các khoảng trống trong dữ liệu
+- KHÔNG đưa ra lời khuyên chung chung "tăng tương tác" - phải cụ thể TĂNG CÁI GÌ
+- Dẫn chứng số liệu
 
-**5. ACTION RECOMMENDATIONS (5-7 points):**
-Each action MUST:
-- Address a specific weakness or opportunity from above
-- Be CONCRETE and ACTIONABLE (not vague)
-- Include "why" based on data
+**5. ACTION RECOMMENDATIONS (Khuyến nghị hành động - 5-7 ý):**
+Mỗi hành động PHẢI:
+- Giải quyết điểm yếu hoặc tận dụng cơ hội nêu trên
+- CỤ THỂ và KHẢ THI (Actionable)
 - Format: "Hành động cụ thể + lý do dựa trên data"
 
 ### OUTPUT FORMAT (STRICT JSON):
