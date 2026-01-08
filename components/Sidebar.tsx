@@ -68,7 +68,7 @@ const Sidebar: React.FC<SidebarProps> = ({ currentView, setView }) => {
 
   // New Categories State
   const [strategyExpanded, setStrategyExpanded] = useState(true);
-  const [brandSpyExpanded, setBrandSpyExpanded] = useState(false);
+
   const [ideationExpanded, setIdeationExpanded] = useState(false);
   const [designExpanded, setDesignExpanded] = useState(false);
   const [adsExpanded, setAdsExpanded] = useState(false);
@@ -103,14 +103,7 @@ const Sidebar: React.FC<SidebarProps> = ({ currentView, setView }) => {
     { id: 'AUDIENCE_EMOTION_MAP', label: 'Audience Emotion Map', icon: Heart, color: 'text-pink-600' },
   ];
 
-  // 2. Soi Brand
-  const brandSpyItems = [
-    { id: 'BRAND_SPY_FACEBOOK', label: 'Soi Facebook Page', icon: Search, color: 'text-slate-700' },
-    { id: 'BRAND_SPY_TIKTOK', label: 'Soi TikTok', icon: Search, color: 'text-slate-700' },
-    { id: 'BRAND_SPY_GOOGLE_ADS', label: 'Soi Google Ads', icon: Search, color: 'text-slate-700' },
-    { id: 'BRAND_SPY_LINKEDIN', label: 'Soi LinkedIn', icon: Search, color: 'text-slate-700' },
-    { id: 'BRAND_SPY_WEBSITE', label: 'Soi Website', icon: Search, color: 'text-slate-700' },
-  ];
+
 
 
   // 2. Ideation & Content Creation
@@ -171,15 +164,7 @@ const Sidebar: React.FC<SidebarProps> = ({ currentView, setView }) => {
           currentView={currentView}
         />
 
-        <NavGroup
-          title="Soi Brand"
-          icon={Search}
-          expanded={brandSpyExpanded}
-          setExpanded={setBrandSpyExpanded}
-          items={brandSpyItems}
-          setView={setView}
-          currentView={currentView}
-        />
+
 
         <NavGroup
           title="Ideation & Content"
