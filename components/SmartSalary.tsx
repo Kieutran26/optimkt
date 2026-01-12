@@ -7,21 +7,16 @@ import dayGridPlugin from '@fullcalendar/daygrid';
 import interactionPlugin from '@fullcalendar/interaction';
 import toast, { Toaster } from 'react-hot-toast';
 
+import { salaryService, SalaryConfig } from '../services/salaryService';
+
 // Types
-interface SalaryConfig {
-    gross: number;
-    standardDays: number;
-    workOnSaturday: boolean;
-    otMultiplier: number;
-    rewardItemPrice: number;
-    rewardItemName: string;
-    startWorkDate: string; // New: Start work date (YYYY-MM-DD)
-}
+
 
 interface DayStatus {
     type: 'FULL' | 'HALF' | 'OFF' | 'LEAVE' | 'OT';
     otHours: number;
 }
+
 
 const DEFAULT_CONFIG: SalaryConfig = {
     gross: 20000000,
@@ -35,15 +30,10 @@ const DEFAULT_CONFIG: SalaryConfig = {
 
 const SmartSalary: React.FC = () => {
     // --- State ---
-    const [config, setConfig] = useState<SalaryConfig>(() => {
-        const saved = localStorage.getItem('salary_config');
-        return saved ? JSON.parse(saved) : DEFAULT_CONFIG;
-    });
+    const [config, setConfig] = useState<SalaryConfig>(DEFAULT_CONFIG);
+    const [attendance, setAttendance] = useState<Record<string, DayStatus>>({});
+    const [isLoading, setIsLoading] = useState(true);
 
-    const [attendance, setAttendance] = useState<Record<string, DayStatus>>(() => {
-        const saved = localStorage.getItem('salary_attendance');
-        return saved ? JSON.parse(saved) : {};
-    });
 
     const [showConfig, setShowConfig] = useState(false);
     const [tempConfig, setTempConfig] = useState<SalaryConfig>(config);
@@ -55,14 +45,62 @@ const SmartSalary: React.FC = () => {
     const [otHoursInput, setOtHoursInput] = useState<string>("2");
     const [showOverview, setShowOverview] = useState(false);
 
-    // --- Persistence ---
+    // --- Persistence & Migration ---
     useEffect(() => {
-        localStorage.setItem('salary_config', JSON.stringify(config));
-    }, [config]);
+        const loadData = async () => {
+            setIsLoading(true);
+            try {
+                // 1. Load from DB
+                const dbConfig = await salaryService.getConfig();
+                const dbAttendance = await salaryService.getAllAttendance();
 
-    useEffect(() => {
-        localStorage.setItem('salary_attendance', JSON.stringify(attendance));
-    }, [attendance]);
+                // 2. Check if migration needed (if DB is empty/default but LocalStorage has data)
+                const localConfigStr = localStorage.getItem('salary_config');
+                const localAttendanceStr = localStorage.getItem('salary_attendance');
+
+                let finalConfig = dbConfig || DEFAULT_CONFIG;
+                let finalAttendance = dbAttendance;
+
+                // Simple check: If DB attendance is empty but LocalStorage has keys, migrate attendance
+                // If DB config is default (or null) but LocalStorage has custom, migrate config
+                const shouldMigrateConfig = !dbConfig && localConfigStr;
+                const shouldMigrateAttendance = Object.keys(dbAttendance).length === 0 && localAttendanceStr;
+
+                if (shouldMigrateConfig && localConfigStr) {
+                    const localConfig = JSON.parse(localConfigStr);
+                    await salaryService.saveConfig(localConfig);
+                    finalConfig = localConfig;
+                    toast.success('Đã đồng bộ cấu hình cũ lên đám mây! ☁️');
+                }
+
+                if (shouldMigrateAttendance && localAttendanceStr) {
+                    const localAttendance = JSON.parse(localAttendanceStr);
+                    // Bulk save would be better but for now loop (or assume user doesn't have thousands)
+                    // Actually, let's just use the state.
+                    // For massive history, this loop might be slow if we await each. 
+                    // Let's just do it in background or sequentially.
+                    let count = 0;
+                    for (const [date, status] of Object.entries(localAttendance)) {
+                        await salaryService.saveAttendance(date, (status as any).type, (status as any).otHours);
+                        count++;
+                    }
+                    finalAttendance = (await salaryService.getAllAttendance()) as any; // Reload to be sure
+                    if (count > 0) toast.success(`Đã đồng bộ ${count} ngày công lên đám mây! ☁️`);
+                }
+
+                setConfig(finalConfig);
+                setAttendance(finalAttendance as any);
+            } catch (error) {
+                console.error("Failed to load salary data", error);
+                toast.error("Không thể tải dữ liệu lương.");
+            } finally {
+                setIsLoading(false);
+            }
+        };
+
+        loadData();
+    }, []);
+
 
     // --- Calculations ---
     const dailyWage = config.gross / config.standardDays;
@@ -281,15 +319,19 @@ const SmartSalary: React.FC = () => {
         setOtHoursInput(current?.type === 'OT' ? String(current.otHours) : "2");
     };
 
-    const saveAttendance = (type: DayStatus['type'] | 'CLEAR') => {
+    const saveAttendance = async (type: DayStatus['type'] | 'CLEAR') => {
         if (!selectedDate) return;
 
         if (type === 'CLEAR') {
+            // Optimistic Update
             setAttendance(prev => {
                 const newState = { ...prev };
                 delete newState[selectedDate];
                 return newState;
             });
+
+            // DB Update
+            await salaryService.deleteAttendance(selectedDate);
 
             // Check if it's a weekday to give correct feedback
             const dateObj = new Date(selectedDate);
@@ -317,11 +359,17 @@ const SmartSalary: React.FC = () => {
         }
 
         const newStatus: DayStatus = { type, otHours: ot };
+
+        // Optimistic Update
         setAttendance(prev => ({ ...prev, [selectedDate]: newStatus }));
+
+        // DB Update
+        salaryService.saveAttendance(selectedDate, type, ot);
 
         triggerGamifiedToast(newStatus, selectedDate);
         setIsModalOpen(false);
     };
+
 
     const getEvents = () => {
         return Object.entries(attendance).map(([date, status]: [string, DayStatus]) => {
@@ -598,11 +646,17 @@ const SmartSalary: React.FC = () => {
                             </div>
                             <div className="p-8 pt-0">
                                 <button
-                                    onClick={() => { setConfig(tempConfig); setShowConfig(false); }}
+                                    onClick={async () => {
+                                        setConfig(tempConfig);
+                                        await salaryService.saveConfig(tempConfig);
+                                        toast.success('Đã lưu cấu hình!');
+                                        setShowConfig(false);
+                                    }}
                                     className="w-full py-4 bg-emerald-500 hover:bg-emerald-600 text-white font-bold rounded-2xl transition-all active:scale-[0.98]"
                                 >
                                     Lưu & Áp dụng
                                 </button>
+
                             </div>
                         </div>
                     </div>
