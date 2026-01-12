@@ -44,6 +44,7 @@ import PorterAnalyzer from './components/PorterAnalyzer';
 import STPModelGenerator from './components/STPModelGenerator';
 import HomePage from './components/HomePage';
 import FeaturesGuide from './components/FeaturesGuide';
+import LandingPage from './components/LandingPage/LandingPage';
 import NewsPage from './components/News/NewsPage';
 import ToolkitPage from './components/Toolkit/ToolkitPage';
 
@@ -101,6 +102,8 @@ function AppContent() {
     switch (currentView) {
       case 'HOME_DASHBOARD':
         return <HomePage setView={setCurrentView} />;
+      case 'LANDING_INTRO':
+        return <LandingPage setView={setCurrentView} />;
       case 'FEATURES_GUIDE':
         return <FeaturesGuide onBack={() => setCurrentView('HOME_DASHBOARD')} />;
       case 'HOME':
@@ -220,14 +223,14 @@ function AppContent() {
 
   return (
     <div className="flex min-h-screen bg-soft-bg text-soft-text font-sans selection:bg-indigo-100 selection:text-indigo-800">
-      {/* Sidebar is hidden when in full-screen study session */}
-      {currentView !== 'LEARN_SESSION' && (
+      {/* Sidebar is hidden when in full-screen study session or Landing Page */}
+      {currentView !== 'LEARN_SESSION' && currentView !== 'LANDING_INTRO' && (
         <Sidebar currentView={currentView} setView={setCurrentView} />
       )}
 
-      <main className={`flex-1 transition-all duration-300 relative ${currentView !== 'LEARN_SESSION' ? 'ml-64' : ''}`}>
+      <main className={`flex-1 transition-all duration-300 relative ${currentView !== 'LEARN_SESSION' && currentView !== 'LANDING_INTRO' ? 'ml-64' : ''}`}>
         {/* Global Header / Brand Switcher Area */}
-        {currentView !== 'LEARN_SESSION' && (
+        {currentView !== 'LEARN_SESSION' && currentView !== 'LANDING_INTRO' && (
           // Only show BrandSelector on specific pages if needed, or globally here.
           // Currently removed from global to avoid obstruction as per previous request.
           null

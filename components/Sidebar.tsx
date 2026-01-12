@@ -5,7 +5,7 @@ import {
   Terminal, CheckSquare, Megaphone, PenTool, Image as ImageIcon, PlusSquare, Briefcase, Mail, Film, Link2,
   MonitorPlay, Calculator, TrendingUp, ShieldCheck, Radar, Users, BrainCircuit, Lightbulb, Target,
   CalendarDays, Brain, Banknote, FileText, FileCheck, Zap, Map, PieChart, Activity, Compass, DollarSign, Heart,
-  HelpCircle, Globe, Layers, Search
+  HelpCircle, Globe, Layers, Search, Rocket
 } from 'lucide-react';
 
 
@@ -301,6 +301,13 @@ const Sidebar: React.FC<SidebarProps> = ({ currentView, setView }) => {
       </nav>
 
       <div className="p-4 border-t border-slate-50 bg-slate-50/50">
+        <button
+          onClick={() => setView('LANDING_INTRO')}
+          className="w-full flex items-center justify-center gap-2 text-xs text-slate-500 hover:text-indigo-600 transition-colors mb-3"
+        >
+          <Rocket size={14} />
+          <span>Xem Landing Page</span>
+        </button>
         <button
           onClick={() => setView('FEATURES_GUIDE')}
           className="w-full flex items-center justify-center gap-2 text-xs text-slate-500 hover:text-indigo-600 transition-colors mb-2"
