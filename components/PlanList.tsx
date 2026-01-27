@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { Trash2, Plus, CreditCard, X, Music, Video, Cloud, ShoppingBag, Gamepad2, Zap, Smartphone, Globe, Edit2, Eye, Calendar, Mail } from 'lucide-react';
 import { Plan } from '../types';
-import { LearningService, SavedPlan } from '../services/learningService';
+import { Plan } from '../types';
+import { PlanService } from '../services/planService';
 
 // Icon mapping for selection
 const ICON_MAP: Record<string, React.ElementType> = {
@@ -37,26 +38,14 @@ const PlanList: React.FC = () => {
 
   const loadPlans = async () => {
     setLoading(true);
-    const savedPlans = await LearningService.getLearningPlans();
-    // Convert SavedPlan to Plan format
-    setPlans(savedPlans.map(p => ({
-      id: p.id,
-      website: p.title,
-      price: 0, // Not stored in learning_plans
-      currency: 'VNĐ',
-      email: '',
-      paymentDate: p.startDate,
-      nextPaymentDate: p.endDate || p.startDate,
-      cardInfo: '',
-      billingCycle: 'monthly',
-      icon: 'global'
-    })));
+    const savedPlans = await PlanService.getPlans();
+    setPlans(savedPlans);
     setLoading(false);
   };
 
   const handleDelete = async (id: string) => {
     if (confirm('Bạn chắc chắn muốn xóa gói đăng ký này?')) {
-      const success = await LearningService.deleteLearningPlan(id);
+      const success = await PlanService.deletePlan(id);
       if (success) {
         setPlans(plans.filter(p => p.id !== id));
         if (viewingPlan?.id === id) setViewingPlan(null);
@@ -64,47 +53,24 @@ const PlanList: React.FC = () => {
     }
   };
 
-  const handleEdit = (plan: Plan) => {
-    setWebsite(plan.website);
-    setPrice(plan.price.toString());
-    setEmail(plan.email);
-    setPaymentDate(plan.paymentDate);
-    setNextDate(plan.nextPaymentDate);
-    setCardInfo(plan.cardInfo);
-    setSelectedIcon(plan.icon);
-    setEditingPlanId(plan.id);
-    setShowModal(true);
-    setViewingPlan(null); // Close view modal if open
-  };
-
   const handleSave = async () => {
     if (!website || !price || !nextDate) return;
 
-    const savedPlan: SavedPlan = {
+    const newPlan: Plan = {
       id: editingPlanId || Date.now().toString(),
-      title: website,
-      description: `${email} - ${cardInfo}`,
-      startDate: paymentDate || new Date().toISOString().split('T')[0],
-      endDate: nextDate,
-      completed: false,
-      createdAt: Date.now()
+      website,
+      price: Number(price),
+      currency: 'VNĐ',
+      email,
+      paymentDate: paymentDate || new Date().toISOString().split('T')[0],
+      nextPaymentDate: nextDate,
+      cardInfo,
+      billingCycle: 'monthly',
+      icon: selectedIcon
     };
 
-    const success = await LearningService.saveLearningPlan(savedPlan);
+    const success = await PlanService.savePlan(newPlan);
     if (success) {
-      const newPlan: Plan = {
-        id: savedPlan.id,
-        website,
-        price: Number(price),
-        currency: 'VNĐ',
-        email,
-        paymentDate: savedPlan.startDate,
-        nextPaymentDate: savedPlan.endDate || savedPlan.startDate,
-        cardInfo,
-        billingCycle: 'monthly',
-        icon: selectedIcon
-      };
-
       if (editingPlanId) {
         setPlans(plans.map(p => p.id === editingPlanId ? newPlan : p));
       } else {

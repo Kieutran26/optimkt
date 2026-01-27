@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { Plan } from '../types';
-import { LearningService } from '../services/learningService';
+import { PlanService } from '../services/planService';
 import { Calendar, AlertCircle, TrendingUp, ChevronLeft, ChevronRight, CreditCard, Music, Video, Cloud, ShoppingBag, Gamepad2, Zap, Smartphone, Globe } from 'lucide-react';
 
 const ICON_MAP: Record<string, React.ElementType> = {
@@ -27,20 +27,8 @@ const PlanCalendar: React.FC = () => {
 
     const loadPlans = async () => {
         setLoading(true);
-        const savedPlans = await LearningService.getLearningPlans();
-        // Convert SavedPlan to Plan format
-        setPlans(savedPlans.map(p => ({
-            id: p.id,
-            website: p.title,
-            price: 0,
-            currency: 'VNĐ',
-            email: '',
-            paymentDate: p.startDate,
-            nextPaymentDate: p.endDate || p.startDate,
-            cardInfo: '',
-            billingCycle: 'monthly',
-            icon: 'global'
-        })));
+        const savedPlans = await PlanService.getPlans();
+        setPlans(savedPlans);
         setLoading(false);
     };
 

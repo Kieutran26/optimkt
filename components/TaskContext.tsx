@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
-import { TaskService, Task } from '../services/taskService';
+import { TodoService } from '../services/todoService';
+import { ToDoTask as Task } from '../types';
 
 interface TaskContextType {
     tasks: Task[];
@@ -20,9 +21,8 @@ export const TaskProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     useEffect(() => {
         const loadTasks = async () => {
             setIsLoading(true);
-            const migrated = await TaskService.migrateFromLocalStorage();
-            const data = await TaskService.getTasks();
-            setTasks(data);
+            const data = await TodoService.getTodos();
+            setTasks(data as any);
             setIsLoading(false);
         };
         loadTasks();
@@ -31,10 +31,11 @@ export const TaskProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     // OPTIMISTIC UPDATE functions
     const addTask = (text: string) => {
         if (!text.trim()) return;
-        const newTask: Task = {
+        const newTask: any = {
             id: Date.now().toString(),
             text: text.trim(),
             completed: false,
+            priority: 'medium',
             createdAt: Date.now()
         };
 
@@ -42,7 +43,7 @@ export const TaskProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         setTasks(prev => [newTask, ...prev]);
 
         // Then sync to DB in background
-        TaskService.addTask(newTask).catch(err => {
+        TodoService.addTodo(newTask).catch(err => {
             console.error('Failed to save task:', err);
             // Rollback if failed
             setTasks(prev => prev.filter(t => t.id !== newTask.id));
@@ -57,7 +58,7 @@ export const TaskProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         setTasks(prev => prev.map(t => t.id === id ? { ...t, completed: !t.completed } : t));
 
         // Then sync to DB
-        TaskService.updateTask(id, !task.completed).catch(err => {
+        TodoService.toggleTodo(id, task.completed).catch(err => {
             console.error('Failed to update task:', err);
             // Rollback if failed
             setTasks(prev => prev.map(t => t.id === id ? { ...t, completed: task.completed } : t));
@@ -71,7 +72,7 @@ export const TaskProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         setTasks(prev => prev.filter(t => t.id !== id));
 
         // Then sync to DB
-        TaskService.deleteTask(id).catch(err => {
+        TodoService.deleteTodo(id).catch(err => {
             console.error('Failed to delete task:', err);
             // Rollback if failed
             if (taskToDelete) {
@@ -84,9 +85,7 @@ export const TaskProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         const completedIds = tasks.filter(t => t.completed).map(t => t.id);
         setTasks(prev => prev.filter(t => !t.completed));
 
-        completedIds.forEach(id => {
-            TaskService.deleteTask(id).catch(console.error);
-        });
+        TodoService.clearCompleted().catch(console.error);
     };
 
     return (

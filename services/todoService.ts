@@ -26,6 +26,8 @@ export const TodoService = {
                 text: item.text,
                 completed: item.completed,
                 priority: item.priority,
+                deadline: item.deadline,
+                note: item.note,
                 createdAt: new Date(item.created_at).getTime()
             }));
         } catch (error) {
@@ -34,14 +36,16 @@ export const TodoService = {
         }
     },
 
-    async addTodo(todo: SavedTodo): Promise<boolean> {
+    async addTodo(todo: any): Promise<boolean> {
         try {
             const dbTodo = {
                 id: todo.id,
                 text: todo.text,
                 completed: todo.completed,
                 priority: todo.priority,
-                created_at: new Date(todo.createdAt).toISOString()
+                deadline: todo.deadline || null,
+                note: todo.note || null,
+                created_at: new Date(todo.createdAt || Date.now()).toISOString()
             };
 
             const { error } = await supabase
