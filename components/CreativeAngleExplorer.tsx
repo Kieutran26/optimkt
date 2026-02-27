@@ -1,13 +1,14 @@
 import React, { useState, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
-import toast from 'react-hot-toast';
-import { Lightbulb, Filter, Copy, Maximize2, Save, Trash2, Plus, Sparkles, Cloud } from 'lucide-react';
+import { useToast } from './Toast';
+import { Lightbulb, Filter, Copy, Maximize2, Save, Trash2, Plus, Sparkles } from 'lucide-react';
 import { CreativeAngleInput, CreativeAngle, CreativeAngleResult } from '../types';
 import { generateCreativeAngles } from '../services/geminiService';
 import { CreativeAngleService, SavedAngleSet } from '../services/creativeAngleService';
 
 const CreativeAngleExplorer: React.FC = () => {
     const { register, handleSubmit, reset } = useForm<CreativeAngleInput>();
+    const toast = useToast();
     const [isGenerating, setIsGenerating] = useState(false);
     const [thinkingStep, setThinkingStep] = useState('');
     const [result, setResult] = useState<CreativeAngleResult | null>(null);
@@ -33,7 +34,7 @@ const CreativeAngleExplorer: React.FC = () => {
             if (localData) {
                 const migrated = await CreativeAngleService.migrateFromLocalStorage();
                 if (migrated > 0) {
-                    toast.success(`☁️ Đã migrate ${migrated} bản ghi lên cloud!`, { duration: 3000 });
+                    toast.success(`Đã migrate ${migrated} bản ghi lên cloud!`);
                 }
             }
 
@@ -65,7 +66,7 @@ const CreativeAngleExplorer: React.FC = () => {
 
             if (angles) {
                 setResult(angles);
-                toast.success(`✨ Đã tạo ${angles.totalAngles || angles.total_angles} Concept Cards!`, { duration: 4000 });
+                toast.success(`Đã tạo ${angles.totalAngles || angles.total_angles} Concept Cards!`);
             } else {
                 toast.error('Không thể tạo angles. Vui lòng thử lại.');
             }
@@ -89,12 +90,13 @@ const CreativeAngleExplorer: React.FC = () => {
             timestamp: Date.now()
         };
 
-        const success = await CreativeAngleService.saveAngleSet(newSet);
+        const { success, errorMessage } = await CreativeAngleService.saveAngleSet(newSet);
         if (success) {
             setSavedSets(prev => [newSet, ...prev]);
-            toast.success('☁️ Đã lưu lên cloud!');
+            toast.success('Đã lưu lên cloud! ☁️');
         } else {
-            toast.error('Lỗi khi lưu!');
+            toast.error(`Lỗi khi lưu: ${errorMessage || 'Không xác định'}`);
+            console.error('Save failed:', errorMessage);
         }
     };
 
@@ -103,14 +105,14 @@ const CreativeAngleExplorer: React.FC = () => {
         setCurrentInput(set.input);
         reset(set.input);
         setShowHistory(false);
-        toast.success('📂 Đã tải!');
+        toast.success('Đã tải!');
     };
 
     const handleDelete = async (id: string) => {
         const success = await CreativeAngleService.deleteAngleSet(id);
         if (success) {
             setSavedSets(prev => prev.filter(s => s.id !== id));
-            toast.success('🗑️ Đã xóa!');
+            toast.success('Đã xóa!');
         } else {
             toast.error('Lỗi khi xóa!');
         }
@@ -120,12 +122,12 @@ const CreativeAngleExplorer: React.FC = () => {
         setResult(null);
         setCurrentInput(null);
         reset();
-        toast.success('✨ Sẵn sàng tạo angles mới!');
+        toast.success('Sẵn sàng tạo angles mới!');
     };
 
     const copyToClipboard = (text: string) => {
         navigator.clipboard.writeText(text);
-        toast.success('📋 Đã copy!');
+        toast.success('Đã copy!');
     };
 
     // Filter logic

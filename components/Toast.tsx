@@ -225,7 +225,7 @@ export const ToastProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       {children}
 
       {/* Toast Container */}
-      <div className="fixed top-4 right-4 z-[9999] flex flex-col gap-3">
+      <div className="fixed bottom-4 right-4 z-[9999] flex flex-col gap-3">
         {toasts.map(toast => (
           <ToastItem
             key={toast.id}

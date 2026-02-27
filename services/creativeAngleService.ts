@@ -39,7 +39,7 @@ export const CreativeAngleService = {
     },
 
     // Save an angle set to Supabase
-    async saveAngleSet(angleSet: SavedAngleSet): Promise<boolean> {
+    async saveAngleSet(angleSet: SavedAngleSet): Promise<{ success: boolean; errorMessage?: string }> {
         try {
             const dbRecord = {
                 id: angleSet.id,
@@ -55,13 +55,13 @@ export const CreativeAngleService = {
 
             if (error) {
                 console.error('Error saving creative angle:', error);
-                return false;
+                return { success: false, errorMessage: error.message || error.code || 'Supabase error' };
             }
 
-            return true;
-        } catch (error) {
+            return { success: true };
+        } catch (error: any) {
             console.error('Error in saveAngleSet:', error);
-            return false;
+            return { success: false, errorMessage: error?.message || 'Unknown error' };
         }
     },
 
@@ -96,8 +96,8 @@ export const CreativeAngleService = {
 
             let migrated = 0;
             for (const angleSet of localAngles) {
-                const success = await this.saveAngleSet(angleSet);
-                if (success) migrated++;
+                const result = await this.saveAngleSet(angleSet);
+                if (result.success) migrated++;
             }
 
             // Clear localStorage after successful migration
