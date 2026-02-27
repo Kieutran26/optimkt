@@ -174,7 +174,6 @@ const SmartContentCalendar: React.FC<SmartContentCalendarProps> = ({ onNavigateT
 
     // 2. Calendar Generation
     const fetchCalendar = async (isShuffle: boolean) => {
-        if (!currentBrand) return;
 
         if (!isShuffle && !isPillarValid) {
             showToast("Tổng tỷ trọng phải bằng 100%", "error");
@@ -192,7 +191,9 @@ const SmartContentCalendar: React.FC<SmartContentCalendarProps> = ({ onNavigateT
         const month = (today.getMonth() + 1).toString();
         const year = today.getFullYear();
 
-        const brandContext = `Brand: ${currentBrand.identity.name}. Vision: ${currentBrand.strategy.vision}`;
+        const brandContext = currentBrand
+            ? `Brand: ${currentBrand.identity.name}. Vision: ${currentBrand.strategy.vision}`
+            : "General Content (No specific brand)";
         const personaContext = selectedPersona
             ? `Target Audience: ${selectedPersona.fullname}, ${selectedPersona.jobTitle}. Pain points: ${selectedPersona.frustrations.join(', ')}`
             : "General Audience";
@@ -591,7 +592,7 @@ const SmartContentCalendar: React.FC<SmartContentCalendarProps> = ({ onNavigateT
                             ) : (
                                 <button
                                     onClick={handleGenerate}
-                                    disabled={isLoading || !currentBrand}
+                                    disabled={isLoading}
                                     className="bg-indigo-600 text-white px-8 py-2.5 rounded-xl font-bold hover:bg-indigo-700 transition-colors shadow-lg shadow-indigo-200 disabled:opacity-70 flex items-center gap-2"
                                 >
                                     {isLoading ? <Loader2 className="animate-spin" size={18} /> : <Sparkles size={18} />}

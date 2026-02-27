@@ -638,35 +638,38 @@ export interface DeepDiveResult {
 }
 
 export const brainstormNodeDetails = async (nodeLabel: string, rootContext?: string): Promise<DeepDiveResult> => {
-    const systemPrompt = `You are a content strategist generating ideas in Vietnamese.
+    const systemPrompt = `### ROLE & TASK
+    You are an elite Digital Content Strategist.
+    You are brainstorming content ideas IN ONLY VIETNAMESE.
+
+    ### CONTEXT
     ${rootContext ? `
-    The MAIN TOPIC is: "${rootContext}".
-    The user wants to brainstorm content ideas for this MAIN TOPIC, specifically focusing on the aspect of: "${nodeLabel}".
+    🔹 **MAIN PROJECT / CORE THEME:** "${rootContext}"
+    🔹 **SUB-CATEGORY / ASPECT TO FOCUS ON:** "${nodeLabel}"
     
-    CRITICAL INSTRUCTION: DO NOT brainstorm about "${nodeLabel}" in general. 
-    You MUST generate concrete content ideas for the MAIN TOPIC ("${rootContext}") viewed through the lens of "${nodeLabel}".
-    Example: If Main Topic = "Tour du lịch cho người cao tuổi" and Aspect = "Phân tích nhân khẩu học", your ideas MUST be about "Understanding what the elderly truly want on a tour", NOT generic angles about "How to do demographic analysis".
+    CRITICAL RULE: The brainstorm MUST be about the MAIN PROJECT. The SUB-CATEGORY is just the angle you must use.
+    If the MAIN PROJECT is "Tour du lịch cho người cao tuổi" and SUB-CATEGORY is "Nhân khẩu học", your ideas MUST be about "Tâm lý và nhân khẩu học của người cao tuổi khi đi du lịch".
+    You MUST NOT output generic ideas about "${nodeLabel}". EVERY angle, headline, and keyword MUST explicitly serve "${rootContext}".
     ` : `
-    The user wants to deep dive into a specific topic idea: "${nodeLabel}".
+    🔹 **TOPIC:** "${nodeLabel}"
     `}
 
-    Provide:
-    1. 5 unique Content Angles (different perspectives to approach this topic).
-    2. 3 catchy Headlines / Titles for articles or posts.
-    3. 5 related Keywords or Tags.
+    ### OUTPUT FORMAT (REQUIREMENTS)
+    1. "angles": 5 unique perspectives/angles to write about this topic.
+    2. "headlines": 3 highly engaging, click-worthy titles. ${rootContext ? `(MUST contain words relating to "${rootContext}")` : ''}
+    3. "keywords": 5 SEO keywords.
 
-    Output JSON format ONLY:
+    Return ONLY a valid JSON object matching the format below.
     {
-        "angles": ["angle 1", "angle 2", ...],
-        "headlines": ["title 1", ...],
-        "keywords": ["kw1", ...]
-    }
-    `;
+        "angles": ["...", "..."],
+        "headlines": ["...", "..."],
+        "keywords": ["...", "..."]
+    }`;
 
     try {
         const response = await ai.models.generateContent({
             model: 'gemini-2.5-flash',
-            contents: rootContext ? `Brainstorm ideas for Main Topic: "${rootContext}" focusing on the aspect: "${nodeLabel}"` : `Deep dive topic: "${nodeLabel}"`,
+            contents: rootContext ? `Generate ideas for project: "${rootContext}". Focus ONLY on this aspect: "${nodeLabel}".` : `Deep dive topic: "${nodeLabel}"`,
             config: {
                 systemInstruction: systemPrompt,
                 responseMimeType: "application/json",
@@ -991,8 +994,61 @@ export const generateContentCalendar = async (
     isShuffle: boolean = false,
     overallStrategy: string = ""
 ): Promise<any[]> => {
-    // ... (Keep existing implementation)
-    return [];
+    const totalWeight = pillars.reduce((sum, p) => sum + p.weight, 0) || 100;
+    const pillarInstruction = pillars.map(p => `- ${p.name} (Tỷ trọng: ${Math.round((p.weight / totalWeight) * 100)}%)`).join('\n');
+    const anglesInstruction = angles.length > 0 ? angles.join(', ') : 'Tự do sáng tạo (Tùy chọn)';
+
+    const systemPrompt = `Bạn là Senior Content Marketing Manager người Việt Nam.
+    Nhiệm vụ: Lên kế hoạch nội dung chi tiết cho tháng ${month}/${year}.
+    
+    THÔNG TIN ĐẦU VÀO:
+    - Bối cảnh thương hiệu: ${brandContext}
+    - Chân dung khách hàng: ${personaContext}
+    - Chiến lược tổng thể: ${overallStrategy}
+    
+    CÁC CHỦ ĐỀ CHÍNH (PILLARS) VÀ TỶ TRỌNG KỲ VỌNG:
+    ${pillarInstruction}
+    
+    GÓC TIẾP CẬN (ANGLES):
+    Sử dụng linh hoạt các góc tiếp cận sau: ${anglesInstruction}
+    
+    YÊU CẦU:
+    1. Tạo 15-20 bài đăng phân bổ rải rác đều trong tháng ${month}/${year}.
+    2. Mỗi bài đăng phải thuộc một trong các Chủ đề (Pillars) đã cho ở trên.
+    3. Trả về kết quả hoàn toàn bằng TIẾNG VIỆT (kể cả description).
+    4. Định dạng trả về BẮT BUỘC là MẢNG JSON theo cấu trúc (không markdown, không text diễn giải):
+    [
+      {
+        "id": "chuỗi ngẫu nhiên (vd: evt-1)",
+        "title": "Tiêu đề bài viết ngắn gọn, hấp dẫn",
+        "date": "YYYY-MM-DD" (chỉ trong tháng ${month} năm ${year}),
+        "pillar": "Tên chủ đề (phải copy CHÍNH XÁC từ danh sách trên)",
+        "format": "Định dạng (vd: Bài đăng ảnh, Video Ngắn, Infographic, Carousel...)",
+        "description": "Nội dung tóm tắt cách triển khai bài viết (1-2 câu)"
+      }
+    ]
+    `;
+
+    try {
+        const response = await ai.models.generateContent({
+            model: 'gemini-2.5-flash',
+            contents: isShuffle ? "Hãy tạo một phương án lịch nội dung HOÀN TOÀN MỚI, khác biệt so với các đề xuất thông thường dựa trên yêu cầu trên." : "Hãy lập kế hoạch lịch nội dung cho tháng này dựa trên yêu cầu trên.",
+            config: {
+                systemInstruction: systemPrompt,
+                responseMimeType: "application/json",
+                safetySettings: SAFETY_SETTINGS,
+                temperature: isShuffle ? 1.0 : 0.7
+            },
+        });
+
+        const text = response.text || "[]";
+        // Parse array form raw text
+        const jsonStr = text.replace(/```json|```/g, '').trim();
+        return JSON.parse(jsonStr);
+    } catch (error) {
+        console.error("Content Calendar Generation Error:", error);
+        return [];
+    }
 };
 
 // --- MASTERMIND STRATEGY ---

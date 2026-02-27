@@ -81,6 +81,7 @@ const MindmapGeneratorContent: React.FC = () => {
     const [showSidebar, setShowSidebar] = useState(false);
     const [sidebarLoading, setSidebarLoading] = useState(false);
     const [selectedNodeLabel, setSelectedNodeLabel] = useState('');
+    const [activeRootContext, setActiveRootContext] = useState('');
     const [sidebarContent, setSidebarContent] = useState<DeepDiveResult | null>(null);
 
     // Add Node State
@@ -357,9 +358,14 @@ const MindmapGeneratorContent: React.FC = () => {
         setSidebarLoading(true);
         setSidebarContent(null);
 
-        // Lấy tên node gốc (chủ đề chính) hoặc tên project để làm bối cảnh (context)
-        const rootNode = nodes.find(n => n.type === 'input' || n.type === 'root');
-        const rootContext = rootNode ? rootNode.data?.label : projectName;
+        // Sử dụng getNodes() để luôn lấy state mới nhất của sơ đồ thay vì closure cũ
+        const currentNodes = getNodes();
+        const rootNode = currentNodes.find(n => n.type === 'input' || n.type === 'root');
+
+        // Backup bằng tên keyword hoặc projectName nếu không tìm thấy root (để chắc chắn luôn có context)
+        const currentRootLabel = rootNode?.data?.label;
+        const rootContext = currentRootLabel || keyword || projectName;
+        setActiveRootContext(rootContext);
 
         try {
             const result = await brainstormNodeDetails(label, rootContext);
@@ -369,7 +375,7 @@ const MindmapGeneratorContent: React.FC = () => {
         } finally {
             setSidebarLoading(false);
         }
-    }, [nodes, projectName]);
+    }, [getNodes, keyword, projectName]);
 
     const copyToClipboard = (text: string) => {
         navigator.clipboard.writeText(text);
@@ -546,8 +552,14 @@ const MindmapGeneratorContent: React.FC = () => {
                         ) : sidebarContent ? (
                             <div className="animate-in fade-in slide-in-from-right-4">
                                 <div className="mb-4">
-                                    <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">Ý tưởng gốc</span>
-                                    <h2 className="text-xl font-bold text-indigo-900 mt-1">{selectedNodeLabel}</h2>
+                                    <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">Khía cạnh mổ xẻ</span>
+                                    <h2 className="text-sm font-bold text-slate-600 mt-1">{selectedNodeLabel}</h2>
+                                    {activeRootContext && (
+                                        <>
+                                            <span className="text-xs font-bold text-indigo-400 uppercase tracking-wider mt-3 block">Chủ đề chính (Bối cảnh)</span>
+                                            <h2 className="text-lg font-bold text-indigo-900 mt-0.5">{activeRootContext}</h2>
+                                        </>
+                                    )}
                                 </div>
 
                                 {/* Content Angles */}
