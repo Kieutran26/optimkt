@@ -574,9 +574,9 @@ ${hasGoal ? `
 - Tạo mindmap TỔNG QUAN với các nhánh phổ quát nhất cho chủ đề
 `}
 
-**2. SPECIFIC INSIGHT (Chi tiết đắt giá):**
+**2. SPECIFIC INSIGHT (Chi tiết đắt giá & BÁM SÁT CHỦ ĐỀ GỐC):**
 - Ở các nhánh con (Level 2, Level 3), TUYỆT ĐỐI không dùng từ đơn chung chung
-- PHẢI dùng cụm từ ngắn gọn nhưng CHỨA THÔNG TIN CỤ THỂ
+- PHẢI dùng cụm từ ngắn gọn nhưng CHỨA THÔNG TIN CỤ THỂ và PHẢI THỂ HIỆN RÕ SỰ LIÊN QUAN TỚI CHỦ ĐỀ CHÍNH ("${inputData.topic}").
 - SAI: "Marketing" -> "Facebook"
 - ĐÚNG: "Marketing" -> "Facebook Ads (Target Eat Clean)"
 
@@ -637,27 +637,36 @@ export interface DeepDiveResult {
     keywords: string[];
 }
 
-export const brainstormNodeDetails = async (nodeLabel: string): Promise<DeepDiveResult> => {
-    const systemPrompt = `You are a content strategist. 
+export const brainstormNodeDetails = async (nodeLabel: string, rootContext?: string): Promise<DeepDiveResult> => {
+    const systemPrompt = `You are a content strategist generating ideas in Vietnamese.
+    ${rootContext ? `
+    The MAIN TOPIC is: "${rootContext}".
+    The user wants to brainstorm content ideas for this MAIN TOPIC, specifically focusing on the aspect of: "${nodeLabel}".
+    
+    CRITICAL INSTRUCTION: DO NOT brainstorm about "${nodeLabel}" in general. 
+    You MUST generate concrete content ideas for the MAIN TOPIC ("${rootContext}") viewed through the lens of "${nodeLabel}".
+    Example: If Main Topic = "Tour du lịch cho người cao tuổi" and Aspect = "Phân tích nhân khẩu học", your ideas MUST be about "Understanding what the elderly truly want on a tour", NOT generic angles about "How to do demographic analysis".
+    ` : `
     The user wants to deep dive into a specific topic idea: "${nodeLabel}".
+    `}
 
     Provide:
-1. 5 unique Content Angles(different perspectives to approach this topic).
+    1. 5 unique Content Angles (different perspectives to approach this topic).
     2. 3 catchy Headlines / Titles for articles or posts.
     3. 5 related Keywords or Tags.
 
     Output JSON format ONLY:
-{
-    "angles": ["angle 1", "angle 2", ...],
+    {
+        "angles": ["angle 1", "angle 2", ...],
         "headlines": ["title 1", ...],
-            "keywords": ["kw1", ...]
-}
-`;
+        "keywords": ["kw1", ...]
+    }
+    `;
 
     try {
         const response = await ai.models.generateContent({
             model: 'gemini-2.5-flash',
-            contents: `Deep dive topic: "${nodeLabel}"`,
+            contents: rootContext ? `Brainstorm ideas for Main Topic: "${rootContext}" focusing on the aspect: "${nodeLabel}"` : `Deep dive topic: "${nodeLabel}"`,
             config: {
                 systemInstruction: systemPrompt,
                 responseMimeType: "application/json",

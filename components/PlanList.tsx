@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Trash2, Plus, CreditCard, X, Music, Video, Cloud, ShoppingBag, Gamepad2, Zap, Smartphone, Globe, Edit2, Eye, Calendar, Mail } from 'lucide-react';
 import { Plan } from '../types';
-import { Plan } from '../types';
 import { PlanService } from '../services/planService';
 
 // Icon mapping for selection
@@ -91,6 +90,19 @@ const PlanList: React.FC = () => {
     setCardInfo('');
     setSelectedIcon('global');
     setEditingPlanId(null);
+  };
+
+  const handleEdit = (plan: Plan) => {
+    setWebsite(plan.website);
+    setPrice(plan.price.toString());
+    setEmail(plan.email || '');
+    setPaymentDate(plan.paymentDate || '');
+    setNextDate(plan.nextPaymentDate);
+    setCardInfo(plan.cardInfo || '');
+    setSelectedIcon(plan.icon || 'global');
+    setEditingPlanId(plan.id);
+    setShowModal(true);
+    setViewingPlan(null);
   };
 
   const calculateDaysRemaining = (dateStr: string) => {

@@ -63,14 +63,20 @@ const SmartContentCalendar: React.FC<SmartContentCalendarProps> = ({ onNavigateT
     const [selectedEvent, setSelectedEvent] = useState<ContentPlanItem | null>(null);
 
     useEffect(() => {
+        const allPersonas = StorageService.getPersonas();
         if (currentBrand) {
-            setAvailablePersonas(StorageService.getPersonasByBrand(currentBrand.id));
+            const brandPersonas = allPersonas.filter(p => p.brandId === currentBrand.id);
+            const manualPersonas = allPersonas.filter(p => p.brandId === 'manual');
+            // Remove duplicates just in case
+            const combined = [...brandPersonas, ...manualPersonas];
+            const uniquePersonas = combined.filter((v, i, a) => a.findIndex(t => (t.id === v.id)) === i);
+            setAvailablePersonas(uniquePersonas);
         } else {
-            setAvailablePersonas([]);
+            setAvailablePersonas(allPersonas);
         }
         // Load projects list
         setSavedProjects(StorageService.getCalendarProjects());
-    }, [currentBrand]);
+    }, [currentBrand, showConfigModal]);
 
     // NEW: Handle Initial Strategy Import
     useEffect(() => {

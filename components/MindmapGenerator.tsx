@@ -357,15 +357,19 @@ const MindmapGeneratorContent: React.FC = () => {
         setSidebarLoading(true);
         setSidebarContent(null);
 
+        // Lấy tên node gốc (chủ đề chính) hoặc tên project để làm bối cảnh (context)
+        const rootNode = nodes.find(n => n.type === 'input' || n.type === 'root');
+        const rootContext = rootNode ? rootNode.data?.label : projectName;
+
         try {
-            const result = await brainstormNodeDetails(label);
+            const result = await brainstormNodeDetails(label, rootContext);
             setSidebarContent(result);
         } catch (error) {
             showToast("Lỗi khi phân tích chi tiết.", "error");
         } finally {
             setSidebarLoading(false);
         }
-    }, []);
+    }, [nodes, projectName]);
 
     const copyToClipboard = (text: string) => {
         navigator.clipboard.writeText(text);
