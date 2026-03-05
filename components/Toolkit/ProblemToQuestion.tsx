@@ -32,12 +32,18 @@ Hãy tạo 5 câu hỏi có thể hành động được (actionable questions) 
 3. Cụ thể và có thể thực hiện được
 4. Mở ra hướng suy nghĩ mới
 
+LƯU Ý: Đây là lần tạo ngẫu nhiên lúc ${Date.now()}. Vui lòng sinh ra các câu hỏi KHÁC BIỆT hoàn toàn so với những lần trước.
+
 Trả về CHÍNH XÁC theo format JSON array, không có markdown hay giải thích:
 ["Câu hỏi 1", "Câu hỏi 2", "Câu hỏi 3", "Câu hỏi 4", "Câu hỏi 5"]`;
 
             const response = await ai.models.generateContent({
-                model: 'gemini-2.0-flash',
+                model: 'gemini-2.5-flash',
                 contents: prompt,
+                config: {
+                    responseMimeType: "application/json",
+                    temperature: 0.9,
+                }
             });
 
             const text = response.text || '';
@@ -51,9 +57,10 @@ Trả về CHÍNH XÁC theo format JSON array, không có markdown hay giải th
             } else {
                 throw new Error('Invalid response format');
             }
-        } catch (error) {
+        } catch (error: any) {
             console.error('Error:', error);
-            toast.error('Đã xảy ra lỗi. Vui lòng thử lại!');
+            const errorMessage = error?.message || 'Đã xảy ra lỗi. Vui lòng thử lại!';
+            toast.error(errorMessage, { duration: 5000 });
         } finally {
             setIsGenerating(false);
         }
